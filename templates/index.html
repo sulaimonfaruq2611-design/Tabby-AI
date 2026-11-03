@@ -1,0 +1,182 @@
+templates/index.html <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tabby - Smart E-Bike AI</title>
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background:#0a0a0a; color:#e5e5e5; display:flex; flex-direction:column; height:100vh; }
+  header { padding:16px 20px; border-bottom:1px solid #222; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:18px; font-weight:600; letter-spacing:0.5px; }
+  #status { font-size:12px; color:#888; }
+  #chat { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px; }
+  .msg { max-width:80%; padding:12px 16px; border-radius:12px; line-height:1.6; font-size:15px; white-space:pre-wrap; }
+  .user { align-self:flex-end; background:#1e1e1e; border:1px solid #333; }
+  .tabby { align-self:flex-start; background:#111; border:1px solid #222; }
+  .sender { font-size:11px; color:#666; margin-bottom:4px; letter-spacing:0.5px; }
+  #welcome { text-align:center; margin-top:20%; color:#666; }
+  #input-area { padding:16px 20px; border-top:1px solid #222; display:flex; gap:10px; }
+  #input { flex:1; background:#141414; border:1px solid #333; border-radius:8px; padding:12px 16px; color:#fff; outline:none; font-size:15px; }
+  #input:focus { border-color:#555; }
+  button { background:#fff; color:#000; border:none; border-radius:8px; padding:12px 20px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:0.5; }
+  #newChat { background:#222; color:#fff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TABBY</h1>
+  <div>
+    <span id="status">● Ready</span>
+    <button id="newChat" style="margin-left:12px; padding:6px 12px; font-size:12px;">New Chat</button>
+  </div>
+</header>
+
+<div id="chat">
+  <div id="welcome">
+    <h2 style="color:#fff; margin-bottom:8px;">Tabby Smart E-Bike Brain</h2>
+    <p>Created by Faruq. JARVIS for your e-bike.</p>
+    <p style="margin-top:12px; font-size:13px;">Ask: Can I reach Ikeja? Battery status?</p>
+  </div>
+</div>
+
+<div id="input-area">
+  <input id="input" type="text" placeholder="Ask Tabby..." autocomplete="off">
+  <button id="send">Send ➤</button>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const button = document.getElementById('send');
+const newChatButton = document.getElementById('newChat');
+const welcome = document.getElementById('welcome');
+const statusEl = document.getElementById('status');
+
+let conversationId = localStorage.getItem('tabby_conversation_id') || crypto.randomUUID();
+localStorage.setItem('tabby_conversation_id', conversationId);
+let userLocation = null;
+
+// --- GET LIVE GPS (Anywhere-to-Anywhere) ---
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(pos => {
+    userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    setStatus(`● GPS: ${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`);
+  });
+}
+
+function setStatus(text) { statusEl.textContent = text; }
+
+// --- CLEAN MESSAGE RENDER (NO MARKDOWN) ---
+function cleanText(text) {
+  if (!text) return "";
+  return text.replace(/###/g, "").replace(/\*\*/g, "").replace(/---/g, "").replace(/\|\|\|/g, "").replace(/\|/g, " ").trim();
+}
+
+function addMessage(sender, text, type) {
+  if (welcome) welcome.style.display = "none";
+  const wrapper = document.createElement('div');
+  wrapper.className = `msg ${type}`;
+  const senderEl = document.createElement('div');
+  senderEl.className = 'sender';
+  senderEl.textContent = sender;
+  const contentEl = document.createElement('div');
+  contentEl.textContent = cleanText(text); // IMPORTANT: textContent, not innerHTML, no markdown
+  wrapper.appendChild(senderEl);
+  wrapper.appendChild(contentEl);
+  chat.appendChild(wrapper);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function loadHistory() {
+  // optional: load from /history endpoint if you have it
+  setStatus("● Ready");
+}
+
+async function sendMessage() {
+  const message = input.value.trim();
+  if (!message) return;
+
+  addMessage("YOU", message, "user");
+  input.value = "";
+  input.disabled = true;
+  button.disabled = true;
+  newChatButton.disabled = true;
+  button.textContent = "...";
+  setStatus("● Tabby thinking...");
+
+  try {
+    // Parse destination if user says "can i reach Ikeja"
+    let dest = null;
+    const destMap = {
+      "ikeja": { lat: 6.6018, lon: 3.3511, name: "Ikeja" },
+      "ifo": { lat: 6.815, lon: 3.196, name: "Ifo" },
+      "sango": { lat: 6.71, lon: 3.22, name: "Sango" },
+      "ijoko": { lat: 6.757, lon: 3.224, name: "Ijoko" },
+      "lisa": { lat: 6.85, lon: 3.4, name: "Lisa Rd" }
+    };
+    const low = message.toLowerCase();
+    for (const k in destMap) { if (low.includes(k)) dest = destMap[k]; }
+
+    const payload = {
+      message: message,
+      conversation_id: conversationId,
+      current_lat: userLocation ? userLocation.lat : null,
+      current_lon: userLocation ? userLocation.lon : null,
+      dest_lat: dest ? dest.lat : null,
+      dest_lon: dest ? dest.lon : null,
+      dest_name: dest ? dest.name : null
+    };
+
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (data.reply) {
+      addMessage("TABBY", data.reply, "tabby");
+      setStatus("● Ready");
+    } else {
+      throw new Error(data.error || "No reply");
+    }
+
+  } catch (error) {
+    addMessage(
+      "TABBY",
+      "I couldn't connect to my AI brain: " + error.message,
+      "tabby"
+    );
+    setStatus("● Connection error");
+  } finally {
+    input.disabled = false;
+    button.disabled = false;
+    newChatButton.disabled = false;
+    button.textContent = "Send ➤";
+    input.focus();
+  }
+}
+
+button.addEventListener("click", sendMessage);
+input.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+
+// Start a new conversation
+newChatButton.addEventListener("click", function() {
+  conversationId = crypto.randomUUID();
+  localStorage.setItem("tabby_conversation_id", conversationId);
+  chat.innerHTML = "";
+  if (welcome) {
+    chat.appendChild(welcome);
+    welcome.style.display = "block";
+  }
+  setStatus("● New conversation");
+  input.focus();
+});
+
+// Load memory when website opens
+loadHistory();
+</script>
+</body>
+</html>
