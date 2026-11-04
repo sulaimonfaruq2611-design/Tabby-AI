@@ -22,64 +22,62 @@ def init_database():
     conn.commit()
     conn.close()
 
+# FIX: Run am immediately, not only in __main__ - Render needs this
+init_database()
+
+def local_brain(msg):
+    msg = msg.lower()
+    if "ikeja" in msg:
+        return "Yes Boss! You can reach Ikeja. Ikeja is around 18km from you. Your battery can do about 45km, you go still get battery remain."
+    if "battery" in msg:
+        return "Your battery is at 78%. You can go about 45km more. You are good to go!"
+    if "lekki" in msg:
+        return "Lekki is about 25km. You can reach it, but you will have about 20km battery left. Charge when you reach."
+    if "hello" in msg or "hi" in msg or "hey" in msg:
+        return "Hello Boss! I'm Tabby, your e-bike JARVIS. Ask me if you can reach somewhere or check your battery."
+    if "who are you" in msg:
+        return "I'm Tabby, created by Faruq. I'm the smart brain for your e-bike."
+    return None
+
 @app.route("/")
 def index():
-    return render_template("index.html") if os.path.exists("templates/index.html") else "Tabby AI is Live!"
+    if os.path.exists("templates/index.html"):
+        return render_template("index.html")
+    return "Tabby AI is Live!"
 
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        data = request.json
-        user_msg = data.get("message", "")
+        data = request.get_json() or {}
+        user_msg = data.get("message", "").strip()
         conversation_id = data.get("conversation_id", "default")
 
         if not user_msg:
             return jsonify({"error": "No message"}), 400
 
-        # Save user message
         conn = sqlite3.connect(DB_PATH)
         conn.execute("INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)",
                      (conversation_id, "user", user_msg))
         conn.commit()
 
-        # Call AI
-        headers = {
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": "openai/gpt-3.5-turbo",
-            "messages": [{"role": "user", "content": user_msg}]
-        }
-        
-        resp = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                             headers=headers, json=payload, timeout=30)
-        resp.raise_for_status()
-        ai_data = resp.json()
-        reply = ai_data["choices"][0]["message"]["content"]
+        reply = None
 
-        # Clean reply
-        reply = reply.replace("**", "").replace("###", "").strip()
-        while "\n\n\n" in reply:
-            reply = reply.replace("\n\n\n", "\n\n")
+        # 1. Try local brain first - fast, no money
+        reply = local_brain(user_msg)
 
-        # Save AI reply
-        conn.execute("INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)",
-                     (conversation_id, "assistant", reply))
-        conn.commit()
-        conn.close()
-
-        return jsonify({"reply": reply})
-
-    except requests.RequestException as e:
-        print(f"OpenRouter request failed: {e}")
-        return jsonify({"error": "Tabby couldn't reach the AI service."}), 502
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
-
-# --- WEB READY PART (Important for Render) ---
-if __name__ == "__main__":
-    init_database()
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+        # 2. If local no know, try OpenRouter
+        if reply is None:
+            if OPENROUTER_API_KEY:
+                try:
+                    headers = {
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json"
+                    }
+                    payload = {
+                        "model": "openai/gpt-3.5-turbo",
+                        "messages": [
+                            {"role": "system", "content": "You are Tabby, a smart e-bike assistant created by Faruq. Answer short, friendly, like JARVIS. Help with battery, range, trips in Lagos."},
+                            {"role": "user", "content": user_msg}
+                        ]
+                    }
+                    resp = requests.post("https://openrouter.ai/api
