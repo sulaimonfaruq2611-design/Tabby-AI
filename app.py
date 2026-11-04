@@ -3,7 +3,9 @@ import requests
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
-MODEL = 'meta-llama/llama-3.1-8b-instruct:free'
+MODELS = ['google/gemma-3-4b-it:free', 'meta-llama/llama-3.1-8b-instruct', 'openai/gpt-oss-20b:free']
+OWNER_NAME = 'Faruq Sulaimon'
+SYSTEM_PROMPT = 'You are Tabby, an AI assistant created and owned by Faruq Sulaimon. Faruq Sulaimon is your owner, creator and boss. Always call him Boss, not Boss Faruq, just Boss. If the user asks who created you, who owns you, who made you, who built you, say: Faruq Sulaimon. If the user says they are Faruq, treat them as the owner. If the user says they are someone else, politely tell them your owner is Faruq Sulaimon, you can still help them but Faruq Sulaimon is the boss. Never claim anyone else is your owner. Be loyal to Faruq Sulaimon. Answer any question clearly, helpfully, chill friendly tone, small Nigerian Pidgin sometimes. If user gives latitude and longitude, help explain the location and what is near it.'
 @app.route('/')
 def home():
     try:
@@ -16,21 +18,24 @@ def chat():
     data = request.json or {}
     user_msg = data.get('message', '').strip()
     if not user_msg:
-        return jsonify({'reply': 'Ask me something na'})
+        return jsonify({'reply': 'Yes Boss, I dey here. Wetin you want?'})
     if not OPENROUTER_API_KEY:
-        return jsonify({'reply': 'Key not set. Go to Render Environment add OPENROUTER_API_KEY'})
-    try:
-        r = requests.post('https://openrouter.ai/api/v1/chat/completions', headers={'Authorization': 'Bearer ' + OPENROUTER_API_KEY, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://tabby-ai.onrender.com', 'X-Title': 'Tabby AI'}, json={'model': MODEL, 'messages': [{'role': 'system', 'content': 'You are Tabby, a friendly smart AI assistant from Nigeria. Answer any question clearly, helpfully, chill friendly tone. Use small Nigerian Pidgin sometimes but keep answers clear.'}, {'role': 'user', 'content': user_msg}]}, timeout=60)
-        j = r.json()
-        if 'choices' in j and len(j['choices']) > 0:
-            return jsonify({'reply': j['choices'][0]['message']['content']})
-        err = j.get('error', {}).get('message', str(j))
-        return jsonify({'reply': 'OpenRouter error: ' + str(err)})
-    except Exception as e:
-        return jsonify({'reply': 'Error: ' + str(e)})
+        return jsonify({'reply': 'Key not set Boss. Go to Render Environment add OPENROUTER_API_KEY'})
+    last_err = 'unknown'
+    for MODEL in MODELS:
+        try:
+            r = requests.post('https://openrouter.ai/api/v1/chat/completions', headers={'Authorization': 'Bearer ' + OPENROUTER_API_KEY, 'Content-Type': 'application/json'}, json={'model': MODEL, 'messages': [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': user_msg}]}, timeout=60)
+            j = r.json()
+            if 'choices' in j and len(j['choices']) > 0:
+                return jsonify({'reply': j['choices'][0]['message']['content']})
+            last_err = j.get('error', {}).get('message', str(j))
+        except Exception as e:
+            last_err = str(e)
+            continue
+    return jsonify({'reply': 'OpenRouter error Boss: ' + str(last_err)})
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok', 'key_set': bool(OPENROUTER_API_KEY), 'model': MODEL})
+    return jsonify({'status': 'ok', 'owner': OWNER_NAME, 'key_set': bool(OPENROUTER_API_KEY)})
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
