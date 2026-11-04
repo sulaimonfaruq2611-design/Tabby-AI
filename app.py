@@ -1,38 +1,36 @@
 import os
 import requests
-from flask import Flask, request, jsonify, render_template_string
-
+from flask import Flask, request, jsonify
 app = Flask(__name__)
-
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-MODEL = "meta-llama/llama-3.1-8b-instruct:free"
-
-HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tabby AI</title>
-<style>
-body{font-family:Arial;background:#0f172a;color:white;padding:15px;max-width:700px;margin:auto}
-h2{text-align:center}
-#chat{height:55vh;overflow-y:auto;background:#020617;padding:15px;border-radius:12px;margin-bottom:12px}
-.msg{margin-bottom:12px;line-height:1.5}
-.user{color:#93c5fd}
-.tabby{color:#86efac}
-input{width:78%;padding:12px;border-radius:8px;border:none;outline:none}
-button{padding:12px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:bold;cursor:pointer}
-</style>
-</head>
-<body>
-<h2>🐱 Tabby AI</h2>
-<p style="text-align:center;color:#94a3b8">Ask me anything</p>
-<div id="chat"><div class="msg tabby"><b>Tabby:</b> Yo! I'm active now. Ask me anything — business, school, code, ideas, anything.</div></div>
-<div style="display:flex;gap:8px">
-<input id="msg" placeholder="Type your question..." onkeydown="if(event.key==='Enter')send()">
-<button onclick="send()">Send</button>
-</div>
-<script>
-async function send(){
-  let inp = document.getElementById('msg');
-  let m = inp.value.trim
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+MODEL = 'meta-llama/llama-3.1-8b-instruct:free'
+@app.route('/')
+def home():
+    try:
+        with open('templates/index.html', 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        return 'Tabby is live! But index.html missing: ' + str(e)
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.json or {}
+    user_msg = data.get('message', '').strip()
+    if not user_msg:
+        return jsonify({'reply': 'Ask me something na'})
+    if not OPENROUTER_API_KEY:
+        return jsonify({'reply': 'Key not set. Go to Render Environment add OPENROUTER_API_KEY'})
+    try:
+        r = requests.post('https://openrouter.ai/api/v1/chat/completions', headers={'Authorization': 'Bearer ' + OPENROUTER_API_KEY, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://tabby-ai.onrender.com', 'X-Title': 'Tabby AI'}, json={'model': MODEL, 'messages': [{'role': 'system', 'content': 'You are Tabby, a friendly smart AI assistant from Nigeria. Answer any question clearly, helpfully, chill friendly tone. Use small Nigerian Pidgin sometimes but keep answers clear.'}, {'role': 'user', 'content': user_msg}]}, timeout=60)
+        j = r.json()
+        if 'choices' in j and len(j['choices']) > 0:
+            return jsonify({'reply': j['choices'][0]['message']['content']})
+        err = j.get('error', {}).get('message', str(j))
+        return jsonify({'reply': 'OpenRouter error: ' + str(err)})
+    except Exception as e:
+        return jsonify({'reply': 'Error: ' + str(e)})
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok', 'key_set': bool(OPENROUTER_API_KEY), 'model': MODEL})
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
