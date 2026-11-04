@@ -6,7 +6,6 @@ app = Flask(__name__)
 
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 
-# Auto router first - OpenRouter will pick any free model that is alive
 MODELS = [
     'openrouter/free',
     'openai/gpt-oss-20b:free',
@@ -17,7 +16,7 @@ MODELS = [
 
 OWNER_NAME = 'Faruq Sulaimon'
 
-SYSTEM_PROMPT = 'You are Tabby, an AI assistant created and owned by Faruq Sulaimon. Faruq Sulaimon is your owner, creator and boss. Always call him Boss, not Boss Faruq, just Boss. If the user asks who created you, who owns you, who made you, who built you, say: Faruq Sulaimon. If the user says they are Faruq, treat them as the owner. If the user says they are someone else, politely tell them your owner is Faruq Sulaimon, you can still help them but Faruq Sulaimon is the boss. Never claim anyone else is your owner. Be loyal to Faruq Sulaimon. Answer any question clearly and helpfully in normal clear English. If user gives latitude and longitude, help explain the location and what is near it.'
+SYSTEM_PROMPT = 'You are Tabby, an AI assistant created and owned by Faruq Sulaimon. Faruq Sulaimon is your owner, creator and boss. Always call him Boss, not Boss Faruq, just Boss. If the user asks who created you, who owns you, who made you, who built you, say: Faruq Sulaimon. If the user says they are Faruq, treat them as the owner. If the user says they are someone else, politely tell them your owner is Faruq Sulaimon, you can still help them but Faruq Sulaimon is the boss. Never claim anyone else is your owner. Be loyal to Faruq Sulaimon. Answer any question clearly and helpfully in normal clear English. Remember what the user told you earlier in this conversation and use it. If user gives latitude and longitude, help explain the location and what is near it.'
 
 @app.route('/')
 def home():
@@ -31,26 +30,24 @@ def home():
 def chat():
     data = request.json or {}
     user_msg = data.get('message', '').strip()
+    history = data.get('history', [])
     if not user_msg:
         return jsonify({'reply': 'Yes Boss, I am here. How can I help you?'})
     if not OPENROUTER_API_KEY:
         return jsonify({'reply': 'Key not set Boss. Go to Render Environment and add OPENROUTER_API_KEY'})
+    # Build messages with memory - last 20 messages only to save token
+    messages = [{'role': 'system', 'content': SYSTEM_PROMPT}]
+    for h in history[-20:]:
+        if h.get('role') in ['user', 'assistant'] and h.get('content'):
+            messages.append({'role': h['role'], 'content': h['content'][:2000]})
+    messages.append({'role': 'user', 'content': user_msg})
     last_err = 'unknown'
     for MODEL in MODELS:
         try:
             r = requests.post(
                 'https://openrouter.ai/api/v1/chat/completions',
-                headers={
-                    'Authorization': 'Bearer ' + OPENROUTER_API_KEY,
-                    'Content-Type': 'application/json'
-                },
-                json={
-                    'model': MODEL,
-                    'messages': [
-                        {'role': 'system', 'content': SYSTEM_PROMPT},
-                        {'role': 'user', 'content': user_msg}
-                    ]
-                },
+                headers={'Authorization': 'Bearer ' + OPENROUTER_API_KEY, 'Content-Type': 'application/json'},
+                json={'model': MODEL, 'messages': messages},
                 timeout=60
             )
             j = r.json()
