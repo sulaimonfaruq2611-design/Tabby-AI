@@ -2,39 +2,127 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tabby AI</title>
+<title>Tabby AI - Owned by Faruq Sulaimon</title>
 <style>
 body{font-family:Arial;background:#0f172a;color:white;padding:15px;max-width:700px;margin:auto}
-#chat{height:55vh;overflow-y:auto;background:#020617;padding:15px;border-radius:12px;margin-bottom:12px}
-.msg{margin-bottom:12px;line-height:1.5}
+.topbar{display:flex;justify-content:space-between;align-items:center;background:#1e293b;padding:12px 14px;border-radius:12px;margin-bottom:12px}
+.badge{background:#f59e0b;color:black;font-size:11px;padding:4px 9px;border-radius:20px;font-weight:bold}
+#chat{height:50vh;overflow-y:auto;background:#020617;padding:15px;border-radius:12px;margin-bottom:12px}
+.msg{margin-bottom:12px;line-height:1.5;word-wrap:break-word}
 .user{color:#93c5fd}
 .tabby{color:#86efac}
-input{width:75%;padding:12px;border-radius:8px;border:none}
-button{padding:12px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:bold}
+input{width:58%;padding:12px;border-radius:8px;border:none;outline:none}
+button{padding:12px 12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:bold;cursor:pointer}
+.mic{background:#22c55e}
+.speak{background:#f59e0b}
+.locbtn{background:#22c55e}
+.listening{background:#ef4444 !important}
 </style>
 </head>
 <body>
-<h2 style="text-align:center">Tabby AI</h2>
-<p style="text-align:center;color:#94a3b8">Ask me anything</p>
-<div id="chat"><div class="msg tabby"><b>Tabby:</b> Yo! I'm active now. Ask me anything.</div></div>
+<div class="topbar"><div>👑 <b>Hey Boss</b> <span class="badge">OWNER</span></div><div>🐱 Tabby AI</div></div>
+<p style="text-align:center;color:#94a3b8">Talk or Type • Ask me anything • Check your location</p>
+<div id="chat"><div class="msg tabby"><b>Tabby:</b> Welcome back Boss, my owner and creator. I dey ready. Tap mic to talk, or tap location to know where you dey.</div></div>
 <div style="display:flex;gap:8px">
-<input id="msg" placeholder="Type your question...">
+<input id="msg" placeholder="Boss, wetin we go do...">
+<button class="mic" id="micBtn" onclick="toggleMic()">🎤</button>
 <button onclick="send()">Send</button>
 </div>
+<div style="margin-top:10px;text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+<button class="speak" onclick="toggleSpeak()" id="speakBtn">🔊 Voice Reply: ON</button>
+<button class="locbtn" onclick="getLocation()">📍 My Location</button>
+</div>
+<div id="loc" style="margin-top:10px;text-align:center;color:#94a3b8;font-size:13px"></div>
 <script>
+let speakOn = true;
+let recognizing = false;
+let recognition = null;
+if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+  let SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'en-NG';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = function(e){
+    document.getElementById('msg').value = e.results[0][0].transcript;
+    stopMic();
+    send();
+  };
+  recognition.onend = function(){ stopMic(); };
+}
+function toggleMic(){
+  if(!recognition){ alert('Mic no work for this browser. Use Chrome.'); return; }
+  if(recognizing){ recognition.stop(); }
+  else{
+    recognizing = true;
+    document.getElementById('micBtn').classList.add('listening');
+    document.getElementById('micBtn').innerText = '🔴';
+    recognition.start();
+  }
+}
+function stopMic(){
+  recognizing = false;
+  document.getElementById('micBtn').classList.remove('listening');
+  document.getElementById('micBtn').innerText = '🎤';
+}
+function toggleSpeak(){
+  speakOn = !speakOn;
+  document.getElementById('speakBtn').innerText = speakOn ? '🔊 Voice Reply: ON' : '🔇 Voice Reply: OFF';
+  if(!speakOn) window.speechSynthesis.cancel();
+}
+function speak(text){
+  if(!speakOn) return;
+  window.speechSynthesis.cancel();
+  let u = new SpeechSynthesisUtterance(text.slice(0,500));
+  u.lang = 'en-NG';
+  window.speechSynthesis.speak(u);
+}
+function getLocation(){
+  let locDiv = document.getElementById('loc');
+  if(!navigator.geolocation){ locDiv.innerText = 'Location no dey supported for this browser'; return; }
+  locDiv.innerText = 'Finding your location Boss... tap Allow';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    let lat = pos.coords.latitude;
+    let lon = pos.coords.longitude;
+    locDiv.innerHTML = 'You dey for Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) + '<br><a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank" style="color:#93c5fd">Open for Google Maps</a><br>Ask Tabby: Where am I?';
+    let c = document.getElementById('chat');
+    c.innerHTML += '<div class="msg tabby"><b>Tabby:</b> Boss, I don get your location. Lat ' + lat.toFixed(4) + ', Lon ' + lon.toFixed(4) + '. Ask me "Where am I?" make I explain am.</div>';
+    c.scrollTop = c.scrollHeight;
+    speak('Boss, I don get your location.');
+    document.getElementById('msg').value = 'I am at latitude ' + lat + ' longitude ' + lon + '. Where am I and what is near me?';
+  }, function(){
+    locDiv.innerText = 'You block location. Tap Allow when browser ask.';
+  });
+}
 async function send(){
 let inp=document.getElementById('msg');
 let m=inp.value.trim();
 if(!m) return;
 let c=document.getElementById('chat');
+let lower = m.toLowerCase();
+if(lower.includes('who is your owner') || lower.includes('who owns you') || lower.includes('who created you') || lower.includes('who made you') || lower.includes('who built you') || lower.includes('who am i')){
+  c.innerHTML+='<div class="msg user"><b>You:</b> '+m+'</div>';
+  inp.value='';
+  let reply = 'My owner and creator na Faruq Sulaimon. Na him build me. I dey loyal to am 100%, Boss.';
+  c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> '+reply+'</div>';
+  c.scrollTop=c.scrollHeight;
+  speak(reply);
+  return;
+}
 c.innerHTML+='<div class="msg user"><b>You:</b> '+m+'</div>';
 inp.value='';
 c.innerHTML+='<div class="msg tabby" id="loading"><b>Tabby:</b> typing...</div>';
-let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m})});
+try{
+let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'I am the owner, call me Boss. Question: '+m})});
 let d=await r.json();
 document.getElementById('loading').remove();
 c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> '+d.reply.replace(/\n/g,'<br>')+'</div>';
 c.scrollTop=c.scrollHeight;
+speak(d.reply);
+}catch(e){
+document.getElementById('loading').remove();
+c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> Network error Boss, try again.</div>';
+}
 }
 document.getElementById('msg').addEventListener('keydown',function(e){if(e.key==='Enter')send()});
 </script>
