@@ -4,61 +4,133 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tabby AI - Owned by Faruq Sulaimon</title>
 <style>
-body{font-family:Arial;background:#0f172a;color:white;padding:15px;max-width:750px;margin:auto}
-.topbar{display:flex;justify-content:space-between;align-items:center;background:#1e293b;padding:12px 14px;border-radius:12px;margin-bottom:12px}
+*{box-sizing:border-box}
+body{font-family:Arial;background:#0f172a;color:white;margin:0;display:flex;height:100vh;overflow:hidden}
+a{color:#93c5fd}
+
+/* ===== SIDEBAR - Like your picture ===== */
+.sidebar{width:260px;background:#020617;border-right:1px solid #1e293b;display:flex;flex-direction:column;padding:14px;flex-shrink:0}
+.sidebar .logo{font-size:18px;font-weight:bold;margin-bottom:14px}
+.sidebar .logo span{color:#f59e0b}
+.newbtn{background:#3b82f6;color:white;border:none;padding:12px;border-radius:10px;font-weight:bold;cursor:pointer;width:100%;margin-bottom:10px}
+.searchBox{background:#1e293b;border-radius:10px;padding:10px;display:flex;gap:6px;margin-bottom:12px}
+.searchBox input{background:transparent;border:none;outline:none;color:white;width:100%}
+#chatList{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.chatItem{background:#0f172a;padding:11px 12px;border-radius:10px;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid transparent}
+.chatItem.active{background:#1e293b;border-color:#3b82f6}
+.chatItem small{color:#94a3b8;display:block;font-size:11px;margin-top:3px}
+.settingsBtn{margin-top:10px;background:#1e293b;border:none;color:white;padding:12px;border-radius:10px;cursor:pointer;text-align:left;font-size:14px}
+.ownerTag{font-size:11px;color:#94a3b8;margin-top:8px;text-align:center}
+
+/* ===== MAIN ===== */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0f172a;border-bottom:1px solid #1e293b}
 .badge{background:#f59e0b;color:black;font-size:11px;padding:4px 9px;border-radius:20px;font-weight:bold}
-#chatList{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px}
-.chatItem{background:#1e293b;padding:8px 12px;border-radius:20px;font-size:13px;white-space:nowrap;cursor:pointer;border:1px solid transparent}
-.chatItem.active{border-color:#3b82f6;background:#1e40af}
-#chat{height:46vh;overflow-y:auto;background:#020617;padding:15px;border-radius:12px;margin-bottom:12px}
-.msg{margin-bottom:12px;line-height:1.5;word-wrap:break-word}
-.user{color:#93c5fd}
-.tabby{color:#86efac}
+.menuBtn{display:none;background:#1e293b;border:none;color:white;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:16px}
+#chat{flex:1;overflow-y:auto;padding:20px;max-width:800px;width:100%;margin:auto}
+.empty{text-align:center;margin-top:60px;color:#94a3b8}
+.empty .robot{font-size:64px}
+.empty h2{color:white;margin:10px 0 5px}
+.msg{margin-bottom:16px;line-height:1.6;word-wrap:break-word;max-width:90%}
+.user{color:#93c5fd;margin-left:auto;text-align:right;background:#1e293b;padding:10px 14px;border-radius:14px}
+.tabby{color:#e2e8f0}
 .msg img{width:100%;border-radius:12px;margin-top:8px}
-input{width:58%;padding:12px;border-radius:8px;border:none;outline:none}
-button{padding:12px 12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:bold;cursor:pointer}
-select{padding:10px;border-radius:8px;border:none;background:#1e293b;color:white;outline:none;width:100%}
-.mic{background:#22c55e}
+.msg b{color:#fff}
+
+/* ===== INPUT - Like your picture ===== */
+.inputWrap{padding:14px;max-width:800px;width:100%;margin:auto}
+.inputBar{background:#1e293b;border-radius:20px;padding:8px;display:flex;gap:8px;align-items:center;border:1px solid #334155}
+.inputBar input{flex:1;background:transparent;border:none;outline:none;color:white;padding:12px;font-size:15px}
+.inputBar button{border:none;border-radius:50%;width:42px;height:42px;cursor:pointer;font-size:17px;flex-shrink:0}
+.mic{background:#22c55e;color:white}
+.send{background:#3b82f6;color:white}
+.plus{background:#334155;color:white}
+.imgbtn{background:#ec4899;color:white}
+.locbtn{background:#22c55e;color:white}
+.hint{text-align:center;font-size:11px;color:#64748b;padding-bottom:12px}
+
+/* ===== SETTINGS MODAL ===== */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.modalBox{background:#1e293b;width:100%;max-width:600px;border-radius:20px 20px 0 0;padding:20px;max-height:85vh;overflow-y:auto}
+.modalBox h3{margin:0 0 14px}
+.modalBox label{font-size:12px;color:#94a3b8}
+.modalBox select{width:100%;padding:12px;border-radius:10px;border:none;background:#0f172a;color:white;outline:none;margin:6px 0 12px}
+.row{display:flex;gap:8px;margin-bottom:10px}
+.row button{flex:1;padding:12px;border:none;border-radius:10px;color:white;font-weight:bold;cursor:pointer}
+.closeBtn{background:#475569}
 .speak{background:#f59e0b}
-.locbtn{background:#22c55e}
-.newbtn{background:#8b5cf6}
-.imgbtn{background:#ec4899}
+.test{background:#0ea5e9}
+.clear{background:#475569}
+.switch{background:#ef4444}
 .listening{background:#ef4444 !important}
-label{font-size:12px;color:#94a3b8}
+
+@media(max-width:768px){
+  .sidebar{position:fixed;left:-280px;top:0;bottom:0;z-index:100;transition:0.3s}
+  .sidebar.open{left:0}
+  .menuBtn{display:block}
+  #chat{padding:14px}
+}
 </style>
 </head>
 <body>
-<div class="topbar"><div>👑 <b id="topGreet">Good Day Boss</b> <span class="badge">OWNER</span></div><div>🐱 Tabby AI</div></div>
 
-<div style="display:flex;gap:8px;margin-bottom:10px">
-<button class="newbtn" onclick="newChat()" style="flex:1">+ New Chat</button>
-<button onclick="clearAllChats()" style="background:#475569">Clear All</button>
-</div>
-<div id="chatList"></div>
-
-<p style="text-align:center;color:#94a3b8;margin:6px 0">Talk or Type • Ask me anything • Generate Image • Check your location</p>
-
-<div style="background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px">
-<label>🎙️ Choose Voice</label>
-<select id="voiceSelect" onchange="saveVoice()"><option value="">Loading voices...</option></select>
-<div style="display:flex;gap:8px;margin-top:8px">
-<button class="speak" onclick="toggleSpeak()" id="speakBtn" style="flex:1">🔊 Voice Reply: ON</button>
-<button onclick="testVoice()" style="background:#0ea5e9;flex:1">Test Voice</button>
-</div>
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="logo">🐱 Tabby <span>AI</span></div>
+  <button class="newbtn" onclick="newChat(); closeSidebar()">+ New Chat</button>
+  <div class="searchBox">🔍 <input id="searchInput" placeholder="Search the chats" oninput="renderChats()"></div>
+  <div id="chatList"></div>
+  <button class="settingsBtn" onclick="openSettings()">⚙️ Settings</button>
+  <div class="ownerTag">👑 Owner: Faruq Sulaimon<br>Good <span id="greetWord">Day</span> Boss</div>
 </div>
 
-<div id="chat"></div>
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <button class="menuBtn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+    <div>👑 <b id="topGreet">Good Day Boss</b> <span class="badge">OWNER</span></div>
+    <div>🐱 Tabby AI</div>
+  </div>
 
-<div style="display:flex;gap:8px">
-<input id="msg" placeholder="Boss, what would you like to do...">
-<button class="mic" id="micBtn" onclick="toggleMic()">🎤</button>
-<button onclick="send()">Send</button>
+  <div id="chat"></div>
+
+  <div class="inputWrap">
+    <div class="inputBar">
+      <button class="plus" onclick="openSettings()" title="Settings">+</button>
+      <input id="msg" placeholder="Ask me anything...">
+      <button class="imgbtn" onclick="askImage()" title="Generate Image">🖼️</button>
+      <button class="locbtn" onclick="getLocation()" title="My Location">📍</button>
+      <button class="mic" id="micBtn" onclick="toggleMic()">🎤</button>
+      <button class="send" onclick="send()">↑</button>
+    </div>
+    <div id="loc" style="text-align:center;color:#94a3b8;font-size:12px;margin-top:6px"></div>
+    <div class="hint">Tabby can make mistakes. Double check important information.</div>
+  </div>
 </div>
-<div style="margin-top:10px;text-align:center;display:flex;gap:8px;justify-content:center">
-<button class="locbtn" onclick="getLocation()">📍 My Location</button>
-<button class="imgbtn" onclick="askImage()">🖼️ Generate Image</button>
+
+<!-- SETTINGS MODAL - All your old settings dey here -->
+<div class="modal" id="settingsModal" onclick="if(event.target===this) closeSettings()">
+  <div class="modalBox">
+    <h3>⚙️ Settings</h3>
+    <label>🎙️ Choose Voice</label>
+    <select id="voiceSelect" onchange="saveVoice()"><option value="">Loading voices...</option></select>
+    <div class="row">
+      <button class="speak" onclick="toggleSpeak()" id="speakBtn">🔊 Voice Reply: ON</button>
+      <button class="test" onclick="testVoice()">Test Voice</button>
+    </div>
+    <div class="row">
+      <button style="background:#22c55e" onclick="getLocation(); closeSettings()">📍 My Location</button>
+      <button style="background:#ec4899" onclick="askImage(); closeSettings()">🖼️ Generate Image</button>
+    </div>
+    <div class="row">
+      <button class="clear" onclick="clearAllChats()">Clear All Chats</button>
+      <button class="switch" onclick="switchUser()">👤 Switch User</button>
+    </div>
+    <p style="font-size:12px;color:#94a3b8;text-align:center">Tabby AI • Created by Faruq Sulaimon • Voice • Location • Image • Memory</p>
+    <button class="closeBtn" onclick="closeSettings()" style="width:100%;padding:12px;border:none;border-radius:10px;color:white;cursor:pointer">Close</button>
+  </div>
 </div>
-<div id="loc" style="margin-top:10px;text-align:center;color:#94a3b8;font-size:13px"></div>
 
 <script>
 function getGreeting(){
@@ -69,6 +141,11 @@ function getGreeting(){
 }
 let greet = getGreeting();
 document.getElementById('topGreet').innerText = greet;
+document.getElementById('greetWord').innerText = greet.replace('Good ','').replace(' Boss','');
+
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); }
+function openSettings(){ document.getElementById('settingsModal').classList.add('open'); }
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
 
 // ===== MEMORY + CHATS =====
 let chats = JSON.parse(localStorage.getItem('tabby_chats') || '[]');
@@ -86,9 +163,7 @@ function createChat(){
   let c = {id:id, title: greet + ' Chat', messages:[{role:'assistant', content: greet + '. How can I help you today?'}]};
   chats.unshift(c);
   currentChatId = id;
-  saveChats();
-  renderChats();
-  renderMessages();
+  saveChats(); renderChats(); renderMessages();
   return c;
 }
 function getCurrentChat(){
@@ -101,16 +176,23 @@ function clearAllChats(){
   if(!confirm('Delete all chats Boss?')) return;
   chats = []; currentChatId = null; saveChats(); createChat();
 }
+function switchUser(){
+  if(!confirm('Switch user Boss? This will clear all chats for this phone so next person no go see your history.')) return;
+  localStorage.removeItem('tabby_chats'); localStorage.removeItem('tabby_current');
+  chats = []; currentChatId = null; saveChats(); createChat(); closeSettings();
+  alert('Done Boss. New person fit use am now.');
+}
 function switchChat(id){
-  currentChatId = id; saveChats(); renderChats(); renderMessages();
+  currentChatId = id; saveChats(); renderChats(); renderMessages(); closeSidebar();
 }
 function renderChats(){
+  let q = (document.getElementById('searchInput').value || '').toLowerCase();
   let el = document.getElementById('chatList');
   el.innerHTML = '';
-  chats.forEach(c=>{
+  chats.filter(c=> (c.title||'').toLowerCase().includes(q) || c.messages.some(m=>m.content.toLowerCase().includes(q))).forEach(c=>{
     let d = document.createElement('div');
     d.className = 'chatItem' + (c.id===currentChatId ? ' active':'');
-    d.innerText = (c.title || 'Chat').slice(0,25);
+    d.innerHTML = (c.title || 'Chat').slice(0,30) + '<small>'+c.messages.length+' messages</small>';
     d.onclick = ()=>switchChat(c.id);
     el.appendChild(d);
   });
@@ -119,16 +201,15 @@ function renderMessages(){
   let c = getCurrentChat();
   let box = document.getElementById('chat');
   box.innerHTML = '';
+  // If only greeting, show empty style like your picture
+  if(c.messages.length===1){
+    box.innerHTML = '<div class="empty"><div class="robot">🤖</div><h2>What\'s on your mind today Boss?</h2><p>Ask me anything • Generate Image • Check your location</p></div>';
+  }
   c.messages.forEach(m=>{
     let who = m.role==='user' ? 'You' : 'Tabby';
     let cls = m.role==='user' ? 'user' : 'tabby';
-    let content = m.content;
-    // If message has image_url, show image
-    let extra = '';
-    if(m.image_url){
-      extra = '<br><img src="'+m.image_url+'">';
-    }
-    box.innerHTML += '<div class="msg '+cls+'"><b>'+who+':</b> '+content.replace(/\n/g,'<br>')+extra+'</div>';
+    let extra = m.image_url ? '<br><img src="'+m.image_url+'">' : '';
+    box.innerHTML += '<div class="msg '+cls+'"><b>'+who+':</b> '+m.content.replace(/\n/g,'<br>')+extra+'</div>';
   });
   box.scrollTop = box.scrollHeight;
 }
@@ -159,90 +240,49 @@ function loadVoices(){
   if(picks.length===0) picks = enVoices.slice(0,6).map((v,idx)=>({label:(idx%2===0?'👩 ':'👨 ')+v.name, voice:v}));
   sel.innerHTML = '';
   picks.forEach(p=>{
-    let o = document.createElement('option');
-    o.value = p.voice.voiceURI;
-    o.text = p.label;
-    sel.appendChild(o);
+    let o = document.createElement('option'); o.value = p.voice.voiceURI; o.text = p.label; sel.appendChild(o);
   });
-  let allOpt = document.createElement('option');
-  allOpt.value = 'ALL'; allOpt.text = '--- Show All Voices ---';
-  sel.appendChild(allOpt);
-  if(selectedVoiceURI && picks.find(p=>p.voice.voiceURI===selectedVoiceURI)){
-    sel.value = selectedVoiceURI;
-  } else if(picks[0]){
-    selectedVoiceURI = picks[0].voice.voiceURI;
-    sel.value = selectedVoiceURI;
-    localStorage.setItem('tabby_voice', selectedVoiceURI);
-  }
+  let allOpt = document.createElement('option'); allOpt.value = 'ALL'; allOpt.text = '--- Show All Voices ---'; sel.appendChild(allOpt);
+  if(selectedVoiceURI && picks.find(p=>p.voice.voiceURI===selectedVoiceURI)){ sel.value = selectedVoiceURI; }
+  else if(picks[0]){ selectedVoiceURI = picks[0].voice.voiceURI; sel.value = selectedVoiceURI; localStorage.setItem('tabby_voice', selectedVoiceURI); }
 }
 function saveVoice(){
   let sel = document.getElementById('voiceSelect');
   if(sel.value==='ALL'){
     sel.innerHTML='';
-    allVoices.forEach(v=>{
-      let o=document.createElement('option'); o.value=v.voiceURI; o.text=v.name+' ('+v.lang+')'; sel.appendChild(o);
-    });
+    allVoices.forEach(v=>{ let o=document.createElement('option'); o.value=v.voiceURI; o.text=v.name+' ('+v.lang+')'; sel.appendChild(o); });
     return;
   }
-  selectedVoiceURI = sel.value;
-  localStorage.setItem('tabby_voice', selectedVoiceURI);
+  selectedVoiceURI = sel.value; localStorage.setItem('tabby_voice', selectedVoiceURI);
 }
 window.speechSynthesis.onvoiceschanged = loadVoices;
-setTimeout(loadVoices, 500);
-loadVoices();
-
-function getSelectedVoice(){
-  return allVoices.find(v=>v.voiceURI===selectedVoiceURI) || null;
-}
-function testVoice(){
-  speak('Hello Boss, this is my new voice. How do I sound?');
-}
+setTimeout(loadVoices, 500); loadVoices();
+function getSelectedVoice(){ return allVoices.find(v=>v.voiceURI===selectedVoiceURI) || null; }
+function testVoice(){ speak('Hello Boss, this is my new voice. How do I sound?'); }
 
 // ===== SPEECH =====
-let recognizing = false;
-let recognition = null;
+let recognizing = false; let recognition = null;
 if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
   let SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SR();
-  recognition.lang = 'en-NG';
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.onresult = function(e){
-    document.getElementById('msg').value = e.results[0][0].transcript;
-    stopMic(); send();
-  };
+  recognition = new SR(); recognition.lang = 'en-NG'; recognition.continuous = false; recognition.interimResults = false;
+  recognition.onresult = function(e){ document.getElementById('msg').value = e.results[0][0].transcript; stopMic(); send(); };
   recognition.onend = function(){ stopMic(); };
 }
 function toggleMic(){
   if(!recognition){ alert('Mic is not supported in this browser. Please use Chrome.'); return; }
   if(recognizing){ recognition.stop(); }
-  else{
-    recognizing = true;
-    document.getElementById('micBtn').classList.add('listening');
-    document.getElementById('micBtn').innerText = '🔴';
-    recognition.start();
-  }
+  else{ recognizing = true; document.getElementById('micBtn').classList.add('listening'); document.getElementById('micBtn').innerText = '🔴'; recognition.start(); }
 }
-function stopMic(){
-  recognizing = false;
-  document.getElementById('micBtn').classList.remove('listening');
-  document.getElementById('micBtn').innerText = '🎤';
-}
-function toggleSpeak(){
-  speakOn = !speakOn;
-  document.getElementById('speakBtn').innerText = speakOn ? '🔊 Voice Reply: ON' : '🔇 Voice Reply: OFF';
-  if(!speakOn) window.speechSynthesis.cancel();
-}
+function stopMic(){ recognizing = false; document.getElementById('micBtn').classList.remove('listening'); document.getElementById('micBtn').innerText = '🎤'; }
+function toggleSpeak(){ speakOn = !speakOn; document.getElementById('speakBtn').innerText = speakOn ? '🔊 Voice Reply: ON' : '🔇 Voice Reply: OFF'; if(!speakOn) window.speechSynthesis.cancel(); }
 function speak(text){
   if(!speakOn) return;
-  // Remove HTML / image tags from speech
   text = text.replace(/<[^>]*>/g, ' ');
   window.speechSynthesis.cancel();
   let u = new SpeechSynthesisUtterance(text.slice(0,500));
   let v = getSelectedVoice();
   if(v){ u.voice = v; u.lang = v.lang; } else { u.lang = 'en-NG'; }
-  u.rate = 1; u.pitch = 1;
-  window.speechSynthesis.speak(u);
+  u.rate = 1; u.pitch = 1; window.speechSynthesis.speak(u);
 }
 function getLocation(){
   let locDiv = document.getElementById('loc');
@@ -250,7 +290,7 @@ function getLocation(){
   locDiv.innerText = 'Finding your location Boss... please tap Allow';
   navigator.geolocation.getCurrentPosition(function(pos){
     let lat = pos.coords.latitude; let lon = pos.coords.longitude;
-    locDiv.innerHTML = 'You are at Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) + '<br><a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank" style="color:#93c5fd">Open in Google Maps</a>';
+    locDiv.innerHTML = 'You are at Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) + '<br><a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank">Open in Google Maps</a>';
     document.getElementById('msg').value = 'I am at latitude ' + lat + ' longitude ' + lon + '. Where am I and what is near me?';
     speak('Boss, I have your location.');
   }, function(){ locDiv.innerText = 'You blocked location. Please tap Allow when the browser asks.'; });
@@ -266,15 +306,13 @@ function askImage(){
 async function generateImage(promptText){
   try{
     let r = await fetch('/image', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt: promptText})});
-    let d = await r.json();
-    return d.image_url;
+    let d = await r.json(); return d.image_url;
   }catch(e){ return null; }
 }
 
 async function send(){
   let inp=document.getElementById('msg');
-  let m=inp.value.trim();
-  if(!m) return;
+  let m=inp.value.trim(); if(!m) return;
   let c = getCurrentChat();
   if(c.messages.length <= 1) c.title = m.slice(0,30);
   c.messages.push({role:'user', content:m});
@@ -283,8 +321,6 @@ async function send(){
   box.innerHTML += '<div class="msg tabby" id="loading"><b>Tabby:</b> typing...</div>';
   box.scrollTop = box.scrollHeight;
   let lower = m.toLowerCase();
-
-  // FIX: NAME - Tabby is Tabby, not Faruq
   if(lower.includes('what is your name') || lower.includes('whats your name') || lower.includes("what's your name") || lower.includes('who are you') || lower.includes('your name')){
     document.getElementById('loading').remove();
     let reply = 'My name is Tabby, Boss. I was created by Faruq Sulaimon.';
@@ -295,26 +331,18 @@ async function send(){
     let reply = 'My owner and creator is Faruq Sulaimon. I am loyal to him, Boss.';
     c.messages.push({role:'assistant', content:reply}); saveChats(); renderMessages(); speak(reply); return;
   }
-
-  // IMAGE GENERATION
   if(lower.includes('generate image') || lower.includes('create image') || lower.includes('draw image') || lower.includes('make image') || lower.includes('generate an image')){
     let prompt = m.replace(/generate image of|create image of|draw image of|make image of|generate an image of|generate image|create image|draw image|make image/gi, '').trim();
     if(!prompt) prompt = 'a beautiful cat';
     document.getElementById('loading').innerHTML = '<b>Tabby:</b> Drawing your image Boss...';
     let imgUrl = await generateImage(prompt);
     document.getElementById('loading').remove();
-    if(imgUrl){
-      c.messages.push({role:'assistant', content:'Here is your image Boss, I made it for you:', image_url: imgUrl});
-      saveChats(); renderMessages(); speak('Here is your image Boss, I made it for you');
-    } else {
-      c.messages.push({role:'assistant', content:'Sorry Boss, image failed. Try again.'}); saveChats(); renderMessages();
-    }
+    if(imgUrl){ c.messages.push({role:'assistant', content:'Here is your image Boss, I made it for you:', image_url: imgUrl}); saveChats(); renderMessages(); speak('Here is your image Boss, I made it for you'); }
+    else { c.messages.push({role:'assistant', content:'Sorry Boss, image failed. Try again.'}); saveChats(); renderMessages(); }
     return;
   }
-
   try{
     let history = c.messages.slice(0,-1);
-    // Clean history - remove image_url for AI
     let cleanHistory = history.map(h=>({role:h.role, content:h.content}));
     let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m, history:cleanHistory})});
     let d=await r.json();
