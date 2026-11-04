@@ -14,6 +14,7 @@ body{font-family:Arial;background:#0f172a;color:white;padding:15px;max-width:750
 .msg{margin-bottom:12px;line-height:1.5;word-wrap:break-word}
 .user{color:#93c5fd}
 .tabby{color:#86efac}
+.msg img{width:100%;border-radius:12px;margin-top:8px}
 input{width:58%;padding:12px;border-radius:8px;border:none;outline:none}
 button{padding:12px 12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:bold;cursor:pointer}
 select{padding:10px;border-radius:8px;border:none;background:#1e293b;color:white;outline:none;width:100%}
@@ -21,6 +22,7 @@ select{padding:10px;border-radius:8px;border:none;background:#1e293b;color:white
 .speak{background:#f59e0b}
 .locbtn{background:#22c55e}
 .newbtn{background:#8b5cf6}
+.imgbtn{background:#ec4899}
 .listening{background:#ef4444 !important}
 label{font-size:12px;color:#94a3b8}
 </style>
@@ -34,7 +36,7 @@ label{font-size:12px;color:#94a3b8}
 </div>
 <div id="chatList"></div>
 
-<p style="text-align:center;color:#94a3b8;margin:6px 0">Talk or Type • Ask me anything • Check your location</p>
+<p style="text-align:center;color:#94a3b8;margin:6px 0">Talk or Type • Ask me anything • Generate Image • Check your location</p>
 
 <div style="background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px">
 <label>🎙️ Choose Voice</label>
@@ -52,8 +54,9 @@ label{font-size:12px;color:#94a3b8}
 <button class="mic" id="micBtn" onclick="toggleMic()">🎤</button>
 <button onclick="send()">Send</button>
 </div>
-<div style="margin-top:10px;text-align:center">
+<div style="margin-top:10px;text-align:center;display:flex;gap:8px;justify-content:center">
 <button class="locbtn" onclick="getLocation()">📍 My Location</button>
+<button class="imgbtn" onclick="askImage()">🖼️ Generate Image</button>
 </div>
 <div id="loc" style="margin-top:10px;text-align:center;color:#94a3b8;font-size:13px"></div>
 
@@ -119,7 +122,13 @@ function renderMessages(){
   c.messages.forEach(m=>{
     let who = m.role==='user' ? 'You' : 'Tabby';
     let cls = m.role==='user' ? 'user' : 'tabby';
-    box.innerHTML += '<div class="msg '+cls+'"><b>'+who+':</b> '+m.content.replace(/\n/g,'<br>')+'</div>';
+    let content = m.content;
+    // If message has image_url, show image
+    let extra = '';
+    if(m.image_url){
+      extra = '<br><img src="'+m.image_url+'">';
+    }
+    box.innerHTML += '<div class="msg '+cls+'"><b>'+who+':</b> '+content.replace(/\n/g,'<br>')+extra+'</div>';
   });
   box.scrollTop = box.scrollHeight;
 }
@@ -130,10 +139,8 @@ function loadVoices(){
   allVoices = window.speechSynthesis.getVoices();
   if(allVoices.length===0) return;
   let sel = document.getElementById('voiceSelect');
-  // Try to group: find English voices first
   let enVoices = allVoices.filter(v=>v.lang.toLowerCase().startsWith('en'));
   if(enVoices.length===0) enVoices = allVoices;
-  // Pick 4 distinct: Woman 1, Man 1, Woman 2, Man 2 using name hints
   let women = enVoices.filter(v=>/female|woman|zira|samantha|google us english|microsoft zira|natasha|aria/i.test(v.name));
   let men = enVoices.filter(v=>/male|man|david|guy|microsoft guy|ryan|daniel/i.test(v.name));
   let others = enVoices.filter(v=>!women.includes(v) && !men.includes(v));
@@ -142,7 +149,6 @@ function loadVoices(){
   if(men[0]) picks.push({label:'👨 Man 1 - ' + men[0].name, voice:men[0]});
   if(women[1]) picks.push({label:'👩 Woman 2 - ' + women[1].name, voice:women[1]});
   if(men[1]) picks.push({label:'👨 Man 2 - ' + men[1].name, voice:men[1]});
-  // Fill up with others if less than 4
   let i=0;
   while(picks.length < 4 && i < others.length){
     let v = others[i];
@@ -150,7 +156,6 @@ function loadVoices(){
     if(!picks.find(p=>p.voice.voiceURI===v.voiceURI)) picks.push({label:label, voice:v});
     i++;
   }
-  // If still less, add all
   if(picks.length===0) picks = enVoices.slice(0,6).map((v,idx)=>({label:(idx%2===0?'👩 ':'👨 ')+v.name, voice:v}));
   sel.innerHTML = '';
   picks.forEach(p=>{
@@ -159,7 +164,6 @@ function loadVoices(){
     o.text = p.label;
     sel.appendChild(o);
   });
-  // Add "All Voices" option
   let allOpt = document.createElement('option');
   allOpt.value = 'ALL'; allOpt.text = '--- Show All Voices ---';
   sel.appendChild(allOpt);
@@ -174,7 +178,6 @@ function loadVoices(){
 function saveVoice(){
   let sel = document.getElementById('voiceSelect');
   if(sel.value==='ALL'){
-    // Expand to all voices
     sel.innerHTML='';
     allVoices.forEach(v=>{
       let o=document.createElement('option'); o.value=v.voiceURI; o.text=v.name+' ('+v.lang+')'; sel.appendChild(o);
@@ -232,6 +235,8 @@ function toggleSpeak(){
 }
 function speak(text){
   if(!speakOn) return;
+  // Remove HTML / image tags from speech
+  text = text.replace(/<[^>]*>/g, ' ');
   window.speechSynthesis.cancel();
   let u = new SpeechSynthesisUtterance(text.slice(0,500));
   let v = getSelectedVoice();
@@ -250,12 +255,27 @@ function getLocation(){
     speak('Boss, I have your location.');
   }, function(){ locDiv.innerText = 'You blocked location. Please tap Allow when the browser asks.'; });
 }
+
+// ===== IMAGE =====
+function askImage(){
+  let p = prompt('Boss, what image should I generate? Example: a lion wearing a crown');
+  if(!p) return;
+  document.getElementById('msg').value = 'Generate image of ' + p;
+  send();
+}
+async function generateImage(promptText){
+  try{
+    let r = await fetch('/image', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt: promptText})});
+    let d = await r.json();
+    return d.image_url;
+  }catch(e){ return null; }
+}
+
 async function send(){
   let inp=document.getElementById('msg');
   let m=inp.value.trim();
   if(!m) return;
   let c = getCurrentChat();
-  // Update title from first message
   if(c.messages.length <= 1) c.title = m.slice(0,30);
   c.messages.push({role:'user', content:m});
   inp.value=''; renderChats(); renderMessages();
@@ -263,15 +283,40 @@ async function send(){
   box.innerHTML += '<div class="msg tabby" id="loading"><b>Tabby:</b> typing...</div>';
   box.scrollTop = box.scrollHeight;
   let lower = m.toLowerCase();
+
+  // FIX: NAME - Tabby is Tabby, not Faruq
+  if(lower.includes('what is your name') || lower.includes('whats your name') || lower.includes("what's your name") || lower.includes('who are you') || lower.includes('your name')){
+    document.getElementById('loading').remove();
+    let reply = 'My name is Tabby, Boss. I was created by Faruq Sulaimon.';
+    c.messages.push({role:'assistant', content:reply}); saveChats(); renderMessages(); speak(reply); return;
+  }
   if(lower.includes('who created you') || lower.includes('who owns you') || lower.includes('who made you') || lower.includes('who built you') || lower.includes('who is your owner')){
     document.getElementById('loading').remove();
     let reply = 'My owner and creator is Faruq Sulaimon. I am loyal to him, Boss.';
     c.messages.push({role:'assistant', content:reply}); saveChats(); renderMessages(); speak(reply); return;
   }
+
+  // IMAGE GENERATION
+  if(lower.includes('generate image') || lower.includes('create image') || lower.includes('draw image') || lower.includes('make image') || lower.includes('generate an image')){
+    let prompt = m.replace(/generate image of|create image of|draw image of|make image of|generate an image of|generate image|create image|draw image|make image/gi, '').trim();
+    if(!prompt) prompt = 'a beautiful cat';
+    document.getElementById('loading').innerHTML = '<b>Tabby:</b> Drawing your image Boss...';
+    let imgUrl = await generateImage(prompt);
+    document.getElementById('loading').remove();
+    if(imgUrl){
+      c.messages.push({role:'assistant', content:'Here is your image Boss, I made it for you:', image_url: imgUrl});
+      saveChats(); renderMessages(); speak('Here is your image Boss, I made it for you');
+    } else {
+      c.messages.push({role:'assistant', content:'Sorry Boss, image failed. Try again.'}); saveChats(); renderMessages();
+    }
+    return;
+  }
+
   try{
-    // Send history for memory
     let history = c.messages.slice(0,-1);
-    let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m, history:history})});
+    // Clean history - remove image_url for AI
+    let cleanHistory = history.map(h=>({role:h.role, content:h.content}));
+    let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m, history:cleanHistory})});
     let d=await r.json();
     document.getElementById('loading').remove();
     c.messages.push({role:'assistant', content:d.reply}); saveChats(); renderMessages(); speak(d.reply);
