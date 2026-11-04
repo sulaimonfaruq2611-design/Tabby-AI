@@ -20,11 +20,11 @@ button{padding:12px 12px;border:none;border-radius:8px;background:#3b82f6;color:
 </style>
 </head>
 <body>
-<div class="topbar"><div>👑 <b>Hey Boss</b> <span class="badge">OWNER</span></div><div>🐱 Tabby AI</div></div>
+<div class="topbar"><div>👑 <b id="topGreet">Good Day Boss</b> <span class="badge">OWNER</span></div><div>🐱 Tabby AI</div></div>
 <p style="text-align:center;color:#94a3b8">Talk or Type • Ask me anything • Check your location</p>
-<div id="chat"><div class="msg tabby"><b>Tabby:</b> Welcome back Boss, my owner and creator. I dey ready. Tap mic to talk, or tap location to know where you dey.</div></div>
+<div id="chat"><div class="msg tabby" id="welcomeMsg"><b>Tabby:</b> Good Day Boss. How can I help you today?</div></div>
 <div style="display:flex;gap:8px">
-<input id="msg" placeholder="Boss, wetin we go do...">
+<input id="msg" placeholder="Boss, what would you like to do...">
 <button class="mic" id="micBtn" onclick="toggleMic()">🎤</button>
 <button onclick="send()">Send</button>
 </div>
@@ -34,6 +34,15 @@ button{padding:12px 12px;border:none;border-radius:8px;background:#3b82f6;color:
 </div>
 <div id="loc" style="margin-top:10px;text-align:center;color:#94a3b8;font-size:13px"></div>
 <script>
+function getGreeting(){
+  let h = new Date().getHours();
+  if(h < 12) return 'Good Morning Boss';
+  if(h < 17) return 'Good Afternoon Boss';
+  return 'Good Evening Boss';
+}
+let greet = getGreeting();
+document.getElementById('topGreet').innerText = greet;
+document.getElementById('welcomeMsg').innerHTML = '<b>Tabby:</b> ' + greet + '. How can I help you today?';
 let speakOn = true;
 let recognizing = false;
 let recognition = null;
@@ -51,7 +60,7 @@ if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
   recognition.onend = function(){ stopMic(); };
 }
 function toggleMic(){
-  if(!recognition){ alert('Mic no work for this browser. Use Chrome.'); return; }
+  if(!recognition){ alert('Mic is not supported in this browser. Please use Chrome.'); return; }
   if(recognizing){ recognition.stop(); }
   else{
     recognizing = true;
@@ -79,19 +88,19 @@ function speak(text){
 }
 function getLocation(){
   let locDiv = document.getElementById('loc');
-  if(!navigator.geolocation){ locDiv.innerText = 'Location no dey supported for this browser'; return; }
-  locDiv.innerText = 'Finding your location Boss... tap Allow';
+  if(!navigator.geolocation){ locDiv.innerText = 'Location is not supported in this browser'; return; }
+  locDiv.innerText = 'Finding your location Boss... please tap Allow';
   navigator.geolocation.getCurrentPosition(function(pos){
     let lat = pos.coords.latitude;
     let lon = pos.coords.longitude;
-    locDiv.innerHTML = 'You dey for Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) + '<br><a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank" style="color:#93c5fd">Open for Google Maps</a><br>Ask Tabby: Where am I?';
+    locDiv.innerHTML = 'You are at Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) + '<br><a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank" style="color:#93c5fd">Open in Google Maps</a><br>Ask Tabby: Where am I?';
     let c = document.getElementById('chat');
-    c.innerHTML += '<div class="msg tabby"><b>Tabby:</b> Boss, I don get your location. Lat ' + lat.toFixed(4) + ', Lon ' + lon.toFixed(4) + '. Ask me "Where am I?" make I explain am.</div>';
+    c.innerHTML += '<div class="msg tabby"><b>Tabby:</b> Boss, I have your location. Lat ' + lat.toFixed(4) + ', Lon ' + lon.toFixed(4) + '. Ask me "Where am I?" and I will explain it.</div>';
     c.scrollTop = c.scrollHeight;
-    speak('Boss, I don get your location.');
+    speak('Boss, I have your location.');
     document.getElementById('msg').value = 'I am at latitude ' + lat + ' longitude ' + lon + '. Where am I and what is near me?';
   }, function(){
-    locDiv.innerText = 'You block location. Tap Allow when browser ask.';
+    locDiv.innerText = 'You blocked location. Please tap Allow when the browser asks.';
   });
 }
 async function send(){
@@ -103,7 +112,7 @@ let lower = m.toLowerCase();
 if(lower.includes('who is your owner') || lower.includes('who owns you') || lower.includes('who created you') || lower.includes('who made you') || lower.includes('who built you') || lower.includes('who am i')){
   c.innerHTML+='<div class="msg user"><b>You:</b> '+m+'</div>';
   inp.value='';
-  let reply = 'My owner and creator na Faruq Sulaimon. Na him build me. I dey loyal to am 100%, Boss.';
+  let reply = 'My owner and creator is Faruq Sulaimon. I am loyal to him, Boss.';
   c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> '+reply+'</div>';
   c.scrollTop=c.scrollHeight;
   speak(reply);
@@ -121,7 +130,7 @@ c.scrollTop=c.scrollHeight;
 speak(d.reply);
 }catch(e){
 document.getElementById('loading').remove();
-c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> Network error Boss, try again.</div>';
+c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> Network error Boss, please try again.</div>';
 }
 }
 document.getElementById('msg').addEventListener('keydown',function(e){if(e.key==='Enter')send()});
