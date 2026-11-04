@@ -4,35 +4,59 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tabby AI - Owned by Faruq Sulaimon</title>
 <style>
-body{font-family:Arial;background:#0f172a;color:white;padding:15px;max-width:700px;margin:auto}
+body{font-family:Arial;background:#0f172a;color:white;padding:15px;max-width:750px;margin:auto}
 .topbar{display:flex;justify-content:space-between;align-items:center;background:#1e293b;padding:12px 14px;border-radius:12px;margin-bottom:12px}
 .badge{background:#f59e0b;color:black;font-size:11px;padding:4px 9px;border-radius:20px;font-weight:bold}
-#chat{height:50vh;overflow-y:auto;background:#020617;padding:15px;border-radius:12px;margin-bottom:12px}
+#chatList{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px}
+.chatItem{background:#1e293b;padding:8px 12px;border-radius:20px;font-size:13px;white-space:nowrap;cursor:pointer;border:1px solid transparent}
+.chatItem.active{border-color:#3b82f6;background:#1e40af}
+#chat{height:46vh;overflow-y:auto;background:#020617;padding:15px;border-radius:12px;margin-bottom:12px}
 .msg{margin-bottom:12px;line-height:1.5;word-wrap:break-word}
 .user{color:#93c5fd}
 .tabby{color:#86efac}
 input{width:58%;padding:12px;border-radius:8px;border:none;outline:none}
 button{padding:12px 12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:bold;cursor:pointer}
+select{padding:10px;border-radius:8px;border:none;background:#1e293b;color:white;outline:none;width:100%}
 .mic{background:#22c55e}
 .speak{background:#f59e0b}
 .locbtn{background:#22c55e}
+.newbtn{background:#8b5cf6}
 .listening{background:#ef4444 !important}
+label{font-size:12px;color:#94a3b8}
 </style>
 </head>
 <body>
 <div class="topbar"><div>👑 <b id="topGreet">Good Day Boss</b> <span class="badge">OWNER</span></div><div>🐱 Tabby AI</div></div>
-<p style="text-align:center;color:#94a3b8">Talk or Type • Ask me anything • Check your location</p>
-<div id="chat"><div class="msg tabby" id="welcomeMsg"><b>Tabby:</b> Good Day Boss. How can I help you today?</div></div>
+
+<div style="display:flex;gap:8px;margin-bottom:10px">
+<button class="newbtn" onclick="newChat()" style="flex:1">+ New Chat</button>
+<button onclick="clearAllChats()" style="background:#475569">Clear All</button>
+</div>
+<div id="chatList"></div>
+
+<p style="text-align:center;color:#94a3b8;margin:6px 0">Talk or Type • Ask me anything • Check your location</p>
+
+<div style="background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px">
+<label>🎙️ Choose Voice</label>
+<select id="voiceSelect" onchange="saveVoice()"><option value="">Loading voices...</option></select>
+<div style="display:flex;gap:8px;margin-top:8px">
+<button class="speak" onclick="toggleSpeak()" id="speakBtn" style="flex:1">🔊 Voice Reply: ON</button>
+<button onclick="testVoice()" style="background:#0ea5e9;flex:1">Test Voice</button>
+</div>
+</div>
+
+<div id="chat"></div>
+
 <div style="display:flex;gap:8px">
 <input id="msg" placeholder="Boss, what would you like to do...">
 <button class="mic" id="micBtn" onclick="toggleMic()">🎤</button>
 <button onclick="send()">Send</button>
 </div>
-<div style="margin-top:10px;text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-<button class="speak" onclick="toggleSpeak()" id="speakBtn">🔊 Voice Reply: ON</button>
+<div style="margin-top:10px;text-align:center">
 <button class="locbtn" onclick="getLocation()">📍 My Location</button>
 </div>
 <div id="loc" style="margin-top:10px;text-align:center;color:#94a3b8;font-size:13px"></div>
+
 <script>
 function getGreeting(){
   let h = new Date().getHours();
@@ -42,8 +66,136 @@ function getGreeting(){
 }
 let greet = getGreeting();
 document.getElementById('topGreet').innerText = greet;
-document.getElementById('welcomeMsg').innerHTML = '<b>Tabby:</b> ' + greet + '. How can I help you today?';
+
+// ===== MEMORY + CHATS =====
+let chats = JSON.parse(localStorage.getItem('tabby_chats') || '[]');
+let currentChatId = localStorage.getItem('tabby_current') || null;
 let speakOn = true;
+let selectedVoiceURI = localStorage.getItem('tabby_voice') || '';
+let allVoices = [];
+
+function saveChats(){
+  localStorage.setItem('tabby_chats', JSON.stringify(chats));
+  localStorage.setItem('tabby_current', currentChatId);
+}
+function createChat(){
+  let id = Date.now().toString();
+  let c = {id:id, title: greet + ' Chat', messages:[{role:'assistant', content: greet + '. How can I help you today?'}]};
+  chats.unshift(c);
+  currentChatId = id;
+  saveChats();
+  renderChats();
+  renderMessages();
+  return c;
+}
+function getCurrentChat(){
+  let c = chats.find(x=>x.id===currentChatId);
+  if(!c) c = createChat();
+  return c;
+}
+function newChat(){ createChat(); }
+function clearAllChats(){
+  if(!confirm('Delete all chats Boss?')) return;
+  chats = []; currentChatId = null; saveChats(); createChat();
+}
+function switchChat(id){
+  currentChatId = id; saveChats(); renderChats(); renderMessages();
+}
+function renderChats(){
+  let el = document.getElementById('chatList');
+  el.innerHTML = '';
+  chats.forEach(c=>{
+    let d = document.createElement('div');
+    d.className = 'chatItem' + (c.id===currentChatId ? ' active':'');
+    d.innerText = (c.title || 'Chat').slice(0,25);
+    d.onclick = ()=>switchChat(c.id);
+    el.appendChild(d);
+  });
+}
+function renderMessages(){
+  let c = getCurrentChat();
+  let box = document.getElementById('chat');
+  box.innerHTML = '';
+  c.messages.forEach(m=>{
+    let who = m.role==='user' ? 'You' : 'Tabby';
+    let cls = m.role==='user' ? 'user' : 'tabby';
+    box.innerHTML += '<div class="msg '+cls+'"><b>'+who+':</b> '+m.content.replace(/\n/g,'<br>')+'</div>';
+  });
+  box.scrollTop = box.scrollHeight;
+}
+if(chats.length===0) createChat(); else { renderChats(); renderMessages(); }
+
+// ===== VOICE PICKER =====
+function loadVoices(){
+  allVoices = window.speechSynthesis.getVoices();
+  if(allVoices.length===0) return;
+  let sel = document.getElementById('voiceSelect');
+  // Try to group: find English voices first
+  let enVoices = allVoices.filter(v=>v.lang.toLowerCase().startsWith('en'));
+  if(enVoices.length===0) enVoices = allVoices;
+  // Pick 4 distinct: Woman 1, Man 1, Woman 2, Man 2 using name hints
+  let women = enVoices.filter(v=>/female|woman|zira|samantha|google us english|microsoft zira|natasha|aria/i.test(v.name));
+  let men = enVoices.filter(v=>/male|man|david|guy|microsoft guy|ryan|daniel/i.test(v.name));
+  let others = enVoices.filter(v=>!women.includes(v) && !men.includes(v));
+  let picks = [];
+  if(women[0]) picks.push({label:'👩 Woman 1 - ' + women[0].name, voice:women[0]});
+  if(men[0]) picks.push({label:'👨 Man 1 - ' + men[0].name, voice:men[0]});
+  if(women[1]) picks.push({label:'👩 Woman 2 - ' + women[1].name, voice:women[1]});
+  if(men[1]) picks.push({label:'👨 Man 2 - ' + men[1].name, voice:men[1]});
+  // Fill up with others if less than 4
+  let i=0;
+  while(picks.length < 4 && i < others.length){
+    let v = others[i];
+    let label = (i%2===0 ? '👩 Lady - ' : '👨 Guy - ') + v.name;
+    if(!picks.find(p=>p.voice.voiceURI===v.voiceURI)) picks.push({label:label, voice:v});
+    i++;
+  }
+  // If still less, add all
+  if(picks.length===0) picks = enVoices.slice(0,6).map((v,idx)=>({label:(idx%2===0?'👩 ':'👨 ')+v.name, voice:v}));
+  sel.innerHTML = '';
+  picks.forEach(p=>{
+    let o = document.createElement('option');
+    o.value = p.voice.voiceURI;
+    o.text = p.label;
+    sel.appendChild(o);
+  });
+  // Add "All Voices" option
+  let allOpt = document.createElement('option');
+  allOpt.value = 'ALL'; allOpt.text = '--- Show All Voices ---';
+  sel.appendChild(allOpt);
+  if(selectedVoiceURI && picks.find(p=>p.voice.voiceURI===selectedVoiceURI)){
+    sel.value = selectedVoiceURI;
+  } else if(picks[0]){
+    selectedVoiceURI = picks[0].voice.voiceURI;
+    sel.value = selectedVoiceURI;
+    localStorage.setItem('tabby_voice', selectedVoiceURI);
+  }
+}
+function saveVoice(){
+  let sel = document.getElementById('voiceSelect');
+  if(sel.value==='ALL'){
+    // Expand to all voices
+    sel.innerHTML='';
+    allVoices.forEach(v=>{
+      let o=document.createElement('option'); o.value=v.voiceURI; o.text=v.name+' ('+v.lang+')'; sel.appendChild(o);
+    });
+    return;
+  }
+  selectedVoiceURI = sel.value;
+  localStorage.setItem('tabby_voice', selectedVoiceURI);
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+setTimeout(loadVoices, 500);
+loadVoices();
+
+function getSelectedVoice(){
+  return allVoices.find(v=>v.voiceURI===selectedVoiceURI) || null;
+}
+function testVoice(){
+  speak('Hello Boss, this is my new voice. How do I sound?');
+}
+
+// ===== SPEECH =====
 let recognizing = false;
 let recognition = null;
 if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
@@ -54,8 +206,7 @@ if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
   recognition.interimResults = false;
   recognition.onresult = function(e){
     document.getElementById('msg').value = e.results[0][0].transcript;
-    stopMic();
-    send();
+    stopMic(); send();
   };
   recognition.onend = function(){ stopMic(); };
 }
@@ -83,7 +234,9 @@ function speak(text){
   if(!speakOn) return;
   window.speechSynthesis.cancel();
   let u = new SpeechSynthesisUtterance(text.slice(0,500));
-  u.lang = 'en-NG';
+  let v = getSelectedVoice();
+  if(v){ u.voice = v; u.lang = v.lang; } else { u.lang = 'en-NG'; }
+  u.rate = 1; u.pitch = 1;
   window.speechSynthesis.speak(u);
 }
 function getLocation(){
@@ -91,49 +244,44 @@ function getLocation(){
   if(!navigator.geolocation){ locDiv.innerText = 'Location is not supported in this browser'; return; }
   locDiv.innerText = 'Finding your location Boss... please tap Allow';
   navigator.geolocation.getCurrentPosition(function(pos){
-    let lat = pos.coords.latitude;
-    let lon = pos.coords.longitude;
-    locDiv.innerHTML = 'You are at Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) + '<br><a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank" style="color:#93c5fd">Open in Google Maps</a><br>Ask Tabby: Where am I?';
-    let c = document.getElementById('chat');
-    c.innerHTML += '<div class="msg tabby"><b>Tabby:</b> Boss, I have your location. Lat ' + lat.toFixed(4) + ', Lon ' + lon.toFixed(4) + '. Ask me "Where am I?" and I will explain it.</div>';
-    c.scrollTop = c.scrollHeight;
-    speak('Boss, I have your location.');
+    let lat = pos.coords.latitude; let lon = pos.coords.longitude;
+    locDiv.innerHTML = 'You are at Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) + '<br><a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank" style="color:#93c5fd">Open in Google Maps</a>';
     document.getElementById('msg').value = 'I am at latitude ' + lat + ' longitude ' + lon + '. Where am I and what is near me?';
-  }, function(){
-    locDiv.innerText = 'You blocked location. Please tap Allow when the browser asks.';
-  });
+    speak('Boss, I have your location.');
+  }, function(){ locDiv.innerText = 'You blocked location. Please tap Allow when the browser asks.'; });
 }
 async function send(){
-let inp=document.getElementById('msg');
-let m=inp.value.trim();
-if(!m) return;
-let c=document.getElementById('chat');
-let lower = m.toLowerCase();
-if(lower.includes('who is your owner') || lower.includes('who owns you') || lower.includes('who created you') || lower.includes('who made you') || lower.includes('who built you') || lower.includes('who am i')){
-  c.innerHTML+='<div class="msg user"><b>You:</b> '+m+'</div>';
-  inp.value='';
-  let reply = 'My owner and creator is Faruq Sulaimon. I am loyal to him, Boss.';
-  c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> '+reply+'</div>';
-  c.scrollTop=c.scrollHeight;
-  speak(reply);
-  return;
-}
-c.innerHTML+='<div class="msg user"><b>You:</b> '+m+'</div>';
-inp.value='';
-c.innerHTML+='<div class="msg tabby" id="loading"><b>Tabby:</b> typing...</div>';
-try{
-let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'I am the owner, call me Boss. Question: '+m})});
-let d=await r.json();
-document.getElementById('loading').remove();
-c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> '+d.reply.replace(/\n/g,'<br>')+'</div>';
-c.scrollTop=c.scrollHeight;
-speak(d.reply);
-}catch(e){
-document.getElementById('loading').remove();
-c.innerHTML+='<div class="msg tabby"><b>Tabby:</b> Network error Boss, please try again.</div>';
-}
+  let inp=document.getElementById('msg');
+  let m=inp.value.trim();
+  if(!m) return;
+  let c = getCurrentChat();
+  // Update title from first message
+  if(c.messages.length <= 1) c.title = m.slice(0,30);
+  c.messages.push({role:'user', content:m});
+  inp.value=''; renderChats(); renderMessages();
+  let box=document.getElementById('chat');
+  box.innerHTML += '<div class="msg tabby" id="loading"><b>Tabby:</b> typing...</div>';
+  box.scrollTop = box.scrollHeight;
+  let lower = m.toLowerCase();
+  if(lower.includes('who created you') || lower.includes('who owns you') || lower.includes('who made you') || lower.includes('who built you') || lower.includes('who is your owner')){
+    document.getElementById('loading').remove();
+    let reply = 'My owner and creator is Faruq Sulaimon. I am loyal to him, Boss.';
+    c.messages.push({role:'assistant', content:reply}); saveChats(); renderMessages(); speak(reply); return;
+  }
+  try{
+    // Send history for memory
+    let history = c.messages.slice(0,-1);
+    let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m, history:history})});
+    let d=await r.json();
+    document.getElementById('loading').remove();
+    c.messages.push({role:'assistant', content:d.reply}); saveChats(); renderMessages(); speak(d.reply);
+  }catch(e){
+    document.getElementById('loading').remove();
+    c.messages.push({role:'assistant', content:'Network error Boss, please try again.'}); saveChats(); renderMessages();
+  }
 }
 document.getElementById('msg').addEventListener('keydown',function(e){if(e.key==='Enter')send()});
+renderChats();
 </script>
 </body>
 </html>
