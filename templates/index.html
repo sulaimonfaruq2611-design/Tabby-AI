@@ -1,360 +1,2235 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tabby AI - Owned by Faruq Sulaimon</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080d19">
+<title>Tabby AI | Ultimate Gee Industry</title>
+
 <style>
-*{box-sizing:border-box}
-body{font-family:Arial;background:#0f172a;color:white;margin:0;display:flex;height:100vh;overflow:hidden}
-a{color:#93c5fd}
+:root {
+    --bg: #080d19;
+    --panel: #101827;
+    --panel2: #172235;
+    --border: #26344a;
+    --text: #edf3ff;
+    --muted: #91a0b8;
+    --blue: #3985ff;
+    --blue2: #1763db;
+    --green: #18c78b;
+    --red: #ff5968;
+    --amber: #ffbd4a;
+    --radius: 16px;
+}
 
-/* ===== SIDEBAR - Like your picture ===== */
-.sidebar{width:260px;background:#020617;border-right:1px solid #1e293b;display:flex;flex-direction:column;padding:14px;flex-shrink:0}
-.sidebar .logo{font-size:18px;font-weight:bold;margin-bottom:14px}
-.sidebar .logo span{color:#f59e0b}
-.newbtn{background:#3b82f6;color:white;border:none;padding:12px;border-radius:10px;font-weight:bold;cursor:pointer;width:100%;margin-bottom:10px}
-.searchBox{background:#1e293b;border-radius:10px;padding:10px;display:flex;gap:6px;margin-bottom:12px}
-.searchBox input{background:transparent;border:none;outline:none;color:white;width:100%}
-#chatList{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
-.chatItem{background:#0f172a;padding:11px 12px;border-radius:10px;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid transparent}
-.chatItem.active{background:#1e293b;border-color:#3b82f6}
-.chatItem small{color:#94a3b8;display:block;font-size:11px;margin-top:3px}
-.settingsBtn{margin-top:10px;background:#1e293b;border:none;color:white;padding:12px;border-radius:10px;cursor:pointer;text-align:left;font-size:14px}
-.ownerTag{font-size:11px;color:#94a3b8;margin-top:8px;text-align:center}
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-/* ===== MAIN ===== */
-.main{flex:1;display:flex;flex-direction:column;min-width:0}
-.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0f172a;border-bottom:1px solid #1e293b}
-.badge{background:#f59e0b;color:black;font-size:11px;padding:4px 9px;border-radius:20px;font-weight:bold}
-.menuBtn{display:none;background:#1e293b;border:none;color:white;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:16px}
-#chat{flex:1;overflow-y:auto;padding:20px;max-width:800px;width:100%;margin:auto}
-.empty{text-align:center;margin-top:60px;color:#94a3b8}
-.empty .robot{font-size:64px}
-.empty h2{color:white;margin:10px 0 5px}
-.msg{margin-bottom:16px;line-height:1.6;word-wrap:break-word;max-width:90%}
-.user{color:#93c5fd;margin-left:auto;text-align:right;background:#1e293b;padding:10px 14px;border-radius:14px}
-.tabby{color:#e2e8f0}
-.msg img{width:100%;border-radius:12px;margin-top:8px}
-.msg b{color:#fff}
+body {
+    font-family: Inter, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
 
-/* ===== INPUT - Like your picture ===== */
-.inputWrap{padding:14px;max-width:800px;width:100%;margin:auto}
-.inputBar{background:#1e293b;border-radius:20px;padding:8px;display:flex;gap:8px;align-items:center;border:1px solid #334155}
-.inputBar input{flex:1;background:transparent;border:none;outline:none;color:white;padding:12px;font-size:15px}
-.inputBar button{border:none;border-radius:50%;width:42px;height:42px;cursor:pointer;font-size:17px;flex-shrink:0}
-.mic{background:#22c55e;color:white}
-.send{background:#3b82f6;color:white}
-.plus{background:#334155;color:white}
-.imgbtn{background:#ec4899;color:white}
-.locbtn{background:#22c55e;color:white}
-.hint{text-align:center;font-size:11px;color:#64748b;padding-bottom:12px}
+button, input, textarea, select {
+    font: inherit;
+}
 
-/* ===== SETTINGS MODAL ===== */
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99;align-items:flex-end;justify-content:center}
-.modal.open{display:flex}
-.modalBox{background:#1e293b;width:100%;max-width:600px;border-radius:20px 20px 0 0;padding:20px;max-height:85vh;overflow-y:auto}
-.modalBox h3{margin:0 0 14px}
-.modalBox label{font-size:12px;color:#94a3b8}
-.modalBox select{width:100%;padding:12px;border-radius:10px;border:none;background:#0f172a;color:white;outline:none;margin:6px 0 12px}
-.row{display:flex;gap:8px;margin-bottom:10px}
-.row button{flex:1;padding:12px;border:none;border-radius:10px;color:white;font-weight:bold;cursor:pointer}
-.closeBtn{background:#475569}
-.speak{background:#f59e0b}
-.test{background:#0ea5e9}
-.clear{background:#475569}
-.switch{background:#ef4444}
-.listening{background:#ef4444 !important}
+button {
+    cursor: pointer;
+}
 
-@media(max-width:768px){
-  .sidebar{position:fixed;left:-280px;top:0;bottom:0;z-index:100;transition:0.3s}
-  .sidebar.open{left:0}
-  .menuBtn{display:block}
-  #chat{padding:14px}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 3px;
+}
+
+.app {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+    width: 260px;
+    background: #070c16;
+    border-right: 1px solid var(--border);
+    padding: 20px 14px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 30;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px 24px;
+}
+
+.brand-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #3985ff, #7959ff);
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+    font-size: 20px;
+}
+
+.brand h2 {
+    font-size: 19px;
+}
+
+.brand small {
+    color: var(--muted);
+    display: block;
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+.nav-title {
+    color: #687890;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 17px 12px 8px;
+}
+
+.nav-btn {
+    width: 100%;
+    background: transparent;
+    color: #aab8cc;
+    border: 0;
+    padding: 12px;
+    border-radius: 11px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    text-align: left;
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.nav-btn:hover,
+.nav-btn.active {
+    background: #17253a;
+    color: white;
+}
+
+.nav-btn.active {
+    border-left: 3px solid var(--blue);
+}
+
+.sidebar-bottom {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding-top: 15px;
+}
+
+.owner-label {
+    color: var(--amber);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 12px;
+}
+
+/* MAIN */
+
+.main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.topbar {
+    min-height: 70px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 25px;
+    gap: 15px;
+    background: rgba(8,13,25,.94);
+    position: sticky;
+    top: 0;
+    z-index: 15;
+}
+
+.topbar-left,
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar h3 {
+    font-size: 15px;
+}
+
+.topbar p {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+.status-pill {
+    background: #12352e;
+    color: #55e4b1;
+    border: 1px solid #1e5847;
+    border-radius: 30px;
+    padding: 7px 11px;
+    font-size: 10px;
+}
+
+.menu-btn {
+    display: none;
+    background: var(--panel2);
+    color: white;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 9px 12px;
+}
+
+.content {
+    padding: 25px;
+    width: 100%;
+    max-width: 1500px;
+    margin: auto;
+}
+
+.view {
+    display: none;
+}
+
+.view.active {
+    display: block;
+}
+
+/* GENERAL COMPONENTS */
+
+.page-heading {
+    margin-bottom: 22px;
+}
+
+.page-heading h1 {
+    font-size: clamp(22px, 3vw, 30px);
+    margin-bottom: 8px;
+}
+
+.page-heading p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 15px;
+}
+
+.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 19px;
+    min-width: 0;
+}
+
+.card h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.card-label {
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 12px;
+}
+
+.stat-value {
+    font-size: 27px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.stat-note {
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 7px;
+}
+
+.section {
+    margin-top: 22px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 13px;
+}
+
+.section-title h2 {
+    font-size: 16px;
+}
+
+.btn {
+    background: var(--blue);
+    border: 0;
+    color: white;
+    border-radius: 10px;
+    padding: 11px 15px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.btn:hover {
+    background: var(--blue2);
+}
+
+.btn.secondary {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+}
+
+.btn.danger {
+    background: #57232d;
+    border: 1px solid #843340;
+}
+
+.btn.success {
+    background: #116748;
+}
+
+.btn.small {
+    padding: 8px 11px;
+    font-size: 11px;
+}
+
+.input,
+.select,
+.textarea {
+    width: 100%;
+    padding: 12px 13px;
+    background: #0b1423;
+    color: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-top: 7px;
+    margin-bottom: 14px;
+    font-size: 13px;
+}
+
+.textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.form-label {
+    color: #b8c6d9;
+    font-size: 11px;
+    display: block;
+}
+
+.muted {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.empty {
+    padding: 25px;
+    text-align: center;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.badge {
+    display: inline-block;
+    border-radius: 30px;
+    padding: 5px 9px;
+    font-size: 10px;
+    background: #1c304c;
+    color: #a9caff;
+}
+
+.badge.green {
+    background: #123b30;
+    color: #55e4b1;
+}
+
+.badge.amber {
+    background: #493719;
+    color: #ffcf78;
+}
+
+/* CHAT */
+
+.chat-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    min-height: 500px;
+}
+
+.chat-welcome {
+    text-align: center;
+    margin: 35px auto 25px;
+    max-width: 600px;
+}
+
+.chat-welcome h1 {
+    font-size: clamp(25px, 4vw, 38px);
+    margin-bottom: 10px;
+}
+
+.chat-welcome p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 4px 25px;
+}
+
+.message {
+    display: flex;
+    gap: 11px;
+    max-width: 850px;
+    margin: 15px auto;
+    align-items: flex-start;
+}
+
+.avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    background: #1d3e69;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.message.user .avatar {
+    background: #543b79;
+}
+
+.message-body {
+    min-width: 0;
+    flex: 1;
+}
+
+.message-name {
+    font-size: 11px;
+    color: #9db0ca;
+    margin: 4px 0 7px;
+}
+
+.message-text {
+    font-size: 13px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #e5edf9;
+}
+
+.message-image {
+    max-width: 100%;
+    width: auto;
+    max-height: 400px;
+    object-fit: contain;
+    display: block;
+    margin-top: 12px;
+    border-radius: 12px;
+}
+
+.chat-composer {
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding-top: 10px;
+}
+
+.composer-box {
+    background: var(--panel);
+    border: 1px solid #34445e;
+    border-radius: 17px;
+    padding: 12px;
+}
+
+.composer-box textarea {
+    width: 100%;
+    background: transparent;
+    color: white;
+    border: 0;
+    outline: none;
+    resize: none;
+    min-height: 43px;
+    max-height: 150px;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.composer-tools {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tool-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.icon-btn {
+    background: #1a273a;
+    border: 1px solid var(--border);
+    color: #cbd8eb;
+    border-radius: 9px;
+    padding: 9px 11px;
+    font-size: 11px;
+}
+
+.icon-btn:hover {
+    background: #273b59;
+}
+
+.chat-disclaimer {
+    text-align: center;
+    color: #687890;
+    font-size: 10px;
+    padding: 10px;
+}
+
+/* CHAT HISTORY */
+
+.history-list {
+    margin-top: 8px;
+    max-height: 230px;
+    overflow-y: auto;
+}
+
+.history-item {
+    padding: 10px;
+    border-radius: 9px;
+    color: #aab8cc;
+    font-size: 11px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.history-item:hover,
+.history-item.selected {
+    background: #18263a;
+    color: white;
+}
+
+/* MOTORCYCLES */
+
+.vehicle-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 15px;
+}
+
+.vehicle-card {
+    cursor: pointer;
+    transition: .2s;
+}
+
+.vehicle-card:hover {
+    border-color: var(--blue);
+    transform: translateY(-2px);
+}
+
+.vehicle-card.selected {
+    border-color: var(--blue);
+    background: #14233a;
+}
+
+.vehicle-name {
+    font-size: 17px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.vehicle-meta {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.9;
+}
+
+.telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 12px;
+}
+
+.telemetry-card {
+    background: #0b1423;
+    border: 1px solid var(--border);
+    padding: 17px;
+    border-radius: 13px;
+}
+
+.telemetry-card span {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 10px;
+}
+
+.telemetry-card strong {
+    font-size: 24px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 0 15px;
+}
+
+.form-grid .full {
+    grid-column: 1 / -1;
+}
+
+/* AUTH */
+
+.auth-wrap {
+    max-width: 500px;
+    margin: 30px auto;
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.auth-tabs button {
+    flex: 1;
+}
+
+/* OVERLAY / MOBILE */
+
+.overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.65);
+    z-index: 20;
+}
+
+.overlay.show {
+    display: block;
+}
+
+.toast {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    z-index: 100;
+    background: #17253a;
+    border: 1px solid #354a69;
+    color: white;
+    padding: 13px 17px;
+    border-radius: 12px;
+    font-size: 12px;
+    max-width: min(90vw, 400px);
+    display: none;
+}
+
+.toast.show {
+    display: block;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 18px 0;
+}
+
+@media (max-width: 1100px) {
+    .grid,
+    .telemetry-grid {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+
+    .vehicle-list {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        bottom: 0;
+        width: 265px;
+        transition: left .25s ease;
+        box-shadow: 15px 0 40px rgba(0,0,0,.3);
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .menu-btn {
+        display: inline-block;
+    }
+
+    .topbar {
+        padding: 11px 14px;
+        min-height: 62px;
+    }
+
+    .content {
+        padding: 17px 13px;
+    }
+
+    .topbar-right .status-pill {
+        display: none;
+    }
+
+    .chat-layout {
+        height: calc(100dvh - 100px);
+        min-height: 450px;
+    }
+
+    .chat-welcome {
+        margin-top: 25px;
+    }
+
+    .message {
+        gap: 8px;
+    }
+
+    .message-text {
+        font-size: 12px;
+    }
+
+    .vehicle-list {
+        grid-template-columns: 1fr;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-grid .full {
+        grid-column: auto;
+    }
+
+    .card {
+        padding: 15px;
+    }
+
+    .composer-box {
+        padding: 10px;
+    }
+}
+
+@media (max-width: 420px) {
+    .grid,
+    .telemetry-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+    }
+
+    .stat-value {
+        font-size: 21px;
+    }
+
+    .telemetry-card {
+        padding: 13px;
+    }
+
+    .telemetry-card strong {
+        font-size: 19px;
+    }
+
+    .topbar h3 {
+        font-size: 13px;
+    }
+
+    .topbar p {
+        font-size: 10px;
+    }
+
+    .content {
+        padding: 13px 10px;
+    }
+
+    .composer-tools {
+        align-items: flex-start;
+    }
 }
 </style>
 </head>
+
 <body>
 
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+
 <!-- SIDEBAR -->
-<div class="sidebar" id="sidebar">
-  <div class="logo">🐱 Tabby <span>AI</span></div>
-  <button class="newbtn" onclick="newChat(); closeSidebar()">+ New Chat</button>
-  <div class="searchBox">🔍 <input id="searchInput" placeholder="Search the chats" oninput="renderChats()"></div>
-  <div id="chatList"></div>
-  <button class="settingsBtn" onclick="openSettings()">⚙️ Settings</button>
-  <div class="ownerTag">👑 Owner: Faruq Sulaimon<br>Good <span id="greetWord">Day</span> Boss</div>
+
+<aside class="sidebar" id="sidebar">
+
+    <div class="brand">
+        <div class="brand-icon">T</div>
+        <div>
+            <h2>Tabby</h2>
+            <small>AI & AUTOMOTIVE INTELLIGENCE</small>
+        </div>
+    </div>
+
+    <div class="nav-title">MAIN MENU</div>
+
+    <button class="nav-btn active" data-view="chat" onclick="showView('chat',this)">
+        <span>✦</span> Tabby AI
+    </button>
+
+    <button class="nav-btn" data-view="automotive" onclick="showView('automotive',this)">
+        <span>🏍</span> Automotive Dashboard
+    </button>
+
+    <button class="nav-btn" data-view="ride" onclick="showView('ride',this)">
+        <span>⚡</span> Tabby Ride
+    </button>
+
+    <div class="nav-title">ACCOUNT</div>
+
+    <button class="nav-btn" data-view="account" onclick="showView('account',this)">
+        <span>♙</span> Account & Login
+    </button>
+
+    <button class="nav-btn" data-view="memory" onclick="showView('memory',this)">
+        <span>◈</span> Saved Memories
+    </button>
+
+    <button class="nav-btn" data-view="settings" onclick="showView('settings',this)">
+        <span>⚙</span> Settings
+    </button>
+
+    <div class="sidebar-bottom">
+        <div class="owner-label">✦ ULTIMATE GEE INDUSTRY</div>
+        <button class="nav-btn" onclick="newChat()">＋ New Chat</button>
+        <div class="nav-title">RECENT CHATS</div>
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+</aside>
+
+<!-- MAIN CONTENT -->
+
+<main class="main">
+
+    <header class="topbar">
+        <div class="topbar-left">
+            <button class="menu-btn" onclick="openSidebar()" aria-label="Open navigation">☰</button>
+            <div>
+                <h3 id="topTitle">Good day, Boss</h3>
+                <p>Tabby AI · Ultimate Gee Industry</p>
+            </div>
+        </div>
+
+        <div class="topbar-right">
+            <span class="status-pill">● SYSTEM ONLINE</span>
+            <span class="badge amber">OWNER</span>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- CHAT VIEW -->
+
+        <section class="view active" id="view-chat">
+
+            <div class="chat-layout">
+
+                <div class="chat-welcome" id="chatWelcome">
+                    <h1>How can I help you, Boss?</h1>
+                    <p>
+                        I'm Tabby, your personal AI assistant.
+                        Ask me questions, explore ideas, create images
+                        or manage your automotive ecosystem.
+                    </p>
+                </div>
+
+                <div class="chat-messages" id="chatMessages"></div>
+
+                <div class="chat-composer">
+                    <div class="composer-box">
+                        <textarea
+                            id="chatInput"
+                            placeholder="Message Tabby..."
+                            rows="2"
+                            aria-label="Message Tabby"
+                        ></textarea>
+
+                        <div class="composer-tools">
+                            <div class="tool-group">
+                                <button class="icon-btn" onclick="generateImage()">🖼 Image</button>
+                                <button class="icon-btn" onclick="shareLocation()">📍 Location</button>
+                                <button class="icon-btn" id="micButton" onclick="toggleMic()">🎙 Voice</button>
+                            </div>
+
+                            <button class="btn" id="sendButton" onclick="sendMessage()">Send ➤</button>
+                        </div>
+                    </div>
+
+                    <div class="chat-disclaimer">
+                        Tabby AI · Built for Boss · Ultimate Gee Industry
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- AUTOMOTIVE DASHBOARD -->
+
+        <section class="view" id="view-automotive">
+
+            <div class="page-heading">
+                <h1>🏍 Tabby Automotive</h1>
+                <p>
+                    Your motorcycle intelligence and management centre.
+                    Register motorcycles and monitor available vehicle data.
+                </p>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="card-label">REGISTERED MOTORCYCLES</div>
+                    <div class="stat-value" id="vehicleCount">0</div>
+                    <div class="stat-note">Vehicles on your account</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-label">SELECTED MOTORCYCLE</div>
+                    <div class="stat-value" id="selectedVehicleName">None</div>
+                    <div class="stat-note">Currently selected</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-label">LATEST BATTERY READING</div>
+                    <div class="stat-value" id="batterySummary">--</div>
+                    <div class="stat-note">Requires connected telemetry</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-label">SYSTEM CONNECTION</div>
+                    <div class="stat-value" style="font-size:18px">API Ready</div>
+                    <div class="stat-note">Hardware connection not yet assumed</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    <h2>Your Motorcycles</h2>
+                    <button class="btn small" onclick="openVehicleForm()">＋ Register Motorcycle</button>
+                </div>
+
+                <div class="vehicle-list" id="vehicleList">
+                    <div class="empty">Sign in to view your motorcycles.</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    <h2>Motorcycle Dashboard</h2>
+                    <button class="btn secondary small" onclick="refreshTelemetry()">↻ Refresh</button>
+                </div>
+
+                <div class="card">
+                    <div class="muted" id="telemetryVehicle">
+                        Select a motorcycle to view its readings.
+                    </div>
+
+                    <div class="telemetry-grid" style="margin-top:18px">
+                        <div class="telemetry-card">
+                            <span>🔋 BATTERY</span>
+                            <strong id="teleBattery">--</strong>
+                        </div>
+
+                        <div class="telemetry-card">
+                            <span>📏 ESTIMATED RANGE</span>
+                            <strong id="teleRange">--</strong>
+                        </div>
+
+                        <div class="telemetry-card">
+                            <span>⚡ SPEED</span>
+                            <strong id="teleSpeed">--</strong>
+                        </div>
+
+                        <div class="telemetry-card">
+                            <span>🛠 DIAGNOSTICS</span>
+                            <strong id="teleDiagnostics" style="font-size:15px">--</strong>
+                        </div>
+                    </div>
+
+                    <p class="muted" id="telemetryTime" style="margin-top:15px">
+                        No live hardware readings received yet.
+                    </p>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="card">
+                    <h3>Hardware Integration</h3>
+                    <p class="muted">
+                        Tabby has a software foundation for receiving motorcycle
+                        telemetry. Real battery, speed, GPS and diagnostic readings
+                        will only appear after compatible motorcycle hardware is
+                        connected and sends data securely.
+                    </p>
+                    <hr>
+                    <span class="badge amber">HARDWARE CONNECTION PENDING</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- TABBY RIDE -->
+
+        <section class="view" id="view-ride">
+
+            <div class="page-heading">
+                <h1>⚡ Tabby Ride</h1>
+                <p>
+                    The customer-facing motorcycle platform for Ultimate Gee Industry.
+                </p>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="card-label">MY ACCOUNT</div>
+                    <div class="stat-value" id="rideAccount">Guest</div>
+                    <div class="stat-note">Customer account status</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-label">MY MOTORCYCLES</div>
+                    <div class="stat-value" id="rideVehicles">0</div>
+                    <div class="stat-note">Registered to your account</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-label">PAYMENT RECORDS</div>
+                    <div class="stat-value" id="ridePayments">0</div>
+                    <div class="stat-note">Records available</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-label">SECURITY</div>
+                    <div class="stat-value" style="font-size:18px">Account</div>
+                    <div class="stat-note">Sign-in protected</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="card">
+                    <h3>Customer Motorcycle Access</h3>
+                    <p class="muted">
+                        Sign in to view motorcycles associated with your account.
+                        Vehicle access is controlled by the backend.
+                    </p>
+                    <br>
+                    <button class="btn" onclick="showView('account')">Open My Account</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    <h2>My Payment Records</h2>
+                    <button class="btn secondary small" onclick="loadPayments()">↻ Refresh</button>
+                </div>
+
+                <div class="card" id="paymentList">
+                    <div class="empty">Sign in and select an accessible motorcycle to view payment records.</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="card">
+                    <h3>Safety & Security</h3>
+                    <p class="muted">
+                        This interface does not remotely start, stop, lock or immobilise
+                        a motorcycle. Those functions require compatible hardware,
+                        a secure command system and safety testing.
+                    </p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ACCOUNT -->
+
+        <section class="view" id="view-account">
+
+            <div class="page-heading">
+                <h1>Account & Login</h1>
+                <p>Sign in or create your Tabby account.</p>
+            </div>
+
+            <div class="auth-wrap">
+
+                <div class="card">
+
+                    <div id="signedInPanel" style="display:none">
+                        <h2>Welcome back!</h2>
+                        <p class="muted" id="accountDetails" style="margin:12px 0 20px"></p>
+                        <button class="btn danger" onclick="logout()">Sign Out</button>
+                    </div>
+
+                    <div id="authPanel">
+
+                        <div class="auth-tabs">
+                            <button class="btn" id="loginTab" onclick="setAuthMode('login')">Login</button>
+                            <button class="btn secondary" id="registerTab" onclick="setAuthMode('register')">Register</button>
+                        </div>
+
+                        <form id="authForm">
+                            <label class="form-label">Email Address</label>
+                            <input class="input" type="email" id="authEmail" required autocomplete="email">
+
+                            <div id="nameField" style="display:none">
+                                <label class="form-label">Your Name</label>
+                                <input class="input" type="text" id="authName" autocomplete="name">
+                            </div>
+
+                            <label class="form-label">Password</label>
+                            <input class="input" type="password" id="authPassword" required minlength="8" autocomplete="current-password">
+
+                            <button class="btn" type="submit" id="authSubmit" style="width:100%">Login</button>
+                        </form>
+
+                        <p class="muted" style="margin-top:15px">
+                            Your account is managed by the Tabby backend.
+                        </p>
+
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- MEMORY -->
+
+        <section class="view" id="view-memory">
+
+            <div class="page-heading">
+                <h1>◈ Tabby Memory</h1>
+                <p>
+                    Save useful information for Tabby to access in future conversations.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Add a Memory</h3>
+
+                <label class="form-label">Memory content</label>
+                <textarea class="textarea" id="memoryInput" placeholder="Example: My preferred motorcycle model is..."></textarea>
+
+                <button class="btn" onclick="saveMemory()">Save Memory</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    <h2>Saved Memories</h2>
+                    <button class="btn secondary small" onclick="loadMemories()">↻ Refresh</button>
+                </div>
+
+                <div id="memoryList" class="card">
+                    <div class="empty">Sign in to view saved memories.</div>
+                </div>
+            </div>
+
+            <p class="muted" style="margin-top:15px">
+                Memories saved here are stored through the backend.
+                This is a manual memory manager, not automatic memory extraction.
+            </p>
+
+        </section>
+
+        <!-- SETTINGS -->
+
+        <section class="view" id="view-settings">
+
+            <div class="page-heading">
+                <h1>Settings</h1>
+                <p>Configure your Tabby experience.</p>
+            </div>
+
+            <div class="card">
+                <h3>Voice Settings</h3>
+
+                <label class="form-label">Speech Voice</label>
+                <select class="select" id="voiceSelect"></select>
+
+                <label class="form-label">Voice Replies</label>
+                <select class="select" id="voiceReply">
+                    <option value="on">Enabled</option>
+                    <option value="off">Disabled</option>
+                </select>
+
+                <button class="btn small" onclick="testVoice()">Test Voice</button>
+
+                <hr>
+
+                <h3>Chat Management</h3>
+                <button class="btn secondary small" onclick="newChat()">＋ New Chat</button>
+                <button class="btn danger small" onclick="clearChats()">Clear Chat History</button>
+
+                <hr>
+
+                <h3>About Tabby</h3>
+                <p class="muted">
+                    Tabby AI is the personal assistant platform of Faruq Sulaimon,
+                    developed for the Ultimate Gee Industry ecosystem.
+                </p>
+            </div>
+
+        </section>
+
+    </div>
+</main>
+
 </div>
 
-<!-- MAIN -->
-<div class="main">
-  <div class="topbar">
-    <button class="menuBtn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
-    <div>👑 <b id="topGreet">Good Day Boss</b> <span class="badge">OWNER</span></div>
-    <div>🐱 Tabby AI</div>
-  </div>
-
-  <div id="chat"></div>
-
-  <div class="inputWrap">
-    <div class="inputBar">
-      <button class="plus" onclick="openSettings()" title="Settings">+</button>
-      <input id="msg" placeholder="Ask me anything...">
-      <button class="imgbtn" onclick="askImage()" title="Generate Image">🖼️</button>
-      <button class="locbtn" onclick="getLocation()" title="My Location">📍</button>
-      <button class="mic" id="micBtn" onclick="toggleMic()">🎤</button>
-      <button class="send" onclick="send()">↑</button>
-    </div>
-    <div id="loc" style="text-align:center;color:#94a3b8;font-size:12px;margin-top:6px"></div>
-    <div class="hint">Tabby can make mistakes. Double check important information.</div>
-  </div>
-</div>
-
-<!-- SETTINGS MODAL - All your old settings dey here -->
-<div class="modal" id="settingsModal" onclick="if(event.target===this) closeSettings()">
-  <div class="modalBox">
-    <h3>⚙️ Settings</h3>
-    <label>🎙️ Choose Voice</label>
-    <select id="voiceSelect" onchange="saveVoice()"><option value="">Loading voices...</option></select>
-    <div class="row">
-      <button class="speak" onclick="toggleSpeak()" id="speakBtn">🔊 Voice Reply: ON</button>
-      <button class="test" onclick="testVoice()">Test Voice</button>
-    </div>
-    <div class="row">
-      <button style="background:#22c55e" onclick="getLocation(); closeSettings()">📍 My Location</button>
-      <button style="background:#ec4899" onclick="askImage(); closeSettings()">🖼️ Generate Image</button>
-    </div>
-    <div class="row">
-      <button class="clear" onclick="clearAllChats()">Clear All Chats</button>
-      <button class="switch" onclick="switchUser()">👤 Switch User</button>
-    </div>
-    <p style="font-size:12px;color:#94a3b8;text-align:center">Tabby AI • Created by Faruq Sulaimon • Voice • Location • Image • Memory</p>
-    <button class="closeBtn" onclick="closeSettings()" style="width:100%;padding:12px;border:none;border-radius:10px;color:white;cursor:pointer">Close</button>
-  </div>
-</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-function getGreeting(){
-  let h = new Date().getHours();
-  if(h < 12) return 'Good Morning Boss';
-  if(h < 17) return 'Good Afternoon Boss';
-  return 'Good Evening Boss';
-}
-let greet = getGreeting();
-document.getElementById('topGreet').innerText = greet;
-document.getElementById('greetWord').innerText = greet.replace('Good ','').replace(' Boss','');
+/* =====================================================
+   TABBY FRONTEND
+   Connects to the Flask backend.
+===================================================== */
 
-function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); }
-function openSettings(){ document.getElementById('settingsModal').classList.add('open'); }
-function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
+const API = "";
 
-// ===== MEMORY + CHATS =====
-let chats = JSON.parse(localStorage.getItem('tabby_chats') || '[]');
-let currentChatId = localStorage.getItem('tabby_current') || null;
-let speakOn = true;
-let selectedVoiceURI = localStorage.getItem('tabby_voice') || '';
-let allVoices = [];
+const STORAGE_CHATS = "tabby_chats";
+const STORAGE_CURRENT = "tabby_current";
+const STORAGE_TOKEN = "tabby_auth_token";
+const STORAGE_VOICE = "tabby_voice";
+const STORAGE_VOICE_REPLY = "tabby_voice_reply";
 
-function saveChats(){
-  localStorage.setItem('tabby_chats', JSON.stringify(chats));
-  localStorage.setItem('tabby_current', currentChatId);
-}
-function createChat(){
-  let id = Date.now().toString();
-  let c = {id:id, title: greet + ' Chat', messages:[{role:'assistant', content: greet + '. How can I help you today?'}]};
-  chats.unshift(c);
-  currentChatId = id;
-  saveChats(); renderChats(); renderMessages();
-  return c;
-}
-function getCurrentChat(){
-  let c = chats.find(x=>x.id===currentChatId);
-  if(!c) c = createChat();
-  return c;
-}
-function newChat(){ createChat(); }
-function clearAllChats(){
-  if(!confirm('Delete all chats Boss?')) return;
-  chats = []; currentChatId = null; saveChats(); createChat();
-}
-function switchUser(){
-  if(!confirm('Switch user Boss? This will clear all chats for this phone so next person no go see your history.')) return;
-  localStorage.removeItem('tabby_chats'); localStorage.removeItem('tabby_current');
-  chats = []; currentChatId = null; saveChats(); createChat(); closeSettings();
-  alert('Done Boss. New person fit use am now.');
-}
-function switchChat(id){
-  currentChatId = id; saveChats(); renderChats(); renderMessages(); closeSidebar();
-}
-function renderChats(){
-  let q = (document.getElementById('searchInput').value || '').toLowerCase();
-  let el = document.getElementById('chatList');
-  el.innerHTML = '';
-  chats.filter(c=> (c.title||'').toLowerCase().includes(q) || c.messages.some(m=>m.content.toLowerCase().includes(q))).forEach(c=>{
-    let d = document.createElement('div');
-    d.className = 'chatItem' + (c.id===currentChatId ? ' active':'');
-    d.innerHTML = (c.title || 'Chat').slice(0,30) + '<small>'+c.messages.length+' messages</small>';
-    d.onclick = ()=>switchChat(c.id);
-    el.appendChild(d);
-  });
-}
-function renderMessages(){
-  let c = getCurrentChat();
-  let box = document.getElementById('chat');
-  box.innerHTML = '';
-  // If only greeting, show empty style like your picture
-  if(c.messages.length===1){
-    box.innerHTML = '<div class="empty"><div class="robot">🤖</div><h2>What\'s on your mind today Boss?</h2><p>Ask me anything • Generate Image • Check your location</p></div>';
-  }
-  c.messages.forEach(m=>{
-    let who = m.role==='user' ? 'You' : 'Tabby';
-    let cls = m.role==='user' ? 'user' : 'tabby';
-    let extra = m.image_url ? '<br><img src="'+m.image_url+'">' : '';
-    box.innerHTML += '<div class="msg '+cls+'"><b>'+who+':</b> '+m.content.replace(/\n/g,'<br>')+extra+'</div>';
-  });
-  box.scrollTop = box.scrollHeight;
-}
-if(chats.length===0) createChat(); else { renderChats(); renderMessages(); }
+let chats = [];
+let currentChatId = null;
+let selectedVehicleId = null;
+let motorcycles = [];
+let currentUser = null;
+let authMode = "login";
+let recognition = null;
+let listening = false;
+let voices = [];
 
-// ===== VOICE PICKER =====
-function loadVoices(){
-  allVoices = window.speechSynthesis.getVoices();
-  if(allVoices.length===0) return;
-  let sel = document.getElementById('voiceSelect');
-  let enVoices = allVoices.filter(v=>v.lang.toLowerCase().startsWith('en'));
-  if(enVoices.length===0) enVoices = allVoices;
-  let women = enVoices.filter(v=>/female|woman|zira|samantha|google us english|microsoft zira|natasha|aria/i.test(v.name));
-  let men = enVoices.filter(v=>/male|man|david|guy|microsoft guy|ryan|daniel/i.test(v.name));
-  let others = enVoices.filter(v=>!women.includes(v) && !men.includes(v));
-  let picks = [];
-  if(women[0]) picks.push({label:'👩 Woman 1 - ' + women[0].name, voice:women[0]});
-  if(men[0]) picks.push({label:'👨 Man 1 - ' + men[0].name, voice:men[0]});
-  if(women[1]) picks.push({label:'👩 Woman 2 - ' + women[1].name, voice:women[1]});
-  if(men[1]) picks.push({label:'👨 Man 2 - ' + men[1].name, voice:men[1]});
-  let i=0;
-  while(picks.length < 4 && i < others.length){
-    let v = others[i];
-    let label = (i%2===0 ? '👩 Lady - ' : '👨 Guy - ') + v.name;
-    if(!picks.find(p=>p.voice.voiceURI===v.voiceURI)) picks.push({label:label, voice:v});
-    i++;
-  }
-  if(picks.length===0) picks = enVoices.slice(0,6).map((v,idx)=>({label:(idx%2===0?'👩 ':'👨 ')+v.name, voice:v}));
-  sel.innerHTML = '';
-  picks.forEach(p=>{
-    let o = document.createElement('option'); o.value = p.voice.voiceURI; o.text = p.label; sel.appendChild(o);
-  });
-  let allOpt = document.createElement('option'); allOpt.value = 'ALL'; allOpt.text = '--- Show All Voices ---'; sel.appendChild(allOpt);
-  if(selectedVoiceURI && picks.find(p=>p.voice.voiceURI===selectedVoiceURI)){ sel.value = selectedVoiceURI; }
-  else if(picks[0]){ selectedVoiceURI = picks[0].voice.voiceURI; sel.value = selectedVoiceURI; localStorage.setItem('tabby_voice', selectedVoiceURI); }
-}
-function saveVoice(){
-  let sel = document.getElementById('voiceSelect');
-  if(sel.value==='ALL'){
-    sel.innerHTML='';
-    allVoices.forEach(v=>{ let o=document.createElement('option'); o.value=v.voiceURI; o.text=v.name+' ('+v.lang+')'; sel.appendChild(o); });
-    return;
-  }
-  selectedVoiceURI = sel.value; localStorage.setItem('tabby_voice', selectedVoiceURI);
-}
-window.speechSynthesis.onvoiceschanged = loadVoices;
-setTimeout(loadVoices, 500); loadVoices();
-function getSelectedVoice(){ return allVoices.find(v=>v.voiceURI===selectedVoiceURI) || null; }
-function testVoice(){ speak('Hello Boss, this is my new voice. How do I sound?'); }
+/* GENERAL HELPERS */
 
-// ===== SPEECH =====
-let recognizing = false; let recognition = null;
-if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
-  let SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SR(); recognition.lang = 'en-NG'; recognition.continuous = false; recognition.interimResults = false;
-  recognition.onresult = function(e){ document.getElementById('msg').value = e.results[0][0].transcript; stopMic(); send(); };
-  recognition.onend = function(){ stopMic(); };
-}
-function toggleMic(){
-  if(!recognition){ alert('Mic is not supported in this browser. Please use Chrome.'); return; }
-  if(recognizing){ recognition.stop(); }
-  else{ recognizing = true; document.getElementById('micBtn').classList.add('listening'); document.getElementById('micBtn').innerText = '🔴'; recognition.start(); }
-}
-function stopMic(){ recognizing = false; document.getElementById('micBtn').classList.remove('listening'); document.getElementById('micBtn').innerText = '🎤'; }
-function toggleSpeak(){ speakOn = !speakOn; document.getElementById('speakBtn').innerText = speakOn ? '🔊 Voice Reply: ON' : '🔇 Voice Reply: OFF'; if(!speakOn) window.speechSynthesis.cancel(); }
-function speak(text){
-  if(!speakOn) return;
-  text = text.replace(/<[^>]*>/g, ' ');
-  window.speechSynthesis.cancel();
-  let u = new SpeechSynthesisUtterance(text.slice(0,500));
-  let v = getSelectedVoice();
-  if(v){ u.voice = v; u.lang = v.lang; } else { u.lang = 'en-NG'; }
-  u.rate = 1; u.pitch = 1; window.speechSynthesis.speak(u);
-}
-function getLocation(){
-  let locDiv = document.getElementById('loc');
-  if(!navigator.geolocation){ locDiv.innerText = 'Location is not supported in this browser'; return; }
-  locDiv.innerText = 'Finding your location Boss... please tap Allow';
-  navigator.geolocation.getCurrentPosition(function(pos){
-    let lat = pos.coords.latitude; let lon = pos.coords.longitude;
-    locDiv.innerHTML = 'You are at Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) + '<br><a href="https://www.google.com/maps?q='+lat+','+lon+'" target="_blank">Open in Google Maps</a>';
-    document.getElementById('msg').value = 'I am at latitude ' + lat + ' longitude ' + lon + '. Where am I and what is near me?';
-    speak('Boss, I have your location.');
-  }, function(){ locDiv.innerText = 'You blocked location. Please tap Allow when the browser asks.'; });
+function toast(message) {
+    const el = document.getElementById("toast");
+    el.textContent = message;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 3500);
 }
 
-// ===== IMAGE =====
-function askImage(){
-  let p = prompt('Boss, what image should I generate? Example: a lion wearing a crown');
-  if(!p) return;
-  document.getElementById('msg').value = 'Generate image of ' + p;
-  send();
-}
-async function generateImage(promptText){
-  try{
-    let r = await fetch('/image', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt: promptText})});
-    let d = await r.json(); return d.image_url;
-  }catch(e){ return null; }
+function escapeText(value) {
+    return String(value ?? "");
 }
 
-async function send(){
-  let inp=document.getElementById('msg');
-  let m=inp.value.trim(); if(!m) return;
-  let c = getCurrentChat();
-  if(c.messages.length <= 1) c.title = m.slice(0,30);
-  c.messages.push({role:'user', content:m});
-  inp.value=''; renderChats(); renderMessages();
-  let box=document.getElementById('chat');
-  box.innerHTML += '<div class="msg tabby" id="loading"><b>Tabby:</b> typing...</div>';
-  box.scrollTop = box.scrollHeight;
-  let lower = m.toLowerCase();
-  if(lower.includes('what is your name') || lower.includes('whats your name') || lower.includes("what's your name") || lower.includes('who are you') || lower.includes('your name')){
-    document.getElementById('loading').remove();
-    let reply = 'My name is Tabby, Boss. I was created by Faruq Sulaimon.';
-    c.messages.push({role:'assistant', content:reply}); saveChats(); renderMessages(); speak(reply); return;
-  }
-  if(lower.includes('who created you') || lower.includes('who owns you') || lower.includes('who made you') || lower.includes('who built you') || lower.includes('who is your owner')){
-    document.getElementById('loading').remove();
-    let reply = 'My owner and creator is Faruq Sulaimon. I am loyal to him, Boss.';
-    c.messages.push({role:'assistant', content:reply}); saveChats(); renderMessages(); speak(reply); return;
-  }
-  if(lower.includes('generate image') || lower.includes('create image') || lower.includes('draw image') || lower.includes('make image') || lower.includes('generate an image')){
-    let prompt = m.replace(/generate image of|create image of|draw image of|make image of|generate an image of|generate image|create image|draw image|make image/gi, '').trim();
-    if(!prompt) prompt = 'a beautiful cat';
-    document.getElementById('loading').innerHTML = '<b>Tabby:</b> Drawing your image Boss...';
-    let imgUrl = await generateImage(prompt);
-    document.getElementById('loading').remove();
-    if(imgUrl){ c.messages.push({role:'assistant', content:'Here is your image Boss, I made it for you:', image_url: imgUrl}); saveChats(); renderMessages(); speak('Here is your image Boss, I made it for you'); }
-    else { c.messages.push({role:'assistant', content:'Sorry Boss, image failed. Try again.'}); saveChats(); renderMessages(); }
-    return;
-  }
-  try{
-    let history = c.messages.slice(0,-1);
-    let cleanHistory = history.map(h=>({role:h.role, content:h.content}));
-    let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m, history:cleanHistory})});
-    let d=await r.json();
-    document.getElementById('loading').remove();
-    c.messages.push({role:'assistant', content:d.reply}); saveChats(); renderMessages(); speak(d.reply);
-  }catch(e){
-    document.getElementById('loading').remove();
-    c.messages.push({role:'assistant', content:'Network error Boss, please try again.'}); saveChats(); renderMessages();
-  }
+function getToken() {
+    return localStorage.getItem(STORAGE_TOKEN) || "";
 }
-document.getElementById('msg').addEventListener('keydown',function(e){if(e.key==='Enter')send()});
-renderChats();
+
+function authHeaders(extra = {}) {
+    const headers = {...extra};
+    const token = getToken();
+
+    if (token) headers.Authorization = "Bearer " + token;
+
+    return headers;
+}
+
+async function apiFetch(path, options = {}) {
+    const headers = authHeaders(options.headers || {});
+
+    const response = await fetch(API + path, {
+        ...options,
+        headers
+    });
+
+    const raw = await response.text();
+    let data = {};
+
+    try {
+        data = raw ? JSON.parse(raw) : {};
+    } catch {
+        data = {message: raw};
+    }
+
+    if (!response.ok) {
+        throw new Error(data.error || data.message || "Request failed (" + response.status + ")");
+    }
+
+    return data;
+}
+
+function getArray(data, key) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.[key])) return data[key];
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
+}
+
+function makeId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+/* NAVIGATION */
+
+function showView(name, button = null) {
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+
+    const target = document.getElementById("view-" + name);
+    if (target) target.classList.add("active");
+
+    document.querySelectorAll(".nav-btn[data-view]").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.view === name);
+    });
+
+    const titles = {
+        chat: "Good day, Boss",
+        automotive: "Tabby Automotive",
+        ride: "Tabby Ride",
+        account: "Your Account",
+        memory: "Tabby Memory",
+        settings: "Settings"
+    };
+
+    document.getElementById("topTitle").textContent = titles[name] || "Tabby";
+
+    closeSidebar();
+
+    if (name === "automotive") loadMotorcycles();
+    if (name === "ride") {
+        loadMotorcycles();
+        loadPayments();
+    }
+    if (name === "memory") loadMemories();
+}
+
+function openSidebar() {
+    document.getElementById("sidebar").classList.add("open");
+    document.getElementById("overlay").classList.add("show");
+}
+
+function closeSidebar() {
+    document.getElementById("sidebar").classList.remove("open");
+    document.getElementById("overlay").classList.remove("show");
+}
+
+/* CHAT STORAGE */
+
+function loadLocalChats() {
+    try {
+        chats = JSON.parse(localStorage.getItem(STORAGE_CHATS) || "[]");
+        if (!Array.isArray(chats)) chats = [];
+    } catch {
+        chats = [];
+    }
+
+    currentChatId = localStorage.getItem(STORAGE_CURRENT);
+
+    if (!chats.some(c => c.id === currentChatId)) {
+        currentChatId = chats[0]?.id || null;
+    }
+
+    if (!currentChatId) createChat(false);
+
+    renderHistory();
+    renderMessages();
+}
+
+function saveLocalChats() {
+    localStorage.setItem(STORAGE_CHATS, JSON.stringify(chats));
+    localStorage.setItem(STORAGE_CURRENT, currentChatId || "");
+}
+
+function createChat(save = true) {
+    const chat = {
+        id: makeId(),
+        title: "New conversation",
+        messages: []
+    };
+
+    chats.unshift(chat);
+    currentChatId = chat.id;
+
+    if (save) saveLocalChats();
+
+    renderHistory();
+    renderMessages();
+    return chat;
+}
+
+function getCurrentChat() {
+    return chats.find(c => c.id === currentChatId);
+}
+
+function newChat() {
+    createChat();
+    showView("chat");
+}
+
+function switchChat(id) {
+    if (!chats.some(c => c.id === id)) return;
+
+    currentChatId = id;
+    saveLocalChats();
+    renderHistory();
+    renderMessages();
+    showView("chat");
+}
+
+function renderHistory() {
+    const container = document.getElementById("historyList");
+    container.replaceChildren();
+
+    chats.slice(0,30).forEach(chat => {
+        const item = document.createElement("div");
+        item.className = "history-item" + (chat.id === currentChatId ? " selected" : "");
+        item.textContent = chat.title || "New conversation";
+        item.title = chat.title || "New conversation";
+        item.onclick = () => switchChat(chat.id);
+        container.appendChild(item);
+    });
+}
+
+function clearChats() {
+    if (!confirm("Delete all locally saved Tabby chats?")) return;
+
+    chats = [];
+    createChat();
+    saveLocalChats();
+    toast("Chat history cleared.");
+}
+
+function renderMessages() {
+    const container = document.getElementById("chatMessages");
+    const welcome = document.getElementById("chatWelcome");
+    container.replaceChildren();
+
+    const chat = getCurrentChat();
+    const messages = chat?.messages || [];
+
+    welcome.style.display = messages.length ? "none" : "block";
+
+    messages.forEach(msg => {
+        const row = document.createElement("div");
+        row.className = "message " + (msg.role === "user" ? "user" : "assistant");
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.textContent = msg.role === "user" ? "B" : "T";
+
+        const body = document.createElement("div");
+        body.className = "message-body";
+
+        const name = document.createElement("div");
+        name.className = "message-name";
+        name.textContent = msg.role === "user" ? "Boss" : "Tabby";
+
+        const text = document.createElement("div");
+        text.className = "message-text";
+        text.textContent = msg.content || "";
+
+        body.append(name, text);
+
+        if (msg.image) {
+            const img = document.createElement("img");
+            img.className = "message-image";
+            img.src = msg.image;
+            img.alt = "Image generated by Tabby";
+            img.loading = "lazy";
+            body.appendChild(img);
+        }
+
+        row.append(avatar, body);
+        container.appendChild(row);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function addMessage(role, content, image = null) {
+    const chat = getCurrentChat() || createChat();
+
+    chat.messages.push({
+        role,
+        content: String(content || ""),
+        image
+    });
+
+    if (role === "user" && chat.messages.filter(m => m.role === "user").length === 1) {
+        chat.title = String(content).slice(0,45) || "New conversation";
+    }
+
+    saveLocalChats();
+    renderMessages();
+    renderHistory();
+}
+
+async function sendMessage() {
+    const input = document.getElementById("chatInput");
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    const chat = getCurrentChat() || createChat();
+
+    addMessage("user", message);
+    input.value = "";
+
+    const button = document.getElementById("sendButton");
+    button.disabled = true;
+    button.textContent = "Thinking...";
+
+    try {
+        const history = chat.messages
+            .slice(0, -1)
+            .map(m => ({
+                role: m.role,
+                content: m.content
+            }));
+
+        const data = await apiFetch("/chat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                message,
+                history
+            })
+        });
+
+        const reply = data.reply || data.response || data.message || "I couldn't generate a response.";
+        addMessage("assistant", reply);
+
+        if (document.getElementById("voiceReply").value === "on") {
+            speak(reply);
+        }
+
+    } catch (error) {
+        addMessage("assistant", "I couldn't reach the Tabby server. Please check your connection or try again.\n\nDetails: " + error.message);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Send ➤";
+    }
+}
+
+document.getElementById("chatInput").addEventListener("keydown", event => {
+    if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+});
+
+/* IMAGE GENERATION */
+
+async function generateImage() {
+    const input = document.getElementById("chatInput");
+    const prompt = input.value.trim();
+
+    if (!prompt) {
+        toast("Describe the image you want first.");
+        input.focus();
+        return;
+    }
+
+    addMessage("user", "Generate an image: " + prompt);
+    input.value = "";
+
+    try {
+        const data = await apiFetch("/image", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({prompt})
+        });
+
+        const imageUrl = data.url || data.image_url || data.image;
+
+        if (!imageUrl) throw new Error("The server did not return an image URL.");
+
+        const chat = getCurrentChat();
+        chat.messages.push({
+            role: "assistant",
+            content: "Here is your generated image.",
+            image: imageUrl
+        });
+
+        saveLocalChats();
+        renderMessages();
+
+    } catch (error) {
+        addMessage("assistant", "Image generation failed: " + error.message);
+    }
+}
+
+/* LOCATION */
+
+function shareLocation() {
+    if (!navigator.geolocation) {
+        toast("Location is not supported by this browser.");
+        return;
+    }
+
+    toast("Requesting your location...");
+
+    navigator.geolocation.getCurrentPosition(
+        position => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const map = "https://www.google.com/maps?q=" + lat + "," + lon;
+
+            document.getElementById("chatInput").value =
+                "My current coordinates are " + lat + ", " + lon +
+                ". Help me with this location: " + map;
+        },
+        error => {
+            toast("Location permission was denied or unavailable.");
+        },
+        {enableHighAccuracy:true, timeout:15000}
+    );
+}
+
+/* VOICE */
+
+function loadVoices() {
+    if (!("speechSynthesis" in window)) return;
+
+    voices = speechSynthesis.getVoices();
+    const select = document.getElementById("voiceSelect");
+    select.replaceChildren();
+
+    voices.forEach((voice, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = voice.name + " (" + voice.lang + ")";
+        select.appendChild(option);
+    });
+
+    const saved = localStorage.getItem(STORAGE_VOICE);
+    if (saved !== null && voices[Number(saved)]) {
+        select.value = saved;
+    }
+}
+
+if ("speechSynthesis" in window) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+}
+
+function speak(text) {
+    if (!("speechSynthesis" in window)) return;
+
+    speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const selected = Number(document.getElementById("voiceSelect").value);
+
+    if (voices[selected]) utterance.voice = voices[selected];
+
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    speechSynthesis.speak(utterance);
+}
+
+function testVoice() {
+    speak("Hello Boss. I am Tabby, your personal AI assistant.");
+}
+
+document.getElementById("voiceSelect").addEventListener("change", event => {
+    localStorage.setItem(STORAGE_VOICE, event.target.value);
+});
+
+document.getElementById("voiceReply").addEventListener("change", event => {
+    localStorage.setItem(STORAGE_VOICE_REPLY, event.target.value);
+});
+
+function setupVoiceRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) return;
+
+    recognition = new SpeechRecognition();
+    recognition.lang = "en-NG";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onresult = event => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("chatInput").value = transcript;
+        toast("Voice captured.");
+    };
+
+    recognition.onerror = () => {
+        toast("Voice recognition failed. Check microphone permission.");
+    };
+
+    recognition.onend = () => {
+        listening = false;
+        document.getElementById("micButton").textContent = "🎙 Voice";
+    };
+}
+
+setupVoiceRecognition();
+
+function toggleMic() {
+    if (!recognition) {
+        toast("Voice recognition is not supported in this browser.");
+        return;
+    }
+
+    if (listening) {
+        recognition.stop();
+        return;
+    }
+
+    try {
+        recognition.start();
+        listening = true;
+        document.getElementById("micButton").textContent = "⏹ Stop";
+    } catch {
+        toast("Microphone is already active.");
+    }
+}
+
+/* AUTHENTICATION */
+
+function setAuthMode(mode) {
+    authMode = mode;
+
+    document.getElementById("loginTab").className =
+        mode === "login" ? "btn" : "btn secondary";
+
+    document.getElementById("registerTab").className =
+        mode === "register" ? "btn" : "btn secondary";
+
+    document.getElementById("nameField").style.display =
+        mode === "register" ? "block" : "none";
+
+    document.getElementById("authSubmit").textContent =
+        mode === "register" ? "Create Account" : "Login";
+
+    document.getElementById("authPassword").autocomplete =
+        mode === "register" ? "new-password" : "current-password";
+}
+
+document.getElementById("authForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    const name = document.getElementById("authName").value.trim();
+
+    const endpoint = authMode === "register"
+        ? "/api/auth/register"
+        : "/api/auth/login";
+
+    const payload = authMode === "register"
+        ? {email, password, name}
+        : {email, password};
+
+    const button = document.getElementById("authSubmit");
+    button.disabled = true;
+    button.textContent = "Please wait...";
+
+    try {
+        const data = await apiFetch(endpoint, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+
+        if (data.token) {
+            localStorage.setItem(STORAGE_TOKEN, data.token);
+        }
+
+        await checkAuth();
+        toast(authMode === "register" ? "Account created." : "Login successful.");
+
+    } catch (error) {
+        toast(error.message);
+    } finally {
+        button.disabled = false;
+        button.textContent = authMode === "register" ? "Create Account" : "Login";
+    }
+});
+
+async function checkAuth() {
+    if (!getToken()) {
+        currentUser = null;
+        updateAccountUI();
+        return;
+    }
+
+    try {
+        const data = await apiFetch("/api/auth/me");
+        currentUser = data.user || data;
+        updateAccountUI();
+    } catch {
+        localStorage.removeItem(STORAGE_TOKEN);
+        currentUser = null;
+        updateAccountUI();
+    }
+}
+
+function updateAccountUI() {
+    const loggedIn = !!currentUser;
+
+    document.getElementById("signedInPanel").style.display =
+        loggedIn ? "block" : "none";
+
+    document.getElementById("authPanel").style.display =
+        loggedIn ? "none" : "block";
+
+    if (loggedIn) {
+        const email = currentUser.email || "";
+        const name = currentUser.name || currentUser.username || email;
+
+        document.getElementById("accountDetails").textContent =
+            "Signed in as " + name + (email ? " (" + email + ")" : "");
+
+        document.getElementById("rideAccount").textContent = name;
+    } else {
+        document.getElementById("rideAccount").textContent = "Guest";
+    }
+}
+
+function logout() {
+    localStorage.removeItem(STORAGE_TOKEN);
+    currentUser = null;
+    motorcycles = [];
+    selectedVehicleId = null;
+
+    updateAccountUI();
+    renderVehicles();
+    toast("You have signed out.");
+}
+
+/* MOTORCYCLES */
+
+function openVehicleForm() {
+    if (!getToken()) {
+        toast("Please sign in before registering a motorcycle.");
+        showView("account");
+        return;
+    }
+
+    const name = prompt("Motorcycle name or model:");
+    if (!name?.trim()) return;
+
+    const vin = prompt("VIN or serial number (optional):") || "";
+    const model = prompt("Model (optional):") || "";
+    const yearText = prompt("Year (optional):") || "";
+
+    const year = yearText.trim() ? Number(yearText) : null;
+
+    if (yearText.trim() && (!Number.isInteger(year) || year < 1900 || year > 2100)) {
+        toast("Please enter a valid year.");
+        return;
+    }
+
+    registerMotorcycle({
+        name: name.trim(),
+        vin: vin.trim(),
+        model: model.trim(),
+        year
+    });
+}
+
+async function registerMotorcycle(vehicle) {
+    try {
+        await apiFetch("/api/motorcycles", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(vehicle)
+        });
+
+        toast("Motorcycle registered.");
+        await loadMotorcycles();
+
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function loadMotorcycles() {
+    if (!getToken()) {
+        motorcycles = [];
+        selectedVehicleId = null;
+        renderVehicles();
+        return;
+    }
+
+    try {
+        const data = await apiFetch("/api/motorcycles");
+        motorcycles = getArray(data, "motorcycles");
+
+        if (selectedVehicleId &&
+            !motorcycles.some(v => String(v.id) === String(selectedVehicleId))) {
+            selectedVehicleId = null;
+        }
+
+        if (!selectedVehicleId && motorcycles.length) {
+            selectedVehicleId = motorcycles[0].id;
+        }
+
+        renderVehicles();
+
+        if (selectedVehicleId) {
+            await refreshTelemetry();
+        }
+
+    } catch (error) {
+        toast("Could not load motorcycles: " + error.message);
+    }
+}
+
+function renderVehicles() {
+    const container = document.getElementById("vehicleList");
+    container.replaceChildren();
+
+    document.getElementById("vehicleCount").textContent = motorcycles.length;
+    document.getElementById("rideVehicles").textContent = motorcycles.length;
+
+    if (!getToken()) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Please sign in to view your motorcycles.";
+        container.appendChild(empty);
+        document.getElementById("selectedVehicleName").textContent = "None";
+        return;
+    }
+
+    if (!motorcycles.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No motorcycles registered yet. Use Register Motorcycle to add one.";
+        container.appendChild(empty);
+        document.getElementById("selectedVehicleName").textContent = "None";
+        return;
+    }
+
+    motorcycles.forEach(vehicle => {
+        const card = document.createElement("div");
+        card.className = "card vehicle-card" +
+            (String(vehicle.id) === String(selectedVehicleId) ? " selected" : "");
+
+        const title = document.createElement("div");
+        title.className = "vehicle-name";
+        title.textContent = vehicle.name || vehicle.model || "Motorcycle";
+
+        const meta = document.createElement("div");
+        meta.className = "vehicle-meta";
+        meta.textContent =
+            "Model: " + (vehicle.model || "Not specified") +
+            "\nYear: " + (vehicle.year || "Not specified") +
+            "\nVIN: " + (vehicle.vin || "Not specified");
+
+        card.append(title, meta);
+        card.onclick = () => selectVehicle(vehicle.id);
+
+        container.appendChild(card);
+    });
+
+    const selected = motorcycles.find(v => String(v.id) === String(selectedVehicleId));
+    document.getElementById("selectedVehicleName").textContent =
+        selected?.name || selected?.model || "None";
+}
+
+async function selectVehicle(id) {
+    selectedVehicleId = id;
+    renderVehicles();
+    await refreshTelemetry();
+    await loadPayments();
+}
+
+async function refreshTelemetry() {
+    if (!getToken() || !selectedVehicleId) {
+        resetTelemetry();
+        return;
+    }
+
+    try {
+        const data = await apiFetch(
+            "/api/motorcycles/" + encodeURIComponent(selectedVehicleId) + "/telemetry"
+        );
+
+        const readings = getArray(data, "telemetry");
+        const latest = data.latest || data.telemetry || readings[0] || data;
+
+        if (!latest || (!latest.battery_percentage &&
+            latest.speed == null && latest.range_km == null &&
+            latest.estimated_range == null)) {
+            resetTelemetry();
+            return;
+        }
+
+        const battery = latest.battery_percentage ?? latest.battery ?? "--";
+        const range = latest.range_km ?? latest.estimated_range ?? "--";
+        const speed = latest.speed_kmh ?? latest.speed ?? "--";
+        const diagnostics = latest.diagnostics || latest.status || "Received";
+
+        document.getElementById("teleBattery").textContent =
+            battery === "--" ? "--" : battery + "%";
+
+        document.getElementById("teleRange").textContent =
+            range === "--" ? "--" : range + " km";
+
+        document.getElementById("teleSpeed").textContent =
+            speed === "--" ? "--" : speed + " km/h";
+
+        document.getElementById("teleDiagnostics").textContent = diagnostics;
+
+        document.getElementById("batterySummary").textContent =
+            battery === "--" ? "--" : battery + "%";
+
+        document.getElementById("telemetryVehicle").textContent =
+            "Latest readings for " +
+            (motorcycles.find(v => String(v.id) === String(selectedVehicleId))?.name || "selected motorcycle");
+
+        document.getElementById("telemetryTime").textContent =
+            "Last reading: " + (latest.created_at || latest.timestamp || "Timestamp not supplied");
+
+    } catch (error) {
+        resetTelemetry();
+        toast("Telemetry unavailable: " + error.message);
+    }
+}
+
+function resetTelemetry() {
+    ["teleBattery","teleRange","teleSpeed","teleDiagnostics"].forEach(id => {
+        document.getElementById(id).textContent = "--";
+    });
+
+    document.getElementById("batterySummary").textContent = "--";
+    document.getElementById("telemetryTime").textContent =
+        "No live hardware readings received yet.";
+    document.getElementById("telemetryVehicle").textContent =
+        "Select a motorcycle with available telemetry.";
+}
+
+/* PAYMENTS */
+
+async function loadPayments() {
+    const container = document.getElementById("paymentList");
+
+    if (!getToken() || !selectedVehicleId) {
+        container.innerHTML = '<div class="empty">Sign in and select a motorcycle to view payment records.</div>';
+        document.getElementById("ridePayments").textContent = "0";
+        return;
+    }
+
+    try {
+        const data = await apiFetch(
+            "/api/motorcycles/" + encodeURIComponent(selectedVehicleId) + "/payments"
+        );
+
+        const payments = getArray(data, "payments");
+        document.getElementById("ridePayments").textContent = payments.length;
+        container.replaceChildren();
+
+        if (!payments.length) {
+            const empty = document.createElement("div");
+            empty.className = "empty";
+            empty.textContent = "No payment records found for this motorcycle.";
+            container.appendChild(empty);
+            return;
+        }
+
+        payments.forEach(payment => {
+            const row = document.createElement("div");
+            row.style.padding = "13px 0";
+            row.style.borderBottom = "1px solid var(--border)";
+
+            const heading = document.createElement("strong");
+            heading.textContent = payment.description || payment.reference || "Payment record";
+
+            const details = document.createElement("p");
+            details.className = "muted";
+            details.textContent =
+                "Amount: " + (payment.amount ?? "Not supplied") +
+                " · Status: " + (payment.status || "Pending");
+
+            row.append(heading, details);
+            container.appendChild(row);
+        });
+
+    } catch (error) {
+        container.replaceChildren();
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Could not load payments: " + error.message;
+        container.appendChild(empty);
+    }
+}
+
+/* SAVED MEMORY */
+
+async function loadMemories() {
+    const container = document.getElementById("memoryList");
+    container.replaceChildren();
+
+    if (!getToken()) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Please sign in to access saved memories.";
+        container.appendChild(empty);
+        return;
+    }
+
+    try {
+        const data = await apiFetch("/api/memory");
+        const memories = getArray(data, "memories");
+
+        if (!memories.length) {
+            const empty = document.createElement("div");
+            empty.className = "empty";
+            empty.textContent = "No saved memories yet.";
+            container.appendChild(empty);
+            return;
+        }
+
+        memories.forEach(memory => {
+            const row = document.createElement("div");
+            row.style.padding = "13px 0";
+            row.style.borderBottom = "1px solid var(--border)";
+
+            const text = document.createElement("p");
+            text.textContent = memory.content || memory.text || "";
+            text.style.fontSize = "12px";
+            text.style.lineHeight = "1.7";
+
+            const del = document.createElement("button");
+            del.className = "btn danger small";
+            del.style.marginTop = "10px";
+            del.textContent = "Delete";
+            del.onclick = () => deleteMemory(memory.id);
+
+            row.append(text, del);
+            container.appendChild(row);
+        });
+
+    } catch (error) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = error.message;
+        container.appendChild(empty);
+    }
+}
+
+async function saveMemory() {
+    if (!getToken()) {
+        toast("Please sign in first.");
+        showView("account");
+        return;
+    }
+
+    const content = document.getElementById("memoryInput").value.trim();
+
+    if (!content) {
+        toast("Enter something to remember.");
+        return;
+    }
+
+    try {
+        await apiFetch("/api/memory", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({content})
+        });
+
+        document.getElementById("memoryInput").value = "";
+        toast("Memory saved.");
+        loadMemories();
+
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function deleteMemory(id) {
+    if (!confirm("Delete this saved memory?")) return;
+
+    try {
+        await apiFetch("/api/memory/" + encodeURIComponent(id), {
+            method: "DELETE"
+        });
+
+        toast("Memory deleted.");
+        loadMemories();
+
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+/* INITIALISATION */
+
+async function initialise() {
+    loadLocalChats();
+
+    const savedReply = localStorage.getItem(STORAGE_VOICE_REPLY);
+    if (savedReply) {
+        document.getElementById("voiceReply").value = savedReply;
+    }
+
+    const savedVoice = localStorage.getItem(STORAGE_VOICE);
+    if (savedVoice !== null) {
+        document.getElementById("voiceSelect").value = savedVoice;
+    }
+
+    await checkAuth();
+
+    if (getToken()) {
+        await loadMotorcycles();
+    }
+}
+
+initialise();
 </script>
+
 </body>
 </html>
