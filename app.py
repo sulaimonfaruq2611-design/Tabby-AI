@@ -81,7 +81,7 @@ SYSTEM_PROMPT = """
 Your name is Tabby.
 
 You are an AI assistant created and owned by Faruq Sulaimon.
-Faruq Sulaimon is your creator and owner. He is a different person from you.
+Faruq Sulaimon is a different person from you.
 Never claim to be Faruq.
 
 Always call the owner Boss.
@@ -271,14 +271,14 @@ def init_db():
 
 
 # ============================================================
-# OWNER ACCOUNT
+# OWNER ACCOUNT — AUTOMATIC OWNER PROMOTION
 # ============================================================
 
 def bootstrap_owner():
 
-    if not OWNER_EMAIL or not OWNER_PASSWORD:
+    if not OWNER_EMAIL:
         app.logger.warning(
-            "Owner account not bootstrapped: OWNER_EMAIL or OWNER_PASSWORD missing."
+            "Owner account not bootstrapped: OWNER_EMAIL is missing."
         )
         return
 
@@ -291,14 +291,24 @@ def bootstrap_owner():
 
         if existing:
 
+            # Promote the existing registered account.
+            # OWNER_PASSWORD is not required for promotion.
             conn.execute("""
                 UPDATE users
                 SET role = 'owner', name = ?
                 WHERE id = ?
-            """, (OWNER_NAME, existing["id"]))
+            """, (
+                OWNER_NAME,
+                existing["id"]
+            ))
 
-        else:
+            app.logger.info(
+                "Existing account promoted to owner."
+            )
 
+        elif OWNER_PASSWORD:
+
+            # Create a new owner account only when a password exists.
             conn.execute("""
                 INSERT INTO users
                 (name, email, password_hash, role, created_at)
@@ -310,10 +320,18 @@ def bootstrap_owner():
                 int(time.time())
             ))
 
+            app.logger.info("New owner account created.")
+
+        else:
+
+            app.logger.warning(
+                "Owner account does not exist and OWNER_PASSWORD is missing."
+            )
+
         conn.commit()
 
 
-# Initialize the database only after all setup functions exist.
+# Initialize database after all setup functions exist.
 init_db()
 
 
@@ -322,6 +340,7 @@ init_db()
 # ============================================================
 
 def response_error(message, status=400):
+
     return jsonify({
         "success": False,
         "error": message
@@ -345,6 +364,7 @@ def current_user():
     token = header[7:].strip()
 
     try:
+
         payload = serializer.loads(
             token,
             max_age=60 * 60 * 24 * 7
@@ -1209,6 +1229,7 @@ def hardware_telemetry():
     charging = data.get("charging")
 
     if charging is not None:
+
         if charging not in (True, False, 0, 1):
             return response_error("Invalid charging status.")
 
