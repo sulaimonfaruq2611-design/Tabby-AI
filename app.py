@@ -2,7 +2,6 @@
 import os
 import re
 import json
-import time
 import uuid
 import sqlite3
 import logging
@@ -16,9 +15,21 @@ from datetime import datetime, timezone
 from functools import wraps
 
 import requests
-from flask import Flask, request, jsonify, g
+
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    g,
+    send_from_directory
+)
+
 from flask_cors import CORS
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from itsdangerous import (
+    URLSafeTimedSerializer,
+    BadSignature,
+    SignatureExpired
+)
 
 
 # ============================================================
@@ -28,28 +39,39 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 BASE_DIR = Path(__file__).resolve().parent
 
 DATABASE_PATH = Path(
-    os.environ.get("DATABASE_PATH", str(BASE_DIR / "tabby_memory.db"))
+    os.environ.get(
+        "DATABASE_PATH",
+        str(BASE_DIR / "tabby_memory.db")
+    )
 ).expanduser()
-
-DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "").strip()
 
 if not SECRET_KEY:
     SECRET_KEY = secrets.token_hex(32)
     logging.warning(
-        "SECRET_KEY is not configured. Set a permanent SECRET_KEY in Render."
+        "SECRET_KEY is missing. Configure a permanent SECRET_KEY in Render."
     )
 
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_API_KEY = os.environ.get(
+    "OPENROUTER_API_KEY", ""
+).strip()
+
 OPENROUTER_MODEL = os.environ.get(
     "OPENROUTER_MODEL", "openrouter/free"
 ).strip()
 
-OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "").strip().lower()
+OWNER_EMAIL = os.environ.get(
+    "OWNER_EMAIL", ""
+).strip().lower()
 
-BRAVE_SEARCH_API_KEY = os.environ.get("BRAVE_SEARCH_API_KEY", "").strip()
-GNEWS_API_KEY = os.environ.get("GNEWS_API_KEY", "").strip()
+BRAVE_SEARCH_API_KEY = os.environ.get(
+    "BRAVE_SEARCH_API_KEY", ""
+).strip()
+
+GNEWS_API_KEY = os.environ.get(
+    "GNEWS_API_KEY", ""
+).strip()
 
 CLOUDFLARE_ACCOUNT_ID = os.environ.get(
     "CLOUDFLARE_ACCOUNT_ID", ""
@@ -59,7 +81,9 @@ CLOUDFLARE_API_TOKEN = os.environ.get(
     "CLOUDFLARE_API_TOKEN", ""
 ).strip()
 
-DEVICE_INGEST_KEY = os.environ.get("DEVICE_INGEST_KEY", "").strip()
+DEVICE_INGEST_KEY = os.environ.get(
+    "DEVICE_INGEST_KEY", ""
+).strip()
 
 LIVE_SEARCH_ENABLED = (
     os.environ.get("LIVE_SEARCH_ENABLED", "true").lower()
@@ -85,17 +109,30 @@ app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 app.config["JSON_SORT_KEYS"] = False
 
 allowed_origins = [
-    origin.strip()
-    for origin in os.environ.get("FRONTEND_ORIGINS", "*").split(",")
-    if origin.strip()
+    item.strip()
+    for item in os.environ.get(
+        "FRONTEND_ORIGINS", "*"
+    ).split(",")
+    if item.strip()
 ]
 
 CORS(
     app,
-    resources={r"/*": {"origins": allowed_origins or ["*"]}},
+    resources={
+        r"/*": {
+            "origins": allowed_origins or ["*"]
+        }
+    },
     supports_credentials=False,
-    allow_headers=["Content-Type", "Authorization"],
-    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Device-Key"
+    ],
+    methods=[
+        "GET", "POST", "PUT",
+        "PATCH", "DELETE", "OPTIONS"
+    ]
 )
 
 serializer = URLSafeTimedSerializer(
@@ -158,7 +195,10 @@ def verify_password(password, stored):
             260000
         ).hex()
 
-        return secrets.compare_digest(actual, expected)
+        return secrets.compare_digest(
+            actual,
+            expected
+        )
 
     except (ValueError, AttributeError):
         return False
@@ -172,8 +212,224 @@ def create_token(user):
     })
 
 
+# ============================================================
+# DATABASE
+# ============================================================
+
+DATABASE_READY = False
+DATABASE_ERROR = None
+
+
+def init_db():
+    global DATABASE_READY, DATABASE_ERROR
+
+    DATABASE_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    connection = sqlite3.connect(
+        str(DATABASE_PATH),
+        timeout=30
+    )
+
+    try:
+        connection.execute("PRAGMA journal_mode = WAL")
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA busy_timeout = 30000")
+
+        connection.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'customer',
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL DEFAULT 'New Chat',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(conversation_id)
+                REFERENCES conversations(id)
+                ON DELETE CASCADE,
+            FOREIGN KEY(user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS memories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE,
+            UNIQUE(user_id, content)
+        );
+
+        CREATE TABLE IF NOT EXISTS motorcycles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_id INTEGER NOT NULL,
+            assigned_user_id INTEGER,
+            name TEXT NOT NULL,
+            model TEXT,
+            registration_number TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(owner_id)
+                REFERENCES users(id),
+            FOREIGN KEY(assigned_user_id)
+                REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS telemetry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            motorcycle_id INTEGER NOT NULL,
+            battery_level REAL,
+            speed REAL,
+            extra_data TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(motorcycle_id)
+                REFERENCES motorcycles(id)
+                ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            motorcycle_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            currency TEXT NOT NULL DEFAULT 'NGN',
+            reference TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(motorcycle_id)
+                REFERENCES motorcycles(id),
+            FOREIGN KEY(user_id)
+                REFERENCES users(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_conversations_user
+        ON conversations(user_id);
+
+        CREATE INDEX IF NOT EXISTS idx_messages_conversation
+        ON messages(conversation_id);
+
+        CREATE INDEX IF NOT EXISTS idx_memories_user
+        ON memories(user_id);
+
+        CREATE INDEX IF NOT EXISTS idx_motorcycles_owner
+        ON motorcycles(owner_id);
+
+        CREATE INDEX IF NOT EXISTS idx_motorcycles_assigned
+        ON motorcycles(assigned_user_id);
+
+        CREATE INDEX IF NOT EXISTS idx_telemetry_motorcycle
+        ON telemetry(motorcycle_id);
+
+        CREATE INDEX IF NOT EXISTS idx_payments_motorcycle
+        ON payments(motorcycle_id);
+        """)
+
+        connection.commit()
+
+        DATABASE_READY = True
+        DATABASE_ERROR = None
+
+        logger.info("Tabby database initialized successfully.")
+
+    except Exception as error:
+        connection.rollback()
+
+        DATABASE_READY = False
+        DATABASE_ERROR = str(error)
+
+        logger.exception("Database initialization failed")
+        raise
+
+    finally:
+        connection.close()
+
+
+def ensure_database():
+    if not DATABASE_READY:
+        try:
+            init_db()
+        except Exception:
+            logger.exception("Database recovery attempt failed")
+            return False
+
+    return DATABASE_READY
+
+
+def get_db():
+    if not ensure_database():
+        raise RuntimeError(
+            "Tabby database is currently unavailable."
+        )
+
+    if "db" not in g:
+        connection = sqlite3.connect(
+            str(DATABASE_PATH),
+            timeout=30
+        )
+
+        connection.row_factory = sqlite3.Row
+
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA busy_timeout = 30000")
+
+        g.db = connection
+
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(exception=None):
+    db = g.pop("db", None)
+
+    if db is not None:
+        if exception:
+            db.rollback()
+
+        db.close()
+
+
+# Initialize database without preventing the server from starting.
+try:
+    init_db()
+except Exception:
+    logger.exception(
+        "Tabby started with database unavailable. "
+        "The application will retry initialization."
+    )
+
+
+# ============================================================
+# AUTHENTICATION HELPERS
+# ============================================================
+
 def get_authenticated_user():
-    authorization = request.headers.get("Authorization", "").strip()
+    authorization = request.headers.get(
+        "Authorization", ""
+    ).strip()
 
     if not authorization.startswith("Bearer "):
         return None
@@ -204,10 +460,7 @@ def get_authenticated_user():
                 (user_id,)
             ).fetchone()
 
-        if not user:
-            return None
-
-        return dict(user)
+        return dict(user) if user else None
 
     except (BadSignature, SignatureExpired):
         return None
@@ -253,173 +506,6 @@ def current_user():
     return getattr(g, "current_user", None)
 
 
-# ============================================================
-# DATABASE
-# ============================================================
-
-def get_db():
-    if "db" not in g:
-        connection = sqlite3.connect(
-            str(DATABASE_PATH),
-            timeout=30
-        )
-
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA busy_timeout = 30000")
-
-        g.db = connection
-
-    return g.db
-
-
-@app.teardown_appcontext
-def close_db(exception=None):
-    db = g.pop("db", None)
-
-    if db is not None:
-        if exception:
-            db.rollback()
-
-        db.close()
-
-
-def init_db():
-    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    connection = sqlite3.connect(
-        str(DATABASE_PATH),
-        timeout=30
-    )
-
-    connection.execute("PRAGMA journal_mode = WAL")
-    connection.execute("PRAGMA foreign_keys = ON")
-
-    try:
-        connection.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'customer',
-            created_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS conversations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL DEFAULT 'New Chat',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            conversation_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(conversation_id) REFERENCES conversations(id)
-                ON DELETE CASCADE,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-                ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS memories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, content)
-        );
-
-        CREATE TABLE IF NOT EXISTS motorcycles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            owner_id INTEGER NOT NULL,
-            assigned_user_id INTEGER,
-            name TEXT NOT NULL,
-            model TEXT,
-            registration_number TEXT,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(owner_id) REFERENCES users(id),
-            FOREIGN KEY(assigned_user_id) REFERENCES users(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS telemetry (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            motorcycle_id INTEGER NOT NULL,
-            battery_level REAL,
-            speed REAL,
-            extra_data TEXT,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(motorcycle_id) REFERENCES motorcycles(id)
-                ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            motorcycle_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            amount REAL NOT NULL,
-            currency TEXT NOT NULL DEFAULT 'NGN',
-            reference TEXT NOT NULL UNIQUE,
-            status TEXT NOT NULL DEFAULT 'pending',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(motorcycle_id) REFERENCES motorcycles(id),
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_conversations_user
-        ON conversations(user_id);
-
-        CREATE INDEX IF NOT EXISTS idx_messages_conversation
-        ON messages(conversation_id);
-
-        CREATE INDEX IF NOT EXISTS idx_memories_user
-        ON memories(user_id);
-
-        CREATE INDEX IF NOT EXISTS idx_motorcycles_owner
-        ON motorcycles(owner_id);
-
-        CREATE INDEX IF NOT EXISTS idx_motorcycles_assigned
-        ON motorcycles(assigned_user_id);
-
-        CREATE INDEX IF NOT EXISTS idx_telemetry_motorcycle
-        ON telemetry(motorcycle_id);
-
-        CREATE INDEX IF NOT EXISTS idx_payments_motorcycle
-        ON payments(motorcycle_id);
-        """)
-
-        connection.commit()
-
-        logger.info("Tabby database initialized successfully.")
-
-    except Exception:
-        connection.rollback()
-        logger.exception("Database initialization failed")
-        raise
-
-    finally:
-        connection.close()
-
-
-try:
-    init_db()
-    DATABASE_READY = True
-except Exception:
-    DATABASE_READY = False
-    logger.exception("Tabby started without a ready database.")
-
-
-# ============================================================
-# USER HELPERS
-# ============================================================
-
 def user_public(user):
     return {
         "id": user["id"],
@@ -429,6 +515,10 @@ def user_public(user):
         "created_at": user["created_at"]
     }
 
+
+# ============================================================
+# USER REGISTRATION
+# ============================================================
 
 def find_user_by_email(email):
     with get_db() as db:
@@ -447,13 +537,22 @@ def register_user(name, email, password):
     if not name:
         return None, "Please enter your name."
 
-    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+    if not re.match(
+        r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+        email
+    ):
         return None, "Enter a valid email address."
 
     if len(password) < 8:
         return None, "Password must contain at least 8 characters."
 
-    role = "owner" if OWNER_EMAIL and email == OWNER_EMAIL else "customer"
+    # Never allow users to choose their own role.
+    # Set OWNER_EMAIL in Render to identify the owner.
+    role = (
+        "owner"
+        if OWNER_EMAIL and email == OWNER_EMAIL
+        else "customer"
+    )
 
     try:
         with get_db() as db:
@@ -523,12 +622,18 @@ def register():
 def login():
     data = get_json()
 
-    email = clean_text(data.get("email"), 254).lower()
+    email = clean_text(
+        data.get("email"), 254
+    ).lower()
+
     password = data.get("password", "")
 
     user = find_user_by_email(email)
 
-    if not user or not verify_password(password, user["password_hash"]):
+    if not user or not verify_password(
+        password,
+        user["password_hash"]
+    ):
         return json_response({
             "error": "Invalid email or password."
         }, 401)
@@ -570,7 +675,8 @@ def openrouter_chat(messages, temperature=0.7):
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
         "HTTP-Referer": os.environ.get(
-            "APP_URL", "https://tabby-ai.onrender.com"
+            "APP_URL",
+            "https://tabby-ai.onrender.com"
         ),
         "X-Title": "Tabby AI"
     }
@@ -598,23 +704,33 @@ def openrouter_chat(messages, temperature=0.7):
             )
 
             if response.status_code == 429:
-                last_error = "The AI service is currently rate limited."
+                last_error = (
+                    "The AI service is currently rate limited."
+                )
                 continue
 
             if response.status_code >= 400:
                 logger.error(
-                    "OpenRouter returned %s: %s",
+                    "OpenRouter error %s: %s",
                     response.status_code,
                     response.text[:1000]
                 )
-                last_error = "The AI service returned an error."
+
+                last_error = (
+                    "The AI service returned an error. "
+                    "Check your OpenRouter account and model."
+                )
                 continue
 
             data = response.json()
             choices = data.get("choices", [])
 
             if choices:
-                content = choices[0].get("message", {}).get("content", "")
+                content = (
+                    choices[0]
+                    .get("message", {})
+                    .get("content", "")
+                )
 
                 if isinstance(content, list):
                     content = "\n".join(
@@ -628,10 +744,12 @@ def openrouter_chat(messages, temperature=0.7):
                 if content:
                     return content, None
 
-            last_error = "The AI service returned an empty response."
+            last_error = (
+                "The AI service returned an empty response."
+            )
 
         except requests.RequestException:
-            logger.exception("OpenRouter request failed")
+            logger.exception("OpenRouter connection failed")
             last_error = "Could not connect to the AI service."
 
         except Exception:
@@ -641,7 +759,11 @@ def openrouter_chat(messages, temperature=0.7):
     return None, last_error
 
 
-def tabby_system_prompt(user, memories=None, search_context=""):
+def tabby_system_prompt(
+    user,
+    memories=None,
+    search_context=""
+):
     memories = memories or []
 
     memory_text = "\n".join(
@@ -649,41 +771,51 @@ def tabby_system_prompt(user, memories=None, search_context=""):
     )
 
     prompt = f"""
-You are Tabby, a friendly, intelligent personal AI assistant.
+You are Tabby, a friendly and intelligent personal AI assistant.
 
 Your owner is Faruq. Address him naturally and respectfully.
-Your voice should be warm, conversational, confident and helpful.
+Your communication style should be warm, friendly,
+conversational, confident and helpful.
+
 Do not sound robotic or unnecessarily formal.
 
-You can help with research, coding, business, planning,
-technology, automotive systems and everyday questions.
+You can help with:
+- Research and current information
+- Programming and software development
+- Business and financial planning
+- Technology and innovation
+- Automotive systems
+- Everyday questions
+- Learning and education
 
-Be honest about what you know. Never claim to have performed
-an action that you did not actually perform.
+Be honest about what you know.
 
-When discussing current events, distinguish verified information
-from uncertainty. Cite useful source URLs when search results
-are supplied to you.
+Never claim to have performed an action you did not perform.
 
-The authenticated account is:
+When discussing current events, distinguish verified
+information from uncertainty.
+
+When live search results are provided, use them where relevant
+and include useful source URLs.
+
+Authenticated account:
 Name: {user.get("name")}
 Role: {user.get("role")}
 
-Relevant saved memories:
+Saved memories:
 {memory_text or "No saved memories available."}
 
 Live information:
 {search_context or "No live search results were retrieved."}
 
-Use the live information when it is relevant to the question.
-Do not invent news articles, sources, URLs, prices or statistics.
+Never invent news, sources, URLs, prices or statistics.
 """
 
     return prompt.strip()
 
 
 # ============================================================
-# LIVE WEB SEARCH AND NEWS
+# LIVE WEB SEARCH
 # ============================================================
 
 def brave_search(query, maximum=5):
@@ -706,19 +838,22 @@ def brave_search(query, maximum=5):
 
         response.raise_for_status()
 
-        results = response.json().get("web", {}).get("results", [])
+        results = response.json().get(
+            "web", {}
+        ).get("results", [])
 
         return [
             {
                 "title": item.get("title", ""),
                 "url": item.get("url", ""),
-                "snippet": item.get("description", "")
+                "snippet": item.get("description", ""),
+                "source": "Brave Search"
             }
             for item in results[:maximum]
         ]
 
     except Exception:
-        logger.exception("Brave search failed")
+        logger.exception("Brave Search failed")
         return []
 
 
@@ -735,13 +870,14 @@ def duckduckgo_search(query, maximum=5):
             {
                 "title": item.get("title", ""),
                 "url": item.get("href", ""),
-                "snippet": item.get("body", "")
+                "snippet": item.get("body", ""),
+                "source": "DuckDuckGo"
             }
             for item in results
         ]
 
     except ImportError:
-        logger.warning("DDGS package is unavailable.")
+        logger.warning("DDGS package unavailable.")
 
     except Exception:
         logger.exception("DuckDuckGo search failed")
@@ -765,6 +901,10 @@ def live_search(query, maximum=5):
 
     return results[:maximum]
 
+
+# ============================================================
+# LIVE NEWS
+# ============================================================
 
 def google_news_search(query, maximum=8):
     try:
@@ -796,7 +936,7 @@ def google_news_search(query, maximum=8):
         return results
 
     except Exception:
-        logger.exception("Google News RSS failed")
+        logger.exception("Google News failed")
         return []
 
 
@@ -826,13 +966,15 @@ def gnews_search(query, maximum=8):
                 "url": item.get("url", ""),
                 "snippet": item.get("description", ""),
                 "published_at": item.get("publishedAt", ""),
-                "source": item.get("source", {}).get("name", "GNews")
+                "source": item.get(
+                    "source", {}
+                ).get("name", "GNews")
             }
             for item in articles[:maximum]
         ]
 
     except Exception:
-        logger.exception("GNews request failed")
+        logger.exception("GNews failed")
         return []
 
 
@@ -869,11 +1011,13 @@ def should_search_web(message):
     text = message.lower()
 
     keywords = (
-        "latest", "today", "current", "currently", "right now",
-        "breaking", "news", "recent", "this week", "yesterday",
-        "price today", "exchange rate", "live score", "who won",
-        "2026", "2025", "weather", "search the web", "look online",
-        "find online", "what happened"
+        "latest", "today", "current", "currently",
+        "right now", "breaking", "news", "recent",
+        "this week", "yesterday", "price today",
+        "exchange rate", "live score", "who won",
+        "2026", "2025", "weather", "search the web",
+        "look online", "find online", "what happened",
+        "latest update", "current price", "recently"
     )
 
     return any(keyword in text for keyword in keywords)
@@ -899,20 +1043,30 @@ def get_user_memories(user_id, maximum=30):
     return [row["content"] for row in rows]
 
 
-def get_or_create_conversation(user_id, conversation_id, message):
+def get_or_create_conversation(
+    user_id,
+    conversation_id,
+    message
+):
     with get_db() as db:
         if conversation_id:
-            conversation = db.execute(
-                """
-                SELECT id
-                FROM conversations
-                WHERE id = ? AND user_id = ?
-                """,
-                (conversation_id, user_id)
-            ).fetchone()
+            try:
+                conversation_id = int(conversation_id)
+            except (ValueError, TypeError):
+                conversation_id = None
 
-            if conversation:
-                return conversation["id"]
+            if conversation_id:
+                conversation = db.execute(
+                    """
+                    SELECT id
+                    FROM conversations
+                    WHERE id = ? AND user_id = ?
+                    """,
+                    (conversation_id, user_id)
+                ).fetchone()
+
+                if conversation:
+                    return conversation["id"]
 
         title = clean_text(message, 55) or "New Chat"
 
@@ -926,10 +1080,16 @@ def get_or_create_conversation(user_id, conversation_id, message):
         )
 
         db.commit()
+
         return cursor.lastrowid
 
 
-def save_message(conversation_id, user_id, role, content):
+def save_message(
+    conversation_id,
+    user_id,
+    role,
+    content
+):
     with get_db() as db:
         db.execute(
             """
@@ -972,17 +1132,15 @@ def get_chat_history(conversation_id, maximum=20):
         ).fetchall()
 
     return [
-        {"role": row["role"], "content": row["content"]}
+        {
+            "role": row["role"],
+            "content": row["content"]
+        }
         for row in reversed(rows)
     ]
 
 
 def maybe_save_memory(user_id, message):
-    """
-    Lightweight automatic memory extraction.
-    Only saves explicit remember/preference statements.
-    """
-
     text = clean_text(message, MAX_MEMORY_LENGTH)
     lowered = text.lower()
 
@@ -1002,7 +1160,7 @@ def maybe_save_memory(user_id, message):
 
     with get_db() as db:
         try:
-            db.execute(
+            cursor = db.execute(
                 """
                 INSERT OR IGNORE INTO memories
                 (user_id, content, created_at)
@@ -1012,7 +1170,8 @@ def maybe_save_memory(user_id, message):
             )
 
             db.commit()
-            return True
+
+            return cursor.rowcount > 0
 
         except Exception:
             logger.exception("Automatic memory saving failed")
@@ -1032,11 +1191,6 @@ def chat():
             "error": "Please enter a message."
         }, 400)
 
-    if len(message) > MAX_MESSAGE_LENGTH:
-        return json_response({
-            "error": "Your message is too long."
-        }, 400)
-
     user = current_user()
 
     conversation_id = get_or_create_conversation(
@@ -1052,14 +1206,17 @@ def chat():
         message
     )
 
-    web_search_setting = data.get("web_search", None)
+    web_search_setting = data.get("web_search")
 
     search_results = []
 
     if web_search_setting is True:
         search_results = live_search(message, 6)
 
-    elif web_search_setting is None and should_search_web(message):
+    elif (
+        web_search_setting is None
+        and should_search_web(message)
+    ):
         search_results = live_search(message, 6)
 
     memories = get_user_memories(user["id"])
@@ -1073,7 +1230,10 @@ def chat():
     history = get_chat_history(conversation_id)
 
     messages = [
-        {"role": "system", "content": system_message}
+        {
+            "role": "system",
+            "content": system_message
+        }
     ] + history
 
     reply, error = openrouter_chat(messages)
@@ -1091,7 +1251,10 @@ def chat():
         reply
     )
 
-    memory_saved = maybe_save_memory(user["id"], message)
+    memory_saved = maybe_save_memory(
+        user["id"],
+        message
+    )
 
     return json_response({
         "reply": reply,
@@ -1124,7 +1287,9 @@ def list_conversations():
         ).fetchall()
 
     return json_response({
-        "conversations": [dict(row) for row in rows]
+        "conversations": [
+            dict(row) for row in rows
+        ]
     })
 
 
@@ -1132,7 +1297,11 @@ def list_conversations():
 @owner_required
 def create_conversation():
     data = get_json()
-    title = clean_text(data.get("title"), 100) or "New Chat"
+
+    title = clean_text(
+        data.get("title"), 100
+    ) or "New Chat"
+
     now = utc_now()
 
     with get_db() as db:
@@ -1142,7 +1311,12 @@ def create_conversation():
             (user_id, title, created_at, updated_at)
             VALUES (?, ?, ?, ?)
             """,
-            (current_user()["id"], title, now, now)
+            (
+                current_user()["id"],
+                title,
+                now,
+                now
+            )
         )
 
         db.commit()
@@ -1153,7 +1327,10 @@ def create_conversation():
     }, 201)
 
 
-@app.route("/api/conversations/<int:conversation_id>", methods=["GET"])
+@app.route(
+    "/api/conversations/<int:conversation_id>",
+    methods=["GET"]
+)
 @owner_required
 def get_conversation(conversation_id):
     user_id = current_user()["id"]
@@ -1185,11 +1362,16 @@ def get_conversation(conversation_id):
 
     return json_response({
         "conversation": dict(conversation),
-        "messages": [dict(row) for row in messages]
+        "messages": [
+            dict(row) for row in messages
+        ]
     })
 
 
-@app.route("/api/conversations/<int:conversation_id>", methods=["DELETE"])
+@app.route(
+    "/api/conversations/<int:conversation_id>",
+    methods=["DELETE"]
+)
 @owner_required
 def delete_conversation(conversation_id):
     with get_db() as db:
@@ -1198,7 +1380,10 @@ def delete_conversation(conversation_id):
             DELETE FROM conversations
             WHERE id = ? AND user_id = ?
             """,
-            (conversation_id, current_user()["id"])
+            (
+                conversation_id,
+                current_user()["id"]
+            )
         )
 
         db.commit()
@@ -1208,7 +1393,9 @@ def delete_conversation(conversation_id):
             "error": "Conversation not found."
         }, 404)
 
-    return json_response({"message": "Conversation deleted."})
+    return json_response({
+        "message": "Conversation deleted."
+    })
 
 
 # ============================================================
@@ -1218,7 +1405,10 @@ def delete_conversation(conversation_id):
 @app.route("/api/news", methods=["GET"])
 @auth_required
 def news():
-    query = clean_text(request.args.get("q", "latest news"), 300)
+    query = clean_text(
+        request.args.get("q", "latest news"),
+        300
+    )
 
     results = live_news(query)
 
@@ -1231,20 +1421,31 @@ def news():
 
 
 # ============================================================
-# IMAGE GENERATION
+# CLOUDFLARE IMAGE GENERATION
 # ============================================================
 
 @app.route("/api/image", methods=["POST"])
 @app.route("/image", methods=["POST"])
 @auth_required
 def generate_image():
-    if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+
+    if (
+        not CLOUDFLARE_ACCOUNT_ID
+        or not CLOUDFLARE_API_TOKEN
+    ):
         return json_response({
-            "error": "Image generation is not configured. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN."
+            "error": (
+                "Image generation is not configured. "
+                "Set CLOUDFLARE_ACCOUNT_ID and "
+                "CLOUDFLARE_API_TOKEN in Render."
+            )
         }, 503)
 
     data = get_json()
-    prompt = clean_text(data.get("prompt"), 2000)
+
+    prompt = clean_text(
+        data.get("prompt"), 2000
+    )
 
     if not prompt:
         return json_response({
@@ -1261,40 +1462,90 @@ def generate_image():
         response = requests.post(
             endpoint,
             headers={
-                "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}"
+                "Authorization": (
+                    f"Bearer {CLOUDFLARE_API_TOKEN}"
+                )
             },
             json={
-                "prompt": prompt
+                "prompt": prompt,
+                "steps": 4
             },
             timeout=120
         )
 
         if response.status_code >= 400:
             logger.error(
-                "Cloudflare image error: %s",
+                "Cloudflare image error %s: %s",
+                response.status_code,
                 response.text[:1000]
             )
 
             return json_response({
-                "error": "The image service could not generate your image.",
-                "details": response.text[:500]
+                "error": (
+                    "The image service could not "
+                    "generate your image."
+                )
             }, 502)
 
         content_type = response.headers.get(
-            "Content-Type", "image/png"
-        )
+            "Content-Type", ""
+        ).lower()
 
-        image_bytes = response.content
+        image_bytes = None
+        image_mime = "image/png"
+
+        # Cloudflare may return a JSON object containing
+        # a base64-encoded image.
+        if "application/json" in content_type:
+            result = response.json()
+
+            image_data = result.get(
+                "result", {}
+            )
+
+            if isinstance(image_data, dict):
+                image_data = (
+                    image_data.get("image")
+                    or image_data.get("images")
+                )
+
+            if isinstance(image_data, list):
+                image_data = (
+                    image_data[0]
+                    if image_data else None
+                )
+
+            if isinstance(image_data, str):
+                image_data = re.sub(
+                    r"^data:image/[^;]+;base64,",
+                    "",
+                    image_data
+                )
+
+                image_bytes = base64.b64decode(
+                    image_data
+                )
+
+        else:
+            image_bytes = response.content
+
+            if content_type.startswith("image/"):
+                image_mime = content_type.split(";")[0]
 
         if not image_bytes:
             return json_response({
-                "error": "The image service returned an empty image."
+                "error": (
+                    "The image service returned "
+                    "an empty image."
+                )
             }, 502)
 
-        encoded = base64.b64encode(image_bytes).decode("ascii")
+        encoded = base64.b64encode(
+            image_bytes
+        ).decode("ascii")
 
         image_url = (
-            f"data:{content_type};base64,{encoded}"
+            f"data:{image_mime};base64,{encoded}"
         )
 
         return json_response({
@@ -1305,14 +1556,20 @@ def generate_image():
 
     except requests.Timeout:
         return json_response({
-            "error": "Image generation timed out. Please try again."
+            "error": (
+                "Image generation timed out. "
+                "Please try again."
+            )
         }, 504)
 
     except Exception:
-        logger.exception("Image generation failed")
+        logger.exception("Cloudflare image generation failed")
 
         return json_response({
-            "error": "An image generation error occurred."
+            "error": (
+                "An image generation error occurred. "
+                "Please check your Cloudflare configuration."
+            )
         }, 500)
 
 
@@ -1335,7 +1592,9 @@ def list_memories():
         ).fetchall()
 
     return json_response({
-        "memories": [dict(row) for row in rows]
+        "memories": [
+            dict(row) for row in rows
+        ]
     })
 
 
@@ -1343,7 +1602,11 @@ def list_memories():
 @owner_required
 def create_memory():
     data = get_json()
-    content = clean_text(data.get("content"), MAX_MEMORY_LENGTH)
+
+    content = clean_text(
+        data.get("content"),
+        MAX_MEMORY_LENGTH
+    )
 
     if not content:
         return json_response({
@@ -1357,7 +1620,11 @@ def create_memory():
             (user_id, content, created_at)
             VALUES (?, ?, ?)
             """,
-            (current_user()["id"], content, utc_now())
+            (
+                current_user()["id"],
+                content,
+                utc_now()
+            )
         )
 
         db.commit()
@@ -1368,7 +1635,10 @@ def create_memory():
     }, 201)
 
 
-@app.route("/api/memory/<int:memory_id>", methods=["DELETE"])
+@app.route(
+    "/api/memory/<int:memory_id>",
+    methods=["DELETE"]
+)
 @owner_required
 def remove_memory(memory_id):
     with get_db() as db:
@@ -1377,7 +1647,10 @@ def remove_memory(memory_id):
             DELETE FROM memories
             WHERE id = ? AND user_id = ?
             """,
-            (memory_id, current_user()["id"])
+            (
+                memory_id,
+                current_user()["id"]
+            )
         )
 
         db.commit()
@@ -1400,7 +1673,10 @@ def remove_memory(memory_id):
 def automotive_status():
     return json_response({
         "status": "awaiting_hardware_connection",
-        "message": "Tabby Automotive backend is online. Awaiting hardware connection.",
+        "message": (
+            "Tabby Automotive backend is online. "
+            "Awaiting hardware connection."
+        ),
         "hardware_connected": False,
         "timestamp": utc_now()
     })
@@ -1431,7 +1707,9 @@ def user_can_access_motorcycle(user, motorcycle):
     if user["role"] == "owner":
         return motorcycle["owner_id"] == user["id"]
 
-    return motorcycle["assigned_user_id"] == user["id"]
+    return (
+        motorcycle["assigned_user_id"] == user["id"]
+    )
 
 
 def motorcycle_public(vehicle):
@@ -1466,6 +1744,7 @@ def list_motorcycles():
                 """,
                 (user["id"],)
             ).fetchall()
+
         else:
             rows = db.execute(
                 """
@@ -1492,6 +1771,7 @@ def create_motorcycle():
 
     name = clean_text(data.get("name"), 100)
     model = clean_text(data.get("model"), 120)
+
     registration = clean_text(
         data.get("registration_number"), 80
     )
@@ -1531,8 +1811,12 @@ def create_motorcycle():
             """
             INSERT INTO motorcycles
             (
-                owner_id, assigned_user_id, name,
-                model, registration_number, created_at
+                owner_id,
+                assigned_user_id,
+                name,
+                model,
+                registration_number,
+                created_at
             )
             VALUES (?, ?, ?, ?, ?, ?)
             """,
@@ -1559,7 +1843,10 @@ def create_motorcycle():
     }, 201)
 
 
-@app.route("/api/motorcycles/<int:motorcycle_id>", methods=["DELETE"])
+@app.route(
+    "/api/motorcycles/<int:motorcycle_id>",
+    methods=["DELETE"]
+)
 @owner_required
 def delete_motorcycle(motorcycle_id):
     with get_db() as db:
@@ -1568,7 +1855,10 @@ def delete_motorcycle(motorcycle_id):
             DELETE FROM motorcycles
             WHERE id = ? AND owner_id = ?
             """,
-            (motorcycle_id, current_user()["id"])
+            (
+                motorcycle_id,
+                current_user()["id"]
+            )
         )
 
         db.commit()
@@ -1588,7 +1878,9 @@ def delete_motorcycle(motorcycle_id):
 # ============================================================
 
 @app.route("/api/telemetry", methods=["POST"])
+@app.route("/api/telemetry/ingest", methods=["POST"])
 def ingest_telemetry():
+
     if not DEVICE_INGEST_KEY:
         return json_response({
             "error": "Telemetry ingestion is not configured."
@@ -1598,7 +1890,7 @@ def ingest_telemetry():
         "X-Device-Key", ""
     ).strip()
 
-    if not secrets.compare_digest(
+    if not supplied_key or not secrets.compare_digest(
         supplied_key,
         DEVICE_INGEST_KEY
     ):
@@ -1622,12 +1914,19 @@ def ingest_telemetry():
             "error": "Motorcycle not found."
         }, 404)
 
-    battery = data.get("battery_level")
-    speed = data.get("speed")
-
     try:
-        battery = float(battery) if battery is not None else None
-        speed = float(speed) if speed is not None else None
+        battery = (
+            float(data["battery_level"])
+            if data.get("battery_level") is not None
+            else None
+        )
+
+        speed = (
+            float(data["speed"])
+            if data.get("speed") is not None
+            else None
+        )
+
     except (ValueError, TypeError):
         return json_response({
             "error": "Invalid telemetry values."
@@ -1644,7 +1943,13 @@ def ingest_telemetry():
         cursor = db.execute(
             """
             INSERT INTO telemetry
-            (motorcycle_id, battery_level, speed, extra_data, created_at)
+            (
+                motorcycle_id,
+                battery_level,
+                speed,
+                extra_data,
+                created_at
+            )
             VALUES (?, ?, ?, ?, ?)
             """,
             (
@@ -1673,7 +1978,8 @@ def motorcycle_telemetry(motorcycle_id):
     motorcycle = get_motorcycle(motorcycle_id)
 
     if not user_can_access_motorcycle(
-        current_user(), motorcycle
+        current_user(),
+        motorcycle
     ):
         return json_response({
             "error": "Motorcycle not found or access denied."
@@ -1695,7 +2001,9 @@ def motorcycle_telemetry(motorcycle_id):
 
     for row in rows:
         item = dict(row)
-        item["extra_data"] = safe_json(item["extra_data"])
+        item["extra_data"] = safe_json(
+            item["extra_data"]
+        )
         readings.append(item)
 
     return json_response({
@@ -1722,7 +2030,9 @@ def list_customers():
         ).fetchall()
 
     return json_response({
-        "customers": [dict(row) for row in rows]
+        "customers": [
+            dict(row) for row in rows
+        ]
     })
 
 
@@ -1754,18 +2064,21 @@ def list_payments():
                 """
                 SELECT p.*
                 FROM payments p
-                JOIN motorcycles m ON m.id = p.motorcycle_id
+                JOIN motorcycles m
+                    ON m.id = p.motorcycle_id
                 WHERE m.owner_id = ?
                 ORDER BY p.id DESC
                 """,
                 (user["id"],)
             ).fetchall()
+
         else:
             rows = db.execute(
                 """
                 SELECT p.*
                 FROM payments p
-                JOIN motorcycles m ON m.id = p.motorcycle_id
+                JOIN motorcycles m
+                    ON m.id = p.motorcycle_id
                 WHERE m.assigned_user_id = ?
                 ORDER BY p.id DESC
                 """,
@@ -1810,21 +2123,29 @@ def create_payment():
     motorcycle = get_motorcycle(motorcycle_id)
 
     if not user_can_access_motorcycle(
-        current_user(), motorcycle
+        current_user(),
+        motorcycle
     ):
         return json_response({
             "error": "Motorcycle not found."
         }, 404)
 
-    reference = "TABBY-" + uuid.uuid4().hex[:16].upper()
+    reference = (
+        "TABBY-" + uuid.uuid4().hex[:16].upper()
+    )
 
     with get_db() as db:
         cursor = db.execute(
             """
             INSERT INTO payments
             (
-                motorcycle_id, user_id, amount,
-                currency, reference, status, created_at
+                motorcycle_id,
+                user_id,
+                amount,
+                currency,
+                reference,
+                status,
+                created_at
             )
             VALUES (?, ?, ?, ?, ?, 'pending', ?)
             """,
@@ -1853,46 +2174,57 @@ def create_payment():
 
 
 # ============================================================
-# HEALTH AND DIAGNOSTICS
+# FRONTEND HOMEPAGE
 # ============================================================
 
 @app.route("/", methods=["GET"])
 def index():
-    return json_response({
-        "name": "Tabby AI",
-        "description": "AI and Automotive Intelligence Platform",
-        "status": "online",
-        "version": "2.1",
-        "health": "/health"
-    })
+    # Serve the real frontend instead of returning JSON.
+    return send_from_directory(
+        str(BASE_DIR),
+        "index.html"
+    )
 
+
+# ============================================================
+# HEALTH AND DIAGNOSTICS
+# ============================================================
 
 @app.route("/health", methods=["GET"])
 @app.route("/api/health", methods=["GET"])
 def health():
-    database_status = "ready"
 
-    try:
-        with get_db() as db:
-            db.execute("SELECT 1").fetchone()
-    except Exception:
-        database_status = "unavailable"
-        logger.exception("Health check database query failed")
+    database_status = (
+        "ready"
+        if ensure_database()
+        else "unavailable"
+    )
 
     return json_response({
-        "status": "ok" if database_status == "ready" else "degraded",
+        "status": (
+            "ok"
+            if database_status == "ready"
+            else "degraded"
+        ),
         "service": "Tabby AI",
         "database": database_status,
         "ai_configured": bool(OPENROUTER_API_KEY),
         "live_search_enabled": LIVE_SEARCH_ENABLED,
-        "brave_search_configured": bool(BRAVE_SEARCH_API_KEY),
+        "brave_search_configured": bool(
+            BRAVE_SEARCH_API_KEY
+        ),
         "news_configured": bool(GNEWS_API_KEY),
         "image_generation_configured": bool(
-            CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN
+            CLOUDFLARE_ACCOUNT_ID
+            and CLOUDFLARE_API_TOKEN
         ),
         "timestamp": utc_now()
     }, 200 if database_status == "ready" else 503)
 
+
+# ============================================================
+# ERROR HANDLERS
+# ============================================================
 
 @app.errorhandler(404)
 def not_found(error):
