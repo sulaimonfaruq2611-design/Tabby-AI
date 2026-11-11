@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,61 +9,31 @@
 
 <style>
 :root {
-  --bg:#080d19;
-  --panel:#101a2b;
-  --panel2:#142137;
-  --line:#263650;
-  --text:#edf3ff;
-  --muted:#91a2bd;
-  --blue:#4d8dff;
-  --cyan:#35d5e8;
-  --green:#42d69b;
-  --red:#ff647c;
-  --radius:16px;
+  --bg:#080d19;--panel:#101a2b;--panel2:#142137;
+  --line:#263650;--text:#edf3ff;--muted:#91a2bd;
+  --blue:#4d8dff;--cyan:#35d5e8;--green:#42d69b;
+  --red:#ff647c;--radius:16px;
 }
 *{box-sizing:border-box}
-body{
-  margin:0;background:var(--bg);color:var(--text);
-  font-family:Inter,Segoe UI,Arial,sans-serif;
-  min-height:100vh;
-}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
 .app{display:flex;min-height:100vh}
-.sidebar{
-  width:250px;background:#0b1322;border-right:1px solid var(--line);
-  padding:22px 15px;display:flex;flex-direction:column;gap:20px;
-  flex-shrink:0;
-}
+.sidebar{width:250px;background:#0b1322;border-right:1px solid var(--line);padding:22px 15px;display:flex;flex-direction:column;gap:20px;flex-shrink:0}
 .brand{display:flex;align-items:center;gap:12px;padding:5px 8px}
-.brand-icon{
-  width:43px;height:43px;border-radius:14px;
-  display:grid;place-items:center;font-size:22px;
-  background:linear-gradient(135deg,#267cff,#22c6d9);
-  box-shadow:0 8px 25px #267cff44;
-}
+.brand-icon{width:43px;height:43px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:linear-gradient(135deg,#267cff,#22c6d9);box-shadow:0 8px 25px #267cff44}
 .brand h1{font-size:20px;margin:0;letter-spacing:1px}
 .brand small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
 .nav-label{color:#657995;font-size:10px;font-weight:800;letter-spacing:1.5px;padding:5px 10px}
 .nav{display:flex;flex-direction:column;gap:6px}
-.nav button{
-  background:transparent;border:0;color:#aebed4;text-align:left;
-  padding:12px;border-radius:11px;display:flex;gap:12px;align-items:center;
-}
+.nav button{background:transparent;border:0;color:#aebed4;text-align:left;padding:12px;border-radius:11px;display:flex;gap:12px;align-items:center;width:100%}
 .nav button:hover,.nav button.active{background:#192b45;color:white}
 .nav button.active{box-shadow:inset 3px 0 var(--blue)}
 .sidebar-bottom{margin-top:auto}
-.connection{
-  background:#101d30;border:1px solid var(--line);padding:13px;
-  border-radius:12px;font-size:12px;color:var(--muted);
-}
+.connection{background:#101d30;border:1px solid var(--line);padding:13px;border-radius:12px;font-size:12px;color:var(--muted)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:7px}
 .main{flex:1;min-width:0}
-.topbar{
-  height:72px;border-bottom:1px solid var(--line);display:flex;
-  align-items:center;justify-content:space-between;padding:0 26px;
-  background:#0b1322;
-}
+.topbar{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:#0b1322}
 .topbar h2{font-size:17px;margin:0}
 .top-actions{display:flex;align-items:center;gap:12px}
 .user-chip{font-size:12px;color:var(--muted)}
@@ -75,28 +46,16 @@ button{cursor:pointer}
 .heading p{color:var(--muted);margin:0;font-size:13px;line-height:1.6}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
 .grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
-.card{
-  background:var(--panel);border:1px solid var(--line);
-  border-radius:var(--radius);padding:18px;min-width:0;
-}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;min-width:0}
 .card h3{font-size:14px;margin:0 0 15px}
 .stat-label{color:var(--muted);font-size:12px}
 .stat-value{font-size:26px;font-weight:750;margin-top:9px}
 .stat-note{font-size:11px;color:var(--muted);margin-top:7px}
-.primary{
-  background:linear-gradient(135deg,#347fff,#2863d8);
-  color:white;border:0;border-radius:10px;padding:11px 16px;font-weight:700;
-}
-.secondary{
-  background:#1a2b44;color:#dce9ff;border:1px solid var(--line);
-  border-radius:10px;padding:10px 14px;
-}
+.primary{background:linear-gradient(135deg,#347fff,#2863d8);color:white;border:0;border-radius:10px;padding:11px 16px;font-weight:700}
+.secondary{background:#1a2b44;color:#dce9ff;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .danger{background:#3a1b2b;color:#ff9aac;border:1px solid #693047}
 .small-btn{padding:7px 10px;font-size:11px}
-input,textarea,select{
-  background:#091323;border:1px solid var(--line);color:var(--text);
-  border-radius:10px;padding:12px;width:100%;outline:none;
-}
+input,textarea,select{background:#091323;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:12px;width:100%;outline:none}
 input:focus,textarea:focus,select:focus{border-color:var(--blue)}
 label{font-size:12px;color:var(--muted);display:block;margin-bottom:7px}
 .field{margin-bottom:14px}
@@ -105,46 +64,25 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:7px}
 .row{display:flex;gap:10px;align-items:center}
 .between{justify-content:space-between}
 .wrap{flex-wrap:wrap}
-.pill{
-  font-size:10px;padding:5px 9px;border-radius:20px;
-  background:#173b34;color:#6be4b3;display:inline-block;
-}
+.pill{font-size:10px;padding:5px 9px;border-radius:20px;background:#173b34;color:#6be4b3;display:inline-block}
 .pill.blue{background:#19345b;color:#8dbaff}
 .pill.gray{background:#263247;color:#b7c5d9}
 .list{display:flex;flex-direction:column;gap:9px}
-.list-item{
-  padding:12px;background:#0b1627;border:1px solid var(--line);
-  border-radius:11px;display:flex;justify-content:space-between;
-  align-items:center;gap:10px;
-}
+.list-item{padding:12px;background:#0b1627;border:1px solid var(--line);border-radius:11px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .list-item strong{font-size:13px}
 .list-item small{display:block;color:var(--muted);margin-top:5px;font-size:11px}
 .empty{color:var(--muted);font-size:13px;text-align:center;padding:25px 10px}
-.chat-layout{
-  display:grid;grid-template-columns:230px minmax(0,1fr);
-  height:min(72vh,760px);min-height:500px;gap:14px;
-}
+.chat-layout{display:grid;grid-template-columns:230px minmax(0,1fr);height:min(72vh,760px);min-height:500px;gap:14px}
 .chat-history{overflow:auto}
-.chat-history button{
-  display:block;width:100%;text-align:left;background:transparent;
-  border:0;color:#b7c6dc;padding:11px;border-radius:9px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;
-}
+.chat-history button{display:block;width:100%;text-align:left;background:transparent;border:0;color:#b7c6dc;padding:11px;border-radius:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
 .chat-history button:hover{background:#1a2b44}
-.chat-panel{
-  border:1px solid var(--line);border-radius:16px;
-  display:flex;flex-direction:column;min-width:0;background:#0c1627;
-}
+.chat-panel{border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;min-width:0;background:#0c1627}
 .chat-messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:15px}
 .message{max-width:85%;padding:13px 15px;border-radius:14px;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
 .message.user{align-self:flex-end;background:#214b88}
 .message.assistant{align-self:flex-start;background:#17263b;border:1px solid #263650}
 .chat-welcome{text-align:center;margin:auto;max-width:440px;padding:20px}
-.chat-welcome .orb{
-  width:65px;height:65px;border-radius:22px;margin:0 auto 18px;
-  background:linear-gradient(135deg,#347fff,#27d3d5);
-  display:grid;place-items:center;font-size:29px;
-}
+.chat-welcome .orb{width:65px;height:65px;border-radius:22px;margin:0 auto 18px;background:linear-gradient(135deg,#347fff,#27d3d5);display:grid;place-items:center;font-size:29px}
 .chat-welcome h2{margin:0 0 8px}
 .chat-welcome p{font-size:13px;color:var(--muted);line-height:1.6}
 .chat-input-area{padding:14px;border-top:1px solid var(--line)}
@@ -152,23 +90,16 @@ label{font-size:12px;color:var(--muted);display:block;margin-bottom:7px}
 .chat-input-row textarea{resize:none;min-height:48px;max-height:130px}
 .chat-tools{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
 .chat-tools button{font-size:11px}
+.generated-image{max-width:100%;width:min(520px,100%);border-radius:12px;border:1px solid var(--line);display:block;margin-top:10px}
 .vehicle-card{cursor:pointer}
 .vehicle-card.selected{border-color:var(--blue);background:#12223a}
-.vehicle-card h3{margin-bottom:7px}
-.metric{
-  background:#0a1526;border:1px solid var(--line);
-  padding:13px;border-radius:12px;
-}
+.metric{background:#0a1526;border:1px solid var(--line);padding:13px;border-radius:12px}
 .metric strong{font-size:22px;display:block;margin-top:8px}
 .metric small{font-size:11px;color:var(--muted)}
 .auth-wrap{max-width:430px;margin:6vh auto}
 .auth-card{background:var(--panel);border:1px solid var(--line);padding:25px;border-radius:18px}
 .auth-card h2{margin:0 0 8px}
-.toast{
-  position:fixed;bottom:22px;right:22px;z-index:99;
-  padding:13px 17px;background:#19344d;border:1px solid #31577b;
-  border-radius:11px;font-size:13px;display:none;max-width:90vw;
-}
+.toast{position:fixed;bottom:22px;right:22px;z-index:99;padding:13px 17px;background:#19344d;border:1px solid #31577b;border-radius:11px;font-size:13px;display:none;max-width:90vw}
 .toast.show{display:block}
 .table-wrap{overflow:auto}
 table{border-collapse:collapse;width:100%;font-size:12px}
@@ -176,24 +107,18 @@ th,td{padding:12px;text-align:left;border-bottom:1px solid var(--line)}
 th{color:var(--muted);font-weight:600}
 pre{white-space:pre-wrap;overflow-wrap:anywhere}
 footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
-@media(max-width:900px){
-  .sidebar{width:215px}
-  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-}
+@media(max-width:900px){.sidebar{width:215px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){
-  .sidebar{
-    position:fixed;z-index:20;left:-270px;top:0;bottom:0;
-    width:250px;transition:left .2s;box-shadow:10px 0 30px #0008;
-  }
-  .sidebar.open{left:0}
-  .mobile-menu{display:inline-block}
-  .topbar{padding:0 15px;height:62px}
-  .content{padding:16px}
-  .grid,.grid.two{grid-template-columns:1fr}
-  .chat-layout{grid-template-columns:1fr;height:72vh;min-height:480px}
-  .chat-history{display:none}
-  .message{max-width:95%}
-  .user-chip{display:none}
+.sidebar{position:fixed;z-index:20;left:-270px;top:0;bottom:0;width:250px;transition:left .2s;box-shadow:10px 0 30px #0008}
+.sidebar.open{left:0}
+.mobile-menu{display:inline-block}
+.topbar{padding:0 15px;height:62px}
+.content{padding:16px}
+.grid,.grid.two{grid-template-columns:1fr}
+.chat-layout{grid-template-columns:1fr;height:72vh;min-height:480px}
+.chat-history{display:none}
+.message{max-width:95%}
+.user-chip{display:none}
 }
 </style>
 </head>
@@ -204,10 +129,7 @@ footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
 <aside class="sidebar" id="sidebar">
   <div class="brand">
     <div class="brand-icon">✦</div>
-    <div>
-      <h1>TABBY</h1>
-      <small>AI & AUTOMOTIVE INTELLIGENCE</small>
-    </div>
+    <div><h1>TABBY</h1><small>AI & AUTOMOTIVE INTELLIGENCE</small></div>
   </div>
 
   <div>
@@ -251,7 +173,6 @@ footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
 
 <div class="content">
 
-<!-- OVERVIEW -->
 <section class="page active" id="page-home">
   <div class="heading">
     <h2 id="welcomeTitle">Welcome to Tabby</h2>
@@ -266,27 +187,12 @@ footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
 
   <div id="ownerHome" class="hidden">
     <div class="grid">
-      <div class="card">
-        <div class="stat-label">Motorcycles in system</div>
-        <div class="stat-value" id="homeVehicleCount">—</div>
-        <div class="stat-note">Registered fleet</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Registered accounts</div>
-        <div class="stat-value" id="homeCustomerCount">—</div>
-        <div class="stat-note">Owner and customer accounts</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Automotive connection</div>
-        <div class="stat-value" style="font-size:19px" id="homeHardware">Checking...</div>
-        <div class="stat-note">Hardware integration status</div>
-      </div>
+      <div class="card"><div class="stat-label">Motorcycles in system</div><div class="stat-value" id="homeVehicleCount">—</div><div class="stat-note">Registered fleet</div></div>
+      <div class="card"><div class="stat-label">Registered accounts</div><div class="stat-value" id="homeCustomerCount">—</div><div class="stat-note">Owner and customer accounts</div></div>
+      <div class="card"><div class="stat-label">Automotive connection</div><div class="stat-value" style="font-size:19px" id="homeHardware">Checking...</div><div class="stat-note">Hardware integration status</div></div>
     </div>
     <div class="card" style="margin-top:16px">
-      <div class="row between">
-        <h3>Owner workspace</h3>
-        <span class="pill">OWNER ACCESS</span>
-      </div>
+      <div class="row between"><h3>Owner workspace</h3><span class="pill">OWNER ACCESS</span></div>
       <p class="muted">Manage Tabby AI, motorcycle records, customer assignments and fleet information.</p>
       <div class="row wrap">
         <button class="primary" onclick="showPage('chat')">Open Tabby AI</button>
@@ -297,36 +203,20 @@ footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
   </div>
 
   <div id="customerHome" class="hidden">
-    <div class="card">
-      <span class="pill blue">TABBY RIDE CUSTOMER</span>
-      <h3 style="margin-top:15px">Welcome to Tabby Ride</h3>
-      <p class="muted">View your assigned motorcycle, available telemetry and payment records.</p>
-      <button class="primary" onclick="showPage('ride')">Open my ride dashboard</button>
-    </div>
+    <div class="card"><span class="pill blue">TABBY RIDE CUSTOMER</span><h3 style="margin-top:15px">Welcome to Tabby Ride</h3><p class="muted">View your assigned motorcycle, available telemetry and payment records.</p><button class="primary" onclick="showPage('ride')">Open my ride dashboard</button></div>
   </div>
 </section>
 
-<!-- TABBY AI -->
 <section class="page" id="page-chat">
-  <div class="heading">
-    <h2>Tabby AI</h2>
-    <p>Your private AI workspace. Conversations are stored in your account.</p>
-  </div>
+  <div class="heading"><h2>Tabby AI</h2><p>Your private AI workspace. Conversations are stored in your account.</p></div>
   <div class="chat-layout">
     <div class="card chat-history">
-      <div class="row between">
-        <h3>Conversations</h3>
-        <button class="primary small-btn" onclick="newConversation()">＋</button>
-      </div>
+      <div class="row between"><h3>Conversations</h3><button class="primary small-btn" onclick="newConversation()">＋</button></div>
       <div id="historyList" class="list"></div>
     </div>
     <div class="chat-panel">
       <div class="chat-messages" id="chatMessages">
-        <div class="chat-welcome" id="chatWelcome">
-          <div class="orb">✦</div>
-          <h2>I'm Tabby.</h2>
-          <p>Your AI assistant, built to help you think, plan, create and build.</p>
-        </div>
+        <div class="chat-welcome" id="chatWelcome"><div class="orb">✦</div><h2>I'm Tabby.</h2><p>Your AI assistant, built to help you think, plan, create and build.</p></div>
       </div>
       <div class="chat-input-area">
         <div class="chat-input-row">
@@ -336,52 +226,35 @@ footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
         <div class="chat-tools">
           <button class="secondary small-btn" onclick="startVoiceInput()">🎙 Voice input</button>
           <button class="secondary small-btn" id="voiceReply" onclick="toggleVoiceReply()">🔊 Voice replies: Off</button>
+          <button class="secondary small-btn" id="voiceCallButton" onclick="toggleVoiceCall()">☎ Start voice conversation</button>
           <button class="secondary small-btn" onclick="generateImage()">▧ Generate image</button>
+          <button class="secondary small-btn" onclick="toggleWebSearch()">🌐 <span id="webSearchLabel">Web search: Auto</span></button>
         </div>
+        <p class="muted" id="voiceStatus" style="font-size:11px;margin:8px 2px 0">Voice conversation uses your browser's speech recognition and speech synthesis.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- AUTOMOTIVE OWNER DASHBOARD -->
 <section class="page" id="page-automotive">
-  <div class="heading">
-    <h2>Automotive Intelligence</h2>
-    <p>Owner fleet management and motorcycle administration.</p>
-  </div>
+  <div class="heading"><h2>Automotive Intelligence</h2><p>Owner fleet management and motorcycle administration.</p></div>
   <div class="grid">
-    <div class="card">
-      <div class="stat-label">Registered motorcycles</div>
-      <div class="stat-value" id="vehicleCount">0</div>
-    </div>
-    <div class="card">
-      <div class="stat-label">Hardware status</div>
-      <div class="stat-value" style="font-size:18px" id="hardwareStatus">Checking...</div>
-    </div>
-    <div class="card">
-      <div class="stat-label">Selected motorcycle</div>
-      <div class="stat-value" style="font-size:18px" id="selectedVehicleName">None</div>
-    </div>
+    <div class="card"><div class="stat-label">Registered motorcycles</div><div class="stat-value" id="vehicleCount">0</div></div>
+    <div class="card"><div class="stat-label">Hardware status</div><div class="stat-value" style="font-size:18px" id="hardwareStatus">Checking...</div></div>
+    <div class="card"><div class="stat-label">Selected motorcycle</div><div class="stat-value" style="font-size:18px" id="selectedVehicleName">None</div></div>
   </div>
 
   <div class="grid two" style="margin-top:16px">
     <div class="card">
-      <div class="row between">
-        <h3>Motorcycle fleet</h3>
-        <button class="primary small-btn" onclick="openVehicleForm()">＋ Add motorcycle</button>
-      </div>
+      <div class="row between"><h3>Motorcycle fleet</h3><button class="primary small-btn" onclick="openVehicleForm()">＋ Add motorcycle</button></div>
       <div id="vehicleList" class="list"><div class="empty">Loading motorcycles...</div></div>
     </div>
     <div class="card">
       <h3>Register a motorcycle</h3>
       <div id="vehicleForm" class="hidden">
         <div class="field"><label>Motorcycle name</label><input id="vehicleName" placeholder="e.g. Tabby One"></div>
-        <div class="field"><label>Brand</label><input id="vehicleBrand" placeholder="Brand"></div>
-        <div class="field"><label>Model</label><input id="vehicleModel" placeholder="Model"></div>
+        <div class="field"><label>Model / brand</label><input id="vehicleModel" placeholder="Brand and model"></div>
         <div class="field"><label>Registration number</label><input id="vehicleRegistration"></div>
-        <div class="field"><label>Vehicle identifier</label><input id="vehicleIdentifier"></div>
-        <div class="field"><label>Battery capacity (Wh)</label><input id="vehicleCapacity" type="number" min="0"></div>
-        <div class="field"><label>Hardware ID</label><input id="vehicleHardware"></div>
         <div class="field"><label>Assign to customer (optional)</label><select id="vehicleCustomer"><option value="">Assign to owner</option></select></div>
         <button class="primary" onclick="createVehicle()">Save motorcycle</button>
         <button class="secondary" onclick="closeVehicleForm()">Cancel</button>
@@ -391,10 +264,7 @@ footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
   </div>
 
   <div class="card" style="margin-top:16px">
-    <div class="row between wrap">
-      <h3>Live telemetry</h3>
-      <button class="secondary small-btn" onclick="loadSelectedTelemetry()">Refresh readings</button>
-    </div>
+    <div class="row between wrap"><h3>Live telemetry</h3><button class="secondary small-btn" onclick="loadSelectedTelemetry()">Refresh readings</button></div>
     <div class="grid">
       <div class="metric"><small>Battery</small><strong id="teleBattery">—</strong></div>
       <div class="metric"><small>Estimated range</small><strong id="teleRange">—</strong></div>
@@ -405,34 +275,18 @@ footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
   </div>
 
   <div class="card" style="margin-top:16px">
-    <div class="row between">
-      <h3>Payment records</h3>
-      <button class="secondary small-btn" onclick="recordPayment()">＋ Record pending payment</button>
-    </div>
+    <div class="row between"><h3>Payment records</h3><button class="secondary small-btn" onclick="recordPayment()">＋ Record pending payment</button></div>
     <div id="paymentList" class="list"><div class="empty">Select a motorcycle to view payments.</div></div>
   </div>
 
-  <div class="card" style="margin-top:16px">
-    <h3>Customer accounts</h3>
-    <div id="customerList" class="list"><div class="empty">Customer list will appear here.</div></div>
-  </div>
+  <div class="card" style="margin-top:16px"><h3>Customer accounts</h3><div id="customerList" class="list"><div class="empty">Customer list will appear here.</div></div></div>
 </section>
 
-<!-- CUSTOMER RIDE DASHBOARD -->
 <section class="page" id="page-ride">
-  <div class="heading">
-    <h2>Tabby Ride</h2>
-    <p>Your motorcycle information and available ride data.</p>
-  </div>
-  <div class="card">
-    <h3>My motorcycles</h3>
-    <div id="rideVehicleList" class="list"></div>
-  </div>
+  <div class="heading"><h2>Tabby Ride</h2><p>Your motorcycle information and available ride data.</p></div>
+  <div class="card"><h3>My motorcycles</h3><div id="rideVehicleList" class="list"></div></div>
   <div class="card" style="margin-top:16px">
-    <div class="row between">
-      <h3>My motorcycle telemetry</h3>
-      <button class="secondary small-btn" onclick="loadSelectedTelemetry()">Refresh</button>
-    </div>
+    <div class="row between"><h3>My motorcycle telemetry</h3><button class="secondary small-btn" onclick="loadSelectedTelemetry()">Refresh</button></div>
     <div class="grid">
       <div class="metric"><small>Battery</small><strong id="rideBattery">—</strong></div>
       <div class="metric"><small>Estimated range</small><strong id="rideRange">—</strong></div>
@@ -441,91 +295,51 @@ footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
     <p class="muted" id="rideDiagnostics" style="font-size:12px;margin-top:14px">No telemetry available.</p>
     <p class="muted" id="rideTelemetryTime" style="font-size:11px"></p>
   </div>
-  <div class="card" style="margin-top:16px">
-    <h3>My payment records</h3>
-    <div id="ridePayments" class="list"></div>
-  </div>
+  <div class="card" style="margin-top:16px"><h3>My payment records</h3><div id="ridePayments" class="list"></div></div>
 </section>
 
-<!-- ACCOUNT -->
 <section class="page" id="page-account">
-  <div class="heading">
-    <h2>Account & Login</h2>
-    <p>Sign in to your Tabby account or create a customer account.</p>
-  </div>
+  <div class="heading"><h2>Account & Login</h2><p>Sign in to your Tabby account or create a customer account.</p></div>
   <div class="auth-wrap" id="authPanel">
     <div class="auth-card">
-      <div class="row" style="margin-bottom:20px">
-        <button class="secondary" id="loginTab" onclick="setAuthMode('login')">Sign in</button>
-        <button class="secondary" id="registerTab" onclick="setAuthMode('register')">Register</button>
-      </div>
+      <div class="row" style="margin-bottom:20px"><button class="secondary" id="loginTab" onclick="setAuthMode('login')">Sign in</button><button class="secondary" id="registerTab" onclick="setAuthMode('register')">Register</button></div>
       <h2 id="authTitle">Welcome back</h2>
       <p class="muted" id="authDescription" style="font-size:12px">Sign in to continue.</p>
       <form id="authForm" onsubmit="submitAuth(event)">
-        <div class="field hidden" id="nameField">
-          <label>Your name</label>
-          <input id="authName" autocomplete="name" placeholder="Full name">
-        </div>
-        <div class="field">
-          <label>Email address</label>
-          <input id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com">
-        </div>
-        <div class="field">
-          <label>Password</label>
-          <input id="authPassword" type="password" autocomplete="current-password" minlength="10" required placeholder="At least 10 characters">
-        </div>
+        <div class="field hidden" id="nameField"><label>Your name</label><input id="authName" autocomplete="name" placeholder="Full name"></div>
+        <div class="field"><label>Email address</label><input id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com"></div>
+        <div class="field"><label>Password</label><input id="authPassword" type="password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters"></div>
         <button class="primary" id="authSubmit" type="submit" style="width:100%">Sign in</button>
       </form>
       <p class="muted" style="font-size:11px;margin-top:14px">Customer accounts access Tabby Ride. The owner account is configured securely on the server.</p>
     </div>
   </div>
-
   <div id="signedInPanel" class="card hidden">
-    <div class="row between">
-      <h3>Account details</h3>
-      <button class="secondary danger" onclick="logout()">Sign out</button>
-    </div>
+    <div class="row between"><h3>Account details</h3><button class="secondary danger" onclick="logout()">Sign out</button></div>
     <div id="accountDetails" class="muted"></div>
   </div>
 </section>
 
-<!-- MEMORY -->
 <section class="page" id="page-memory">
-  <div class="heading">
-    <h2>Saved Memories</h2>
-    <p>Private owner memory used to give Tabby useful long-term context.</p>
-  </div>
+  <div class="heading"><h2>Saved Memories</h2><p>Private owner memory used to give Tabby useful long-term context. Tabby can also save useful information automatically.</p></div>
   <div class="card">
-    <div class="field">
-      <label>New memory</label>
-      <textarea id="memoryInput" rows="3" placeholder="What should Tabby remember?"></textarea>
-    </div>
+    <div class="field"><label>New memory</label><textarea id="memoryInput" rows="3" placeholder="What should Tabby remember?"></textarea></div>
     <button class="primary" onclick="saveMemory()">Save memory</button>
   </div>
-  <div class="card" style="margin-top:16px">
-    <h3>Your saved memories</h3>
-    <div id="memoryList" class="list"></div>
-  </div>
+  <div class="card" style="margin-top:16px"><h3>Your saved memories</h3><div id="memoryList" class="list"></div></div>
 </section>
 
-<!-- SETTINGS -->
 <section class="page" id="page-settings">
-  <div class="heading">
-    <h2>Settings</h2>
-    <p>Manage your Tabby interface preferences.</p>
-  </div>
+  <div class="heading"><h2>Settings</h2><p>Manage your Tabby interface preferences.</p></div>
   <div class="card">
     <h3>Voice preferences</h3>
-    <div class="field">
-      <label>Speech voice</label>
-      <select id="voiceSelect"></select>
-    </div>
+    <div class="field"><label>Speech voice</label><select id="voiceSelect"></select></div>
     <button class="secondary" onclick="testVoice()">Test voice</button>
     <button class="secondary" onclick="toggleVoiceReply()">Toggle voice replies</button>
   </div>
   <div class="card" style="margin-top:15px">
     <h3>System information</h3>
-    <p class="muted" style="font-size:12px">Tabby web interface · Flask API · Owner/customer access control.</p>
+    <p class="muted" style="font-size:12px">Tabby web interface · Flask API · OpenRouter AI · Cloudflare FLUX image generation.</p>
     <button class="secondary" onclick="checkHealth()">Check server connection</button>
     <p id="healthResult" class="muted" style="font-size:12px"></p>
   </div>
@@ -550,7 +364,12 @@ let motorcycles = [];
 let customers = [];
 let authMode = "login";
 let voiceReplyEnabled = false;
+let voiceCallActive = false;
+let recognition = null;
 let speechVoices = [];
+let webSearchMode = "auto";
+let recognitionTranscript = "";
+let isSending = false;
 
 const $ = id => document.getElementById(id);
 
@@ -564,9 +383,7 @@ function toast(message) {
 
 async function apiFetch(path, options = {}) {
   const headers = {...(options.headers || {})};
-  if (options.body && !headers["Content-Type"]) {
-    headers["Content-Type"] = "application/json";
-  }
+  if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = "Bearer " + token;
 
   const response = await fetch(API + path, {...options, headers});
@@ -574,8 +391,7 @@ async function apiFetch(path, options = {}) {
   try { data = await response.json(); } catch (_) {}
 
   if (!response.ok) {
-    const message = data.error || data.message || `Request failed (${response.status})`;
-    const error = new Error(message);
+    const error = new Error(data.error || data.message || `Request failed (${response.status})`);
     error.status = response.status;
     throw error;
   }
@@ -595,6 +411,7 @@ function showPage(name) {
     automotive: currentUser?.role === "owner",
     ride: !!currentUser
   };
+
   if (name in allowed && !allowed[name]) {
     toast("This section is not available for your account.");
     name = currentUser ? "home" : "account";
@@ -608,9 +425,8 @@ function showPage(name) {
   });
 
   const titles = {
-    home:"Overview", chat:"Tabby AI", automotive:"Automotive Dashboard",
-    ride:"Tabby Ride", account:"Account & Login",
-    memory:"Saved Memories", settings:"Settings"
+    home:"Overview",chat:"Tabby AI",automotive:"Automotive Dashboard",
+    ride:"Tabby Ride",account:"Account & Login",memory:"Saved Memories",settings:"Settings"
   };
   $("topTitle").textContent = titles[name] || "Tabby";
   $("sidebar").classList.remove("open");
@@ -641,7 +457,6 @@ function updateInterface() {
   $("guestHome").classList.toggle("hidden", !!currentUser);
   $("ownerHome").classList.toggle("hidden", !owner);
   $("customerHome").classList.toggle("hidden", !customer);
-
   $("authPanel").classList.toggle("hidden", !!currentUser);
   $("signedInPanel").classList.toggle("hidden", !currentUser);
 
@@ -659,7 +474,7 @@ async function initialise() {
 
   if (token) {
     try {
-      const result = await apiFetch("/api/auth/me");
+      const result = await apiFetch("/api/me");
       currentUser = result.user;
     } catch (_) {
       token = "";
@@ -677,15 +492,15 @@ async function initialise() {
   }
 }
 
+/* AUTHENTICATION */
+
 function setAuthMode(mode) {
   authMode = mode;
   const registering = mode === "register";
   $("nameField").classList.toggle("hidden", !registering);
   $("authName").required = registering;
   $("authTitle").textContent = registering ? "Create your account" : "Welcome back";
-  $("authDescription").textContent = registering
-    ? "Create a customer account for Tabby Ride."
-    : "Sign in to continue.";
+  $("authDescription").textContent = registering ? "Create a customer account for Tabby Ride." : "Sign in to continue.";
   $("authSubmit").textContent = registering ? "Create account" : "Sign in";
   $("authPassword").autocomplete = registering ? "new-password" : "current-password";
 }
@@ -700,12 +515,22 @@ async function submitAuth(event) {
   if (authMode === "register") {
     payload.name = $("authName").value.trim();
     try {
-      await apiFetch("/api/auth/register", {
-        method:"POST", body:JSON.stringify(payload)
+      const result = await apiFetch("/api/register", {
+        method:"POST",body:JSON.stringify(payload)
       });
-      toast("Account created. You can now sign in.");
-      setAuthMode("login");
-      $("authPassword").value = "";
+      if (result.token && result.user) {
+        token = result.token;
+        localStorage.setItem(TOKEN_KEY, token);
+        currentUser = result.user;
+        updateInterface();
+        toast("Your Tabby account is ready.");
+        showPage("home");
+        if (currentUser.role === "owner") loadAutomotive();
+        else loadRide();
+      } else {
+        toast("Account created. Please sign in.");
+        setAuthMode("login");
+      }
     } catch (error) {
       toast(error.message);
     }
@@ -713,8 +538,8 @@ async function submitAuth(event) {
   }
 
   try {
-    const result = await apiFetch("/api/auth/login", {
-      method:"POST", body:JSON.stringify(payload)
+    const result = await apiFetch("/api/login", {
+      method:"POST",body:JSON.stringify(payload)
     });
     token = result.token;
     localStorage.setItem(TOKEN_KEY, token);
@@ -734,6 +559,7 @@ async function submitAuth(event) {
 }
 
 function logout() {
+  stopVoiceCall();
   token = "";
   currentUser = null;
   currentConversation = null;
@@ -769,6 +595,39 @@ function addMessage(role, content) {
   $("chatMessages").scrollTop = $("chatMessages").scrollHeight;
 
   if (role === "assistant" && voiceReplyEnabled) speak(content);
+  return el;
+}
+
+function addImageMessage(imageUrl, prompt) {
+  const welcome = $("chatWelcome");
+  if (welcome) welcome.remove();
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "message assistant";
+
+  const caption = document.createElement("div");
+  caption.textContent = "Your generated image";
+  wrapper.appendChild(caption);
+
+  const image = document.createElement("img");
+  image.src = imageUrl;
+  image.alt = prompt || "Image generated by Tabby";
+  image.className = "generated-image";
+  image.loading = "lazy";
+  wrapper.appendChild(image);
+
+  const link = document.createElement("a");
+  link.href = imageUrl;
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.textContent = "Open full image";
+  link.style.color = "#8dbaff";
+  link.style.display = "inline-block";
+  link.style.marginTop = "9px";
+  wrapper.appendChild(link);
+
+  $("chatMessages").appendChild(wrapper);
+  $("chatMessages").scrollTop = $("chatMessages").scrollHeight;
 }
 
 function handleChatKey(event) {
@@ -778,10 +637,21 @@ function handleChatKey(event) {
   }
 }
 
-async function sendMessage() {
+function toggleWebSearch() {
+  webSearchMode = webSearchMode === "auto" ? "on" : webSearchMode === "on" ? "off" : "auto";
+  $("webSearchLabel").textContent =
+    webSearchMode === "auto" ? "Web search: Auto" :
+    webSearchMode === "on" ? "Web search: On" : "Web search: Off";
+  toast("Web search setting: " + webSearchMode);
+}
+
+async function sendMessage(textOverride = null) {
+  if (isSending) return;
+
   const input = $("chatInput");
-  const message = input.value.trim();
+  const message = (textOverride ?? input.value).trim();
   if (!message) return;
+
   if (currentUser?.role !== "owner") {
     toast("Please sign in with the owner account to use Tabby AI.");
     return;
@@ -789,25 +659,37 @@ async function sendMessage() {
 
   input.value = "";
   addMessage("user", message);
+  isSending = true;
   $("sendButton").disabled = true;
   $("sendButton").textContent = "…";
 
   try {
-    const result = await apiFetch("/chat", {
+    const payload = {
+      message,
+      conversation_id:currentConversation
+    };
+
+    if (webSearchMode === "on") payload.web_search = true;
+    if (webSearchMode === "off") payload.web_search = false;
+
+    const result = await apiFetch("/api/chat", {
       method:"POST",
-      body:JSON.stringify({
-        message,
-        conversation_id:currentConversation
-      })
+      body:JSON.stringify(payload)
     });
+
     if (result.conversation_id) currentConversation = result.conversation_id;
-    addMessage("assistant", result.reply || "I couldn't produce a response.");
+    addMessage("assistant", result.reply || result.response || "I couldn't produce a response.");
     loadConversations();
   } catch (error) {
     addMessage("assistant", "I ran into a problem: " + error.message);
   } finally {
+    isSending = false;
     $("sendButton").disabled = false;
     $("sendButton").textContent = "➤";
+
+    if (voiceCallActive) {
+      setTimeout(startRecognition, 700);
+    }
   }
 }
 
@@ -818,7 +700,7 @@ async function newConversation() {
       method:"POST",
       body:JSON.stringify({title:"New Chat"})
     });
-    currentConversation = result.id;
+    currentConversation = result.conversation_id;
     clearChat();
     loadConversations();
   } catch (error) {
@@ -837,13 +719,12 @@ async function loadConversations() {
       const button = document.createElement("button");
       button.textContent = convo.title || "New Chat";
       button.title = convo.title || "New Chat";
+      button.classList.toggle("active", Number(currentConversation) === Number(convo.id));
       button.onclick = () => openConversation(convo.id);
       list.appendChild(button);
     });
 
-    if (!list.children.length) {
-      list.innerHTML = '<div class="empty">No conversations yet.</div>';
-    }
+    if (!list.children.length) list.innerHTML = '<div class="empty">No conversations yet.</div>';
   } catch (error) {
     $("historyList").innerHTML = `<div class="empty">${escapeHTML(error.message)}</div>`;
   }
@@ -854,12 +735,15 @@ async function openConversation(id) {
     const result = await apiFetch(`/api/conversations/${id}`);
     currentConversation = id;
     $("chatMessages").innerHTML = "";
+
     (result.messages || []).forEach(message => {
       if (message.role === "user" || message.role === "assistant") {
         addMessage(message.role, message.content);
       }
     });
+
     if (!(result.messages || []).length) clearChat();
+    loadConversations();
   } catch (error) {
     toast(error.message);
   }
@@ -871,25 +755,35 @@ async function generateImage() {
     toast("Enter an image description first.");
     return;
   }
+
+  if (!currentUser) {
+    toast("Sign in before generating images.");
+    return;
+  }
+
+  const button = document.querySelector('button[onclick="generateImage()"]');
+  button.disabled = true;
+  button.textContent = "Generating...";
+
   try {
-    toast("Sending image request...");
-    const result = await apiFetch("/image", {
-      method:"POST", body:JSON.stringify({prompt})
+    toast("Tabby is creating your image. This may take a little while.");
+    const result = await apiFetch("/api/image", {
+      method:"POST",body:JSON.stringify({prompt,steps:4})
     });
-    if (result.image_url) {
-      addMessage("assistant", "Image generated: " + result.image_url);
-      const link = document.createElement("a");
-      link.href = result.image_url;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.textContent = "Open generated image";
-      link.style.color = "#8dbaff";
-      $("chatMessages").appendChild(link);
+
+    if (result.image_url || result.image) {
+      const imageUrl = result.image_url || result.image;
+      $("chatInput").value = "";
+      addImageMessage(imageUrl, prompt);
+      toast("Your image is ready.");
     } else {
       toast(result.message || "The image service did not return an image.");
     }
   } catch (error) {
     toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "▧ Generate image";
   }
 }
 
@@ -899,69 +793,217 @@ function loadVoices() {
   if (!("speechSynthesis" in window)) return;
   speechVoices = speechSynthesis.getVoices();
   const select = $("voiceSelect");
+  if (!select) return;
+
+  const previous = select.value;
   select.innerHTML = "";
+
   speechVoices.forEach((voice, index) => {
     const option = document.createElement("option");
     option.value = index;
     option.textContent = `${voice.name} (${voice.lang})`;
     select.appendChild(option);
   });
+
+  if (previous && Number(previous) < speechVoices.length) select.value = previous;
 }
+
 if ("speechSynthesis" in window) {
   speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-function speak(text) {
+function speak(text, onEnd = null) {
   if (!("speechSynthesis" in window)) {
     toast("Speech output is not supported in this browser.");
+    if (onEnd) onEnd();
     return;
   }
+
   speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
+
+  const cleanText = String(text)
+    .replace(/https?:\/\/\S+/g, "link")
+    .replace(/[*_#`]/g, "")
+    .slice(0, 5000);
+
+  const utterance = new SpeechSynthesisUtterance(cleanText);
   const voice = speechVoices[Number($("voiceSelect").value)];
   if (voice) utterance.voice = voice;
+
+  utterance.rate = 1;
+  utterance.pitch = 1;
+
+  utterance.onend = () => {
+    if (onEnd) onEnd();
+    else if (voiceCallActive) setTimeout(startRecognition, 500);
+  };
+
+  utterance.onerror = () => {
+    if (onEnd) onEnd();
+    else if (voiceCallActive) setTimeout(startRecognition, 800);
+  };
+
   speechSynthesis.speak(utterance);
 }
 
 function testVoice() {
-  speak("Hello Boss. Tabby voice system is ready.");
+  speak("Hello Boss. I'm Tabby. Your voice system is ready.");
 }
 
 function toggleVoiceReply() {
   voiceReplyEnabled = !voiceReplyEnabled;
-  $("voiceReply").textContent = voiceReplyEnabled
-    ? "🔊 Voice replies: On" : "🔊 Voice replies: Off";
+  $("voiceReply").textContent = voiceReplyEnabled ? "🔊 Voice replies: On" : "🔊 Voice replies: Off";
   toast(voiceReplyEnabled ? "Voice replies enabled." : "Voice replies disabled.");
 }
 
+function getRecognitionConstructor() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition;
+}
+
 function startVoiceInput() {
-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const Recognition = getRecognitionConstructor();
   if (!Recognition) {
-    toast("Voice input is not supported in this browser.");
+    toast("Voice input is not supported in this browser. Try Chrome.");
     return;
   }
-  const recognition = new Recognition();
-  recognition.lang = "en-NG";
-  recognition.interimResults = false;
-  recognition.onresult = event => {
+
+  if (voiceCallActive) stopVoiceCall();
+
+  const oneShot = new Recognition();
+  oneShot.lang = "en-NG";
+  oneShot.interimResults = false;
+  oneShot.maxAlternatives = 1;
+
+  oneShot.onresult = event => {
     $("chatInput").value = event.results[0][0].transcript;
+    $("chatInput").focus();
   };
-  recognition.onerror = () => toast("Voice input could not be completed.");
-  recognition.start();
+  oneShot.onerror = () => toast("Voice input could not be completed.");
+  oneShot.start();
+}
+
+function toggleVoiceCall() {
+  if (voiceCallActive) {
+    stopVoiceCall();
+  } else {
+    startVoiceCall();
+  }
+}
+
+function startVoiceCall() {
+  const Recognition = getRecognitionConstructor();
+
+  if (!Recognition) {
+    toast("Your browser does not support voice recognition. Try Chrome.");
+    return;
+  }
+
+  if (!("speechSynthesis" in window)) {
+    toast("Speech output is not supported in this browser.");
+    return;
+  }
+
+  if (currentUser?.role !== "owner") {
+    toast("Sign in with the owner account to start a voice conversation.");
+    return;
+  }
+
+  voiceCallActive = true;
+  voiceReplyEnabled = true;
+  $("voiceReply").textContent = "🔊 Voice replies: On";
+  $("voiceCallButton").textContent = "■ End voice conversation";
+  $("voiceStatus").textContent = "Voice conversation active. Speak naturally after Tabby finishes talking.";
+  toast("Voice conversation started.");
+
+  startRecognition();
+}
+
+function startRecognition() {
+  if (!voiceCallActive || isSending) return;
+
+  const Recognition = getRecognitionConstructor();
+  if (!Recognition) return;
+
+  try {
+    if (recognition) {
+      recognition.onend = null;
+      recognition.onerror = null;
+      recognition.onresult = null;
+    }
+
+    recognition = new Recognition();
+    recognition.lang = "en-NG";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = event => {
+      const transcript = event.results[0][0].transcript.trim();
+      if (transcript) recognitionTranscript = transcript;
+    };
+
+    recognition.onerror = event => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        toast("Please allow microphone access in your browser.");
+        stopVoiceCall();
+      }
+    };
+
+    recognition.onend = () => {
+      if (!voiceCallActive) return;
+
+      const transcript = recognitionTranscript;
+      recognitionTranscript = "";
+
+      if (transcript) {
+        sendMessage(transcript);
+      } else {
+        setTimeout(startRecognition, 500);
+      }
+    };
+
+    recognition.start();
+  } catch (error) {
+    if (voiceCallActive) setTimeout(startRecognition, 1200);
+  }
+}
+
+function stopVoiceCall() {
+  voiceCallActive = false;
+  recognitionTranscript = "";
+
+  if (recognition) {
+    try {
+      recognition.onend = null;
+      recognition.stop();
+    } catch (_) {}
+    recognition = null;
+  }
+
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+
+  if ($("voiceCallButton")) $("voiceCallButton").textContent = "☎ Start voice conversation";
+  if ($("voiceStatus")) $("voiceStatus").textContent = "Voice conversation ended.";
+}
+
+function toggleVoiceCallSafe() {
+  if (voiceCallActive) stopVoiceCall();
+  else startVoiceCall();
 }
 
 /* AUTOMOTIVE */
 
 async function loadAutomotive() {
   if (currentUser?.role !== "owner") return;
-  await Promise.all([loadMotorcycles(), loadCustomers(), loadAutomotiveStatus()]);
+  await Promise.all([loadMotorcycles(),loadCustomers(),loadAutomotiveStatus()]);
+  loadAllPayments();
 }
 
 async function loadAutomotiveStatus() {
   try {
     const result = await apiFetch("/api/automotive/status");
-    $("hardwareStatus").textContent = result.hardware || result.status || "Unknown";
-    $("homeHardware").textContent = result.hardware || result.status || "Unknown";
+    const status = result.message || result.status || "Unknown";
+    $("hardwareStatus").textContent = result.status === "awaiting_hardware_connection" ? "Awaiting hardware" : status;
+    $("homeHardware").textContent = result.status === "awaiting_hardware_connection" ? "Awaiting hardware" : status;
   } catch (_) {
     $("hardwareStatus").textContent = "Unavailable";
     $("homeHardware").textContent = "Unavailable";
@@ -974,6 +1016,11 @@ async function loadMotorcycles() {
     motorcycles = result.motorcycles || [];
     $("vehicleCount").textContent = motorcycles.length;
     $("homeVehicleCount").textContent = motorcycles.length;
+
+    if (selectedVehicle && !motorcycles.some(v => Number(v.id) === Number(selectedVehicle.id))) {
+      selectedVehicle = null;
+    }
+
     renderVehicleLists();
   } catch (error) {
     $("vehicleList").innerHTML = `<div class="empty">${escapeHTML(error.message)}</div>`;
@@ -994,19 +1041,21 @@ function renderVehicleLists() {
 
   motorcycles.forEach(vehicle => {
     const name = vehicle.name || "Motorcycle";
-    const details = [vehicle.brand, vehicle.model].filter(Boolean).join(" ");
+    const details = vehicle.model || "Motorcycle profile";
+
     const item = document.createElement("div");
-    item.className = "list-item vehicle-card" +
-      (selectedVehicle?.id === vehicle.id ? " selected" : "");
+    item.className = "list-item vehicle-card" + (Number(selectedVehicle?.id) === Number(vehicle.id) ? " selected" : "");
     item.innerHTML = `
       <div><strong>${escapeHTML(name)}</strong>
-      <small>${escapeHTML(details || "Motorcycle profile")}</small>
+      <small>${escapeHTML(details)}</small>
       <small>${escapeHTML(vehicle.registration_number || "No registration number")}</small></div>
       <div class="row">
-        <button class="secondary small-btn">View</button>
-        ${currentUser.role === "owner" ? '<button class="secondary danger small-btn deleteVehicle">Delete</button>' : ""}
+        <button class="secondary small-btn viewVehicle">View</button>
+        ${currentUser?.role === "owner" ? '<button class="secondary danger small-btn deleteVehicle">Delete</button>' : ""}
       </div>`;
-    item.querySelector("button").onclick = () => selectVehicle(vehicle);
+
+    item.querySelector(".viewVehicle").onclick = () => selectVehicle(vehicle);
+
     const deleteButton = item.querySelector(".deleteVehicle");
     if (deleteButton) {
       deleteButton.onclick = event => {
@@ -1014,21 +1063,19 @@ function renderVehicleLists() {
         deleteVehicle(vehicle.id);
       };
     }
+
     ownerList.appendChild(item);
 
     const rideItem = document.createElement("div");
     rideItem.className = "list-item";
     rideItem.innerHTML = `
-      <div><strong>${escapeHTML(name)}</strong>
-      <small>${escapeHTML(details || "Motorcycle profile")}</small></div>
+      <div><strong>${escapeHTML(name)}</strong><small>${escapeHTML(details)}</small></div>
       <button class="secondary small-btn">View</button>`;
     rideItem.querySelector("button").onclick = () => selectVehicle(vehicle);
     rideList.appendChild(rideItem);
   });
 
-  if (selectedVehicle) {
-    $("selectedVehicleName").textContent = selectedVehicle.name;
-  }
+  $("selectedVehicleName").textContent = selectedVehicle?.name || "None";
 }
 
 async function selectVehicle(vehicle) {
@@ -1052,17 +1099,14 @@ function closeVehicleForm() {
 async function createVehicle() {
   const payload = {
     name:$("vehicleName").value.trim(),
-    brand:$("vehicleBrand").value.trim(),
     model:$("vehicleModel").value.trim(),
-    registration_number:$("vehicleRegistration").value.trim() || null,
-    vehicle_identifier:$("vehicleIdentifier").value.trim() || null,
-    battery_capacity:$("vehicleCapacity").value ? Number($("vehicleCapacity").value) : null,
-    hardware_id:$("vehicleHardware").value.trim() || null
+    registration_number:$("vehicleRegistration").value.trim() || null
   };
 
   if ($("vehicleCustomer").value) {
-    payload.owner_user_id = Number($("vehicleCustomer").value);
+    payload.assigned_user_id = Number($("vehicleCustomer").value);
   }
+
   if (!payload.name) {
     toast("Enter a motorcycle name.");
     return;
@@ -1070,12 +1114,11 @@ async function createVehicle() {
 
   try {
     await apiFetch("/api/motorcycles", {
-      method:"POST", body:JSON.stringify(payload)
+      method:"POST",body:JSON.stringify(payload)
     });
     toast("Motorcycle registered.");
     closeVehicleForm();
-    ["vehicleName","vehicleBrand","vehicleModel","vehicleRegistration",
-     "vehicleIdentifier","vehicleCapacity","vehicleHardware"].forEach(id => $(id).value = "");
+    ["vehicleName","vehicleModel","vehicleRegistration"].forEach(id => $(id).value = "");
     await loadMotorcycles();
   } catch (error) {
     toast(error.message);
@@ -1084,20 +1127,21 @@ async function createVehicle() {
 
 async function deleteVehicle(id) {
   if (!confirm("Delete this motorcycle record?")) return;
+
   try {
-    await apiFetch(`/api/motorcycles/${id}`, {method:"DELETE"});
-    if (selectedVehicle?.id === id) selectedVehicle = null;
+    await apiFetch(`/api/motorcycles/${id}`,{method:"DELETE"});
+    if (Number(selectedVehicle?.id) === Number(id)) selectedVehicle = null;
     toast("Motorcycle record deleted.");
     await loadMotorcycles();
     resetTelemetry();
+    loadAllPayments();
   } catch (error) {
     toast(error.message);
   }
 }
 
 function resetTelemetry() {
-  ["teleBattery","teleRange","teleSpeed","rideBattery","rideRange","rideSpeed"]
-    .forEach(id => $(id).textContent = "—");
+  ["teleBattery","teleRange","teleSpeed","rideBattery","rideRange","rideSpeed"].forEach(id => $(id).textContent = "—");
   $("teleDiagnostics").textContent = "No telemetry loaded.";
   $("rideDiagnostics").textContent = "No telemetry available.";
   $("telemetryTime").textContent = "";
@@ -1121,13 +1165,16 @@ async function loadSelectedTelemetry() {
       return;
     }
 
-    const battery = latest.battery_percentage == null ? "—" : `${latest.battery_percentage}%`;
-    const range = latest.estimated_range == null ? "—" : `${latest.estimated_range} km`;
-    const speed = latest.speed == null ? "—" : `${latest.speed} km/h`;
-    const diagnostic = latest.diagnostics || "No diagnostic message supplied.";
-    const time = latest.created_at
-      ? new Date(latest.created_at * 1000).toLocaleString()
-      : "Time unavailable";
+    const extra = latest.extra_data || {};
+    const batteryValue = latest.battery_level ?? extra.battery_percentage ?? extra.battery ?? null;
+    const rangeValue = extra.estimated_range ?? extra.range ?? null;
+    const speedValue = latest.speed ?? null;
+
+    const battery = batteryValue == null ? "—" : `${batteryValue}%`;
+    const range = rangeValue == null ? "Not supplied" : `${rangeValue} km`;
+    const speed = speedValue == null ? "—" : `${speedValue} km/h`;
+    const diagnostic = extra.diagnostics || extra.message || "Telemetry received. No diagnostic message supplied.";
+    const time = latest.created_at ? new Date(latest.created_at).toLocaleString() : "Time unavailable";
 
     $("teleBattery").textContent = battery;
     $("teleRange").textContent = range;
@@ -1137,8 +1184,8 @@ async function loadSelectedTelemetry() {
     $("rideSpeed").textContent = speed;
     $("teleDiagnostics").textContent = diagnostic;
     $("rideDiagnostics").textContent = diagnostic;
-    $("telemetryTime").textContent = `Last reading: ${time} · Source: ${latest.source || "unknown"}`;
-    $("rideTelemetryTime").textContent = `Last reading: ${time} · Source: ${latest.source || "unknown"}`;
+    $("telemetryTime").textContent = `Last reading: ${time}`;
+    $("rideTelemetryTime").textContent = `Last reading: ${time}`;
   } catch (error) {
     toast(error.message);
   }
@@ -1146,9 +1193,11 @@ async function loadSelectedTelemetry() {
 
 async function loadCustomers() {
   if (currentUser?.role !== "owner") return;
+
   try {
-    const result = await apiFetch("/api/owner/customers");
-    customers = result.users || [];
+    const result = await apiFetch("/api/customers");
+    customers = result.customers || [];
+
     $("homeCustomerCount").textContent = customers.length;
 
     const list = $("customerList");
@@ -1159,8 +1208,7 @@ async function loadCustomers() {
     customers.filter(user => user.role === "customer").forEach(user => {
       const item = document.createElement("div");
       item.className = "list-item";
-      item.innerHTML = `<div><strong>${escapeHTML(user.name)}</strong>
-        <small>${escapeHTML(user.email)}</small></div><span class="pill blue">CUSTOMER</span>`;
+      item.innerHTML = `<div><strong>${escapeHTML(user.name)}</strong><small>${escapeHTML(user.email)}</small></div><span class="pill blue">CUSTOMER</span>`;
       list.appendChild(item);
 
       const option = document.createElement("option");
@@ -1169,21 +1217,45 @@ async function loadCustomers() {
       select.appendChild(option);
     });
 
-    if (!list.children.length) {
-      list.innerHTML = '<div class="empty">No customer accounts yet.</div>';
-    }
+    if (!list.children.length) list.innerHTML = '<div class="empty">No customer accounts yet.</div>';
   } catch (error) {
     $("customerList").innerHTML = `<div class="empty">${escapeHTML(error.message)}</div>`;
   }
 }
 
-async function loadPayments() {
-  if (!selectedVehicle) return;
-  const target = currentUser?.role === "owner" ? $("paymentList") : $("ridePayments");
+/* PAYMENTS */
+
+async function loadAllPayments() {
+  if (!currentUser) return;
+
   try {
-    const result = await apiFetch(`/api/motorcycles/${selectedVehicle.id}/payments`);
-    target.innerHTML = "";
-    (result.payments || []).forEach(payment => {
+    const result = await apiFetch("/api/payments");
+    const payments = result.payments || [];
+    renderPayments(payments);
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+function renderPayments(payments) {
+  const ownerTarget = $("paymentList");
+  const rideTarget = $("ridePayments");
+
+  const selectedPayments = selectedVehicle
+    ? payments.filter(p => Number(p.motorcycle_id) === Number(selectedVehicle.id))
+    : [];
+
+  ownerTarget.innerHTML = "";
+  rideTarget.innerHTML = "";
+
+  const targets = currentUser?.role === "owner"
+    ? [ownerTarget]
+    : [rideTarget];
+
+  targets.forEach(target => {
+    const rows = selectedPayments;
+
+    rows.forEach(payment => {
       const item = document.createElement("div");
       item.className = "list-item";
       item.innerHTML = `
@@ -1192,12 +1264,16 @@ async function loadPayments() {
         <span class="pill gray">${escapeHTML(payment.status)}</span>`;
       target.appendChild(item);
     });
+
     if (!target.children.length) {
-      target.innerHTML = '<div class="empty">No payment records found.</div>';
+      target.innerHTML = '<div class="empty">No payment records found for this motorcycle.</div>';
     }
-  } catch (error) {
-    target.innerHTML = `<div class="empty">${escapeHTML(error.message)}</div>`;
-  }
+  });
+}
+
+async function loadPayments() {
+  if (!selectedVehicle) return;
+  await loadAllPayments();
 }
 
 async function recordPayment() {
@@ -1205,23 +1281,32 @@ async function recordPayment() {
     toast("Select a motorcycle first.");
     return;
   }
+
   const amount = prompt("Enter payment amount:");
   if (amount === null) return;
+
   const numericAmount = Number(amount);
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
     toast("Enter a valid amount.");
     return;
   }
-  const currency = (prompt("Currency: NGN or USD", "NGN") || "NGN").toUpperCase();
+
+  const currency = (prompt("Currency: NGN or USD","NGN") || "NGN").toUpperCase();
   if (!["NGN","USD"].includes(currency)) {
     toast("Currency must be NGN or USD.");
     return;
   }
+
   try {
-    const result = await apiFetch(`/api/motorcycles/${selectedVehicle.id}/payments`, {
+    const result = await apiFetch("/api/payments",{
       method:"POST",
-      body:JSON.stringify({amount:numericAmount,currency})
+      body:JSON.stringify({
+        amount:numericAmount,
+        currency,
+        motorcycle_id:selectedVehicle.id
+      })
     });
+
     toast(`Pending payment record created: ${result.reference}`);
     loadPayments();
   } catch (error) {
@@ -1233,19 +1318,25 @@ async function recordPayment() {
 
 async function loadRide() {
   if (!currentUser) return;
+
   try {
     const result = await apiFetch("/api/motorcycles");
     motorcycles = result.motorcycles || [];
-    renderVehicleLists();
-    if (selectedVehicle && !motorcycles.some(v => v.id === selectedVehicle.id)) {
+
+    if (selectedVehicle && !motorcycles.some(v => Number(v.id) === Number(selectedVehicle.id))) {
       selectedVehicle = null;
     }
+
+    renderVehicleLists();
+
     if (!selectedVehicle && motorcycles.length) {
       await selectVehicle(motorcycles[0]);
     } else if (!motorcycles.length) {
       resetTelemetry();
       $("ridePayments").innerHTML = '<div class="empty">No payment records available.</div>';
     }
+
+    await loadAllPayments();
   } catch (error) {
     toast(error.message);
   }
@@ -1255,6 +1346,7 @@ async function loadRide() {
 
 async function loadMemories() {
   if (currentUser?.role !== "owner") return;
+
   try {
     const result = await apiFetch("/api/memory");
     const list = $("memoryList");
@@ -1263,15 +1355,24 @@ async function loadMemories() {
     (result.memories || []).forEach(memory => {
       const item = document.createElement("div");
       item.className = "list-item";
-      item.innerHTML = `<div style="flex:1"><strong>${escapeHTML(memory)}</strong></div>`;
+
+      const content = document.createElement("div");
+      content.style.flex = "1";
+      content.innerHTML = `<strong>${escapeHTML(memory.content)}</strong><small>${memory.created_at ? new Date(memory.created_at).toLocaleString() : ""}</small>`;
+
+      const remove = document.createElement("button");
+      remove.className = "secondary danger small-btn";
+      remove.textContent = "Delete";
+      remove.onclick = () => deleteMemory(memory.id);
+
+      item.appendChild(content);
+      item.appendChild(remove);
       list.appendChild(item);
     });
 
-    if (!list.children.length) {
-      list.innerHTML = '<div class="empty">No saved memories yet.</div>';
-    }
+    if (!list.children.length) list.innerHTML = '<div class="empty">No saved memories yet. Tabby can save useful information automatically during conversations.</div>';
   } catch (error) {
-    list.innerHTML = `<div class="empty">${escapeHTML(error.message)}</div>`;
+    $("memoryList").innerHTML = `<div class="empty">${escapeHTML(error.message)}</div>`;
   }
 }
 
@@ -1281,12 +1382,26 @@ async function saveMemory() {
     toast("Enter something to save.");
     return;
   }
+
   try {
-    await apiFetch("/api/memory", {
-      method:"POST", body:JSON.stringify({content})
+    const result = await apiFetch("/api/memory",{
+      method:"POST",body:JSON.stringify({content})
     });
+
     $("memoryInput").value = "";
-    toast("Memory saved.");
+    toast(result.saved ? "Memory saved." : "That memory was already saved or could not be saved.");
+    loadMemories();
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+async function deleteMemory(id) {
+  if (!confirm("Delete this saved memory?")) return;
+
+  try {
+    await apiFetch(`/api/memory/${id}`,{method:"DELETE"});
+    toast("Memory deleted.");
     loadMemories();
   } catch (error) {
     toast(error.message);
