@@ -1,4 +1,3 @@
-
 import os
 import re
 import json
@@ -60,8 +59,14 @@ logger = logging.getLogger("tabby")
 OWNER_EMAIL = os.getenv("OWNER_EMAIL", "").strip().lower()
 OWNER_PASSWORD = os.getenv("OWNER_PASSWORD", "")
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+
+# Use OpenRouter's free-model router by default. If Render still has an old
+# OPENROUTER_MODEL value configured, the retired Gemini ID is ignored.
+OPENROUTER_MODEL = (
+    os.getenv("OPENROUTER_MODEL", "openrouter/free").strip()
+    or "openrouter/free"
+)
 
 DEVICE_INGEST_KEY = os.getenv("DEVICE_INGEST_KEY", "")
 
@@ -87,11 +92,18 @@ serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-AI_MODELS = list(dict.fromkeys([
-    OPENROUTER_MODEL,
-    "openai/gpt-4o-mini",
-    "google/gemini-2.0-flash-001"
-]))
+RETIRED_AI_MODELS = {
+    "google/gemini-2.0-flash-001",
+}
+
+AI_MODELS = list(dict.fromkeys(
+    (
+        [OPENROUTER_MODEL]
+        if OPENROUTER_MODEL not in RETIRED_AI_MODELS
+        else []
+    )
+    + ["openrouter/free"]
+))
 
 
 # ============================================================
@@ -383,12 +395,24 @@ def call_openrouter(messages, temperature=0.7, max_tokens=1800):
             )
 
             if response.status_code != 200:
-                last_error = response.text[:500]
-                logger.warning("Model %s failed: %s", model, last_error)
+                last_error = response.text[:1000]
+                logger.warning(
+                    "OpenRouter model %s returned HTTP %s: %s",
+                    model,
+                    response.status_code,
+                    last_error
+                )
                 continue
 
             data = response.json()
-            answer = data["choices"][0]["message"]["content"]
+            choices = data.get("choices") or []
+
+            if not choices:
+                last_error = f"Model {model} returned no choices."
+                logger.warning(last_error)
+                continue
+
+            answer = (choices[0].get("message") or {}).get("content", "")
 
             if isinstance(answer, list):
                 answer = "\n".join(
@@ -397,12 +421,24 @@ def call_openrouter(messages, temperature=0.7, max_tokens=1800):
                     if isinstance(item, dict)
                 )
 
-            if answer:
+            if isinstance(answer, str) and answer.strip():
+                logger.info("Tabby AI response generated using %s.", model)
                 return answer.strip()
+
+            last_error = f"Model {model} returned an empty response."
+            logger.warning(last_error)
+
+        except requests.RequestException as error:
+            last_error = str(error)
+            logger.exception("OpenRouter network request failed for %s.", model)
+
+        except (ValueError, KeyError, TypeError, IndexError) as error:
+            last_error = str(error)
+            logger.exception("Could not read OpenRouter response for %s.", model)
 
         except Exception as error:
             last_error = str(error)
-            logger.exception("OpenRouter request failed.")
+            logger.exception("Unexpected OpenRouter error for %s.", model)
 
     raise RuntimeError(last_error)
 
