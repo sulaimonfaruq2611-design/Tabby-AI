@@ -59,7 +59,11 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto")
 
 DEVICE_INGEST_KEY = os.getenv("DEVICE_INGEST_KEY", "")
-DATABASE_PATH = os.getenv("DATABASE_PATH", "tabby_memory.db")
+
+DATABASE_PATH = os.getenv(
+    "DATABASE_PATH",
+    "tabby_memory.db"
+)
 
 # Cloudflare FLUX image generation
 CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
@@ -91,108 +95,159 @@ AI_MODELS = [
 # ============================================================
 
 def get_db():
-    conn = sqlite3.connect(DATABASE_PATH, timeout=30)
+    """
+    Opens the SQLite database.
+
+    Creates the parent directory first so SQLite can create
+    the database file even when the directory does not exist.
+
+    Supports:
+    - Local relative database paths
+    - Absolute Render database paths
+    - SQLite :memory: databases
+    """
+
+    if DATABASE_PATH != ":memory:" and not DATABASE_PATH.startswith("file:"):
+        db_directory = os.path.dirname(
+            os.path.abspath(DATABASE_PATH)
+        )
+
+        os.makedirs(
+            db_directory,
+            exist_ok=True
+        )
+
+    conn = sqlite3.connect(
+        DATABASE_PATH,
+        timeout=30
+    )
+
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+
     return conn
 
 
 def init_db():
-    with get_db() as db:
-        db.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT DEFAULT 'customer',
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
+    """
+    Creates the database tables.
 
-        CREATE TABLE IF NOT EXISTS conversations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT DEFAULT 'New conversation',
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+    Returns True when initialization succeeds.
+    Returns False and logs the error if initialization fails.
 
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            conversation_id INTEGER NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-        );
+    A database initialization failure will not immediately
+    terminate the Flask application during startup.
+    """
 
-        CREATE TABLE IF NOT EXISTS memories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+    try:
+        with get_db() as db:
+            db.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT DEFAULT 'customer',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
 
-        CREATE TABLE IF NOT EXISTS motorcycles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            owner_id INTEGER,
-            assigned_user_id INTEGER,
-            name TEXT NOT NULL,
-            model TEXT,
-            registration_number TEXT,
-            status TEXT DEFAULT 'active',
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(owner_id) REFERENCES users(id),
-            FOREIGN KEY(assigned_user_id) REFERENCES users(id)
-        );
+            CREATE TABLE IF NOT EXISTS conversations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                title TEXT DEFAULT 'New conversation',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
 
-        CREATE TABLE IF NOT EXISTS telemetry (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            motorcycle_id INTEGER NOT NULL,
-            latitude REAL,
-            longitude REAL,
-            speed REAL,
-            battery_level REAL,
-            fuel_level REAL,
-            engine_temperature REAL,
-            extra_data TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(motorcycle_id) REFERENCES motorcycles(id) ON DELETE CASCADE
-        );
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+            );
 
-        CREATE TABLE IF NOT EXISTS payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            motorcycle_id INTEGER,
-            amount REAL NOT NULL,
-            currency TEXT DEFAULT 'NGN',
-            status TEXT DEFAULT 'pending',
-            reference TEXT UNIQUE,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(motorcycle_id) REFERENCES motorcycles(id)
-        );
+            CREATE TABLE IF NOT EXISTS memories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_messages_conversation
-        ON messages(conversation_id, id);
+            CREATE TABLE IF NOT EXISTS motorcycles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner_id INTEGER,
+                assigned_user_id INTEGER,
+                name TEXT NOT NULL,
+                model TEXT,
+                registration_number TEXT,
+                status TEXT DEFAULT 'active',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(owner_id) REFERENCES users(id),
+                FOREIGN KEY(assigned_user_id) REFERENCES users(id)
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_memories_user
-        ON memories(user_id);
+            CREATE TABLE IF NOT EXISTS telemetry (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                motorcycle_id INTEGER NOT NULL,
+                latitude REAL,
+                longitude REAL,
+                speed REAL,
+                battery_level REAL,
+                fuel_level REAL,
+                engine_temperature REAL,
+                extra_data TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(motorcycle_id) REFERENCES motorcycles(id) ON DELETE CASCADE
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_telemetry_motorcycle
-        ON telemetry(motorcycle_id, id);
-        """)
+            CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                motorcycle_id INTEGER,
+                amount REAL NOT NULL,
+                currency TEXT DEFAULT 'NGN',
+                status TEXT DEFAULT 'pending',
+                reference TEXT UNIQUE,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                FOREIGN KEY(motorcycle_id) REFERENCES motorcycles(id)
+            );
 
-        if OWNER_EMAIL:
-            db.execute(
-                "UPDATE users SET role='owner' WHERE lower(email)=?",
-                (OWNER_EMAIL,)
-            )
+            CREATE INDEX IF NOT EXISTS idx_messages_conversation
+            ON messages(conversation_id, id);
+
+            CREATE INDEX IF NOT EXISTS idx_memories_user
+            ON memories(user_id);
+
+            CREATE INDEX IF NOT EXISTS idx_telemetry_motorcycle
+            ON telemetry(motorcycle_id, id);
+            """)
+
+            if OWNER_EMAIL:
+                db.execute(
+                    "UPDATE users SET role='owner' WHERE lower(email)=?",
+                    (OWNER_EMAIL,)
+                )
+
+        logger.info("Tabby database initialized successfully.")
+        return True
+
+    except Exception:
+        logger.exception(
+            "Database initialization failed. "
+            "The application will continue starting, "
+            "but database-dependent endpoints may not work."
+        )
+
+        return False
 
 
-init_db()
+# Attempt database initialization without crashing startup.
+DATABASE_READY = init_db()
 
 
 # ============================================================
@@ -251,7 +306,9 @@ def get_authenticated_user():
         BadSignature,
         SignatureExpired,
         KeyError,
-        TypeError
+        TypeError,
+        sqlite3.Error,
+        OSError
     ):
         return None
 
@@ -259,13 +316,25 @@ def get_authenticated_user():
 def auth_required(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
-        user = get_authenticated_user()
+        try:
+            user = get_authenticated_user()
 
-        if not user:
-            return json_error("Authentication required.", 401)
+            if not user:
+                return json_error(
+                    "Authentication required.",
+                    401
+                )
 
-        request.current_user = user
-        return function(*args, **kwargs)
+            request.current_user = user
+            return function(*args, **kwargs)
+
+        except (sqlite3.Error, OSError):
+            logger.exception("Database unavailable during authentication.")
+
+            return json_error(
+                "The database is temporarily unavailable. Please try again.",
+                503
+            )
 
     return wrapper
 
@@ -275,7 +344,10 @@ def owner_required(function):
     @auth_required
     def wrapper(*args, **kwargs):
         if request.current_user["role"] != "owner":
-            return json_error("Owner access required.", 403)
+            return json_error(
+                "Owner access required.",
+                403
+            )
 
         return function(*args, **kwargs)
 
@@ -320,7 +392,9 @@ def get_memories(user_id, limit=30):
 
 def call_openrouter(messages, temperature=0.7, max_tokens=1800):
     if not OPENROUTER_API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY is not configured.")
+        raise RuntimeError(
+            "OPENROUTER_API_KEY is not configured."
+        )
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -350,11 +424,13 @@ def call_openrouter(messages, temperature=0.7, max_tokens=1800):
 
             if response.status_code != 200:
                 last_error = response.text[:500]
+
                 logger.warning(
                     "Model %s failed: %s",
                     model,
                     last_error
                 )
+
                 continue
 
             data = response.json()
@@ -680,7 +756,6 @@ def generate_flux_image(prompt, steps=4):
         ""
     ).lower()
 
-    # Some responses may return image bytes directly.
     if content_type.startswith("image/"):
         image_base64 = base64.b64encode(
             response.content
@@ -690,8 +765,6 @@ def generate_flux_image(prompt, steps=4):
             f"data:{content_type};base64,{image_base64}"
         )
 
-    # The documented FLUX response also supports JSON containing
-    # a base64-encoded image.
     data = response.json()
 
     image_base64 = data.get("result", {}).get("image")
@@ -720,7 +793,8 @@ def home():
         "success": True,
         "name": "Tabby AI",
         "status": "online",
-        "version": "2.0"
+        "version": "2.0",
+        "database_ready": DATABASE_READY
     })
 
 
@@ -729,6 +803,7 @@ def health():
     return jsonify({
         "success": True,
         "status": "healthy",
+        "database_ready": DATABASE_READY,
         "time": current_time()
     })
 
