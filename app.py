@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import time
 import base64
 import secrets
 import sqlite3
@@ -38,6 +39,14 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", "tabby_memory.db")
 CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
 CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
 FLUX_MODEL = "@cf/black-forest-labs/flux-1-schnell"
+
+# --- MIDJOURNEY OPTIONS (Optional - Leave empty if you no get key, free fallback go work) ---
+# Option 1: Replicate - Get key from replicate.com/account/api-tokens - Supports Midjourney-style models
+REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN", "").strip()
+# Option 2: GoAPI Midjourney - Get key from goapi.ai - Real Midjourney via Discord
+GOAPI_API_KEY = os.getenv("GOAPI_API_KEY", "").strip()
+MIDJOURNEY_API_KEY = os.getenv("MIDJOURNEY_API_KEY", "").strip() or GOAPI_API_KEY
+
 AUTO_MEMORY_ENABLED = (os.getenv("AUTO_MEMORY_ENABLED", "true").lower() == "true")
 LIVE_SEARCH_ENABLED = (os.getenv("LIVE_SEARCH_ENABLED", "true").lower() == "true")
 
@@ -192,6 +201,11 @@ PERSONALITY:
 - Give direct, useful, smart answers. Ask follow-up only when necessary.
 - Never pretend to be human. Address owner as "Boss".
 
+IMAGE RULES - VERY IMPORTANT:
+- You CAN generate images. Your backend generates images via Midjourney-style / FLUX / Pollinations. Never say "I can't generate images" or "that was just a placeholder".
+- When Boss asks for an image, the system will generate it automatically. Just confirm "Here is your dope image Boss" - do not give a prompt to copy to Midjourney instead.
+- Never say you cannot generate images directly.
+
 CURRENT USER:
 Name: {user['name']}
 Role: {user['role']}
@@ -262,20 +276,94 @@ def extract_automatic_memories(user, txt):
     except Exception: logger.exception("Auto memory failed")
 
 # ============================================================
-# IMAGE - DOPE + FALLBACK - NEVER FAIL
+# IMAGE - MIDJOURNEY + FLUX + FREE FALLBACK - NEVER FAIL
 # ============================================================
-def enhance_image_prompt(p):
-    low=p.lower()
-    if any(w in low for w in ["ultra","cinematic","8k","detailed"]): return p
+def enhance_image_prompt(p, style="midjourney"):
+    low = p.lower()
+    # If Boss already said style, don't double-add
+    if any(w in low for w in ["midjourney", "ultra", "cinematic", "8k", "detailed", "anime", "2d"]):
+        # Still add Midjourney quality tags for Midjourney-style look
+        if style == "midjourney" and "midjourney" not in low:
+            return f"{p}, Midjourney style, ultra detailed, cinematic lighting, sharp focus, vibrant colors, high quality, --ar 1:1 --v 6"
+        return p
+    if style == "midjourney":
+        return f"{p}, Midjourney style, ultra detailed, cinematic lighting, sharp focus, professional photography, 8k, vibrant colors, highly detailed, beautiful lighting"
     return f"Ultra detailed, cinematic, sharp focus, professional photography, 8k, vibrant colors, highly detailed, beautiful lighting, {p}"
 
+def generate_via_goapi_midjourney(prompt):
+    """Real Midjourney via GoAPI - Requires GOAPI_API_KEY + Midjourney subscription via GoAPI"""
+    if not MIDJOURNEY_API_KEY:
+        raise RuntimeError("No Midjourney key")
+    # GoAPI /imagine
+    r = requests.post("https://api.goapi.ai/api/v1/task", headers={"X-API-Key": MIDJOURNEY_API_KEY, "Content-Type": "application/json"}, json={"model": "midjourney", "task_type": "imagine", "input": {"prompt": prompt, "process_mode": "fast", "aspect_ratio": "1:1"}}, timeout=30)
+    if r.status_code != 200:
+        raise RuntimeError(f"GoAPI Midjourney failed: {r.text[:500]}")
+    task_id = r.json().get("data", {}).get("task_id")
+    if not task_id:
+        raise RuntimeError("GoAPI no task_id")
+    # Poll for up to 90 seconds
+    for _ in range(18):
+        time.sleep(5)
+        poll = requests.get(f"https://api.goapi.ai/api/v1/task/{task_id}", headers={"X-API-Key": MIDJOURNEY_API_KEY}, timeout=30)
+        data = poll.json().get("data", {})
+        if data.get("status") == "completed" and data.get("output", {}).get("image_url"):
+            img_url = data["output"]["image_url"]
+            img_resp = requests.get(img_url, timeout=60)
+            if img_resp.status_code == 200:
+                return f"data:image/jpeg;base64,{base64.b64encode(img_resp.content).decode('utf-8')}"
+            return img_url
+        if data.get("status") in ("failed", "error"):
+            raise RuntimeError(f"Midjourney task failed: {data}")
+    raise RuntimeError("Midjourney timed out after 90s")
+
+def generate_via_replicate(prompt):
+    """Midjourney-style via Replicate FLUX - Requires REPLICATE_API_TOKEN"""
+    if not REPLICATE_API_TOKEN:
+        raise RuntimeError("No Replicate key")
+    # Use FLUX Schnell on Replicate - fast, Midjourney-quality
+    r = requests.post("https://api.replicate.com/v1/predictions", headers={"Authorization": f"Bearer {REPLICATE_API_TOKEN}", "Content-Type": "application/json"}, json={"version": "black-forest-labs/flux-schnell", "input": {"prompt": enhance_image_prompt(prompt, "midjourney"), "aspect_ratio": "1:1", "output_format": "jpg"}}, timeout=30)
+    if r.status_code not in (200, 201):
+        raise RuntimeError(f"Replicate failed: {r.text[:500]}")
+    pred = r.json()
+    get_url = pred.get("urls", {}).get("get")
+    for _ in range(12):
+        time.sleep(3)
+        poll = requests.get(get_url, headers={"Authorization": f"Bearer {REPLICATE_API_TOKEN}"}, timeout=30)
+        data = poll.json()
+        if data.get("status") == "succeeded" and data.get("output"):
+            out = data["output"]
+            img_url = out[0] if isinstance(out, list) else out
+            img_resp = requests.get(img_url, timeout=60)
+            if img_resp.status_code == 200:
+                return f"data:image/jpeg;base64,{base64.b64encode(img_resp.content).decode('utf-8')}"
+            return img_url
+        if data.get("status") in ("failed", "canceled"):
+            raise RuntimeError(f"Replicate failed: {data}")
+    raise RuntimeError("Replicate timed out")
+
 def generate_flux_image(prompt, steps=4):
-    # 1. Try Cloudflare FLUX with CORRECT payload
+    # 1. Try Real Midjourney via GoAPI if key exists
+    if MIDJOURNEY_API_KEY:
+        try:
+            logger.info("Trying GoAPI Midjourney...")
+            return generate_via_goapi_midjourney(enhance_image_prompt(prompt, "midjourney"))
+        except Exception as e:
+            logger.warning(f"GoAPI Midjourney failed: {e} - falling back")
+
+    # 2. Try Replicate Midjourney-style if key exists
+    if REPLICATE_API_TOKEN:
+        try:
+            logger.info("Trying Replicate...")
+            return generate_via_replicate(prompt)
+        except Exception as e:
+            logger.warning(f"Replicate failed: {e} - falling back")
+
+    # 3. Try Cloudflare FLUX with CORRECT payload
     if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN:
         try:
             endpoint = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/{FLUX_MODEL}"
             headers = {"Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}", "Content-Type": "application/json"}
-            payload = {"prompt": enhance_image_prompt(prompt), "num_steps": max(1, min(int(steps), 8))}
+            payload = {"prompt": enhance_image_prompt(prompt, "midjourney"), "num_steps": max(1, min(int(steps), 8))}
             r = requests.post(endpoint, headers=headers, json=payload, timeout=60)
             logger.info(f"Cloudflare image status: {r.status_code}")
             if r.status_code == 200:
@@ -290,17 +378,17 @@ def generate_flux_image(prompt, steps=4):
         except Exception as e:
             logger.warning(f"Cloudflare exception: {e} - using backup")
 
-    # 2. BACKUP - Free Pollinations - always works, no key needed
+    # 4. BACKUP - Free Pollinations - always works, no key needed, Midjourney-style prompt
     try:
-        safe = quote(enhance_image_prompt(prompt)[:500])
-        img_url = f"https://image.pollinations.ai/prompt/{safe}?width=1024&height=1024&seed=42&nologo=true"
+        safe = quote(enhance_image_prompt(prompt, "midjourney")[:500])
+        img_url = f"https://image.pollinations.ai/prompt/{safe}?width=1024&height=1024&seed=42&nologo=true&model=flux"
         img_resp = requests.get(img_url, timeout=60)
         if img_resp.status_code == 200 and "image" in img_resp.headers.get("Content-Type", ""):
             return f"data:image/jpeg;base64,{base64.b64encode(img_resp.content).decode('utf-8')}"
         return img_url
     except Exception as e:
         logger.exception("Backup image failed")
-        raise RuntimeError(f"Image generator could not complete. Check Cloudflare token + Workers AI permission. Backup also failed: {e}")
+        raise RuntimeError(f"Image generator could not complete. Check keys. Backup also failed: {e}")
 
 # ============================================================
 # HOME / HEALTH
@@ -316,9 +404,9 @@ def home():
     return "<h1>Tabby - Built by Faruq Sulaimon</h1><p>Upload index.html</p>",200
 
 @app.route("/health", methods=["GET"])
-def health(): return jsonify({"success":True,"name":"Tabby AI","status":"online","version":"3.2","database_ready":DATABASE_READY,"time":current_time()})
+def health(): return jsonify({"success":True,"name":"Tabby AI","status":"online","version":"4.0-midjourney","database_ready":DATABASE_READY,"image_providers":{"midjourney_goapi": bool(MIDJOURNEY_API_KEY), "replicate": bool(REPLICATE_API_TOKEN), "cloudflare": bool(CLOUDFLARE_API_TOKEN), "pollinations_fallback": True},"time":current_time()})
 @app.route("/api/status", methods=["GET"])
-def api_status(): return jsonify({"success":True,"name":"Tabby AI","status":"online","version":"3.2","database_ready":DATABASE_READY})
+def api_status(): return jsonify({"success":True,"name":"Tabby AI","status":"online","version":"4.0-midjourney","database_ready":DATABASE_READY})
 
 # ============================================================
 # AUTH
@@ -425,16 +513,17 @@ def chat():
                 db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, reply))
             return jsonify({"success":True,"reply":reply,"response":reply,"conversation_id":conversation_id,"latitude":lat,"longitude":lng,"google_maps":maps})
 
-    # --- IMAGE DETECT in chat ---
-    if any(w in low_msg for w in ["generate image", "create image", "make image", "draw an image", "generate a picture", "create a picture", "generate image of", "chill generate"]):
+    # --- IMAGE DETECT in chat - FIXED: No fake [IMAGE] placeholder ---
+    if any(w in low_msg for w in ["generate image", "create image", "make image", "draw an image", "generate a picture", "create a picture", "generate image of", "chill generate", "midjourney"]):
         try:
             img_prompt = message
-            for w in ["chill generate image of","generate image of","generate image","create image of","create image","make image of","make image","chill generate","draw"]:
+            for w in ["chill generate image of","generate image of","generate image","create image of","create image","make image of","make image","chill generate","draw","midjourney"]:
                 img_prompt = img_prompt.lower().replace(w,"").strip()
             if not img_prompt: img_prompt = message
             image_data = generate_flux_image(img_prompt, 4)
+            # FIX: Save real prompt, NOT "[IMAGE]" placeholder - this was causing "I can't generate images" bug
             with get_db() as db:
-                db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, f"Here is your dope image Boss: [IMAGE]"))
+                db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, f"Here is your dope image Boss: {img_prompt} - image generated successfully."))
             return jsonify({"success":True,"reply":"Here is your dope image Boss.","response":"Here is your dope image Boss.","conversation_id":conversation_id,"image":image_data,"image_url":image_data})
         except Exception as e:
             err = f"Image failed Boss: {str(e)}"
@@ -512,7 +601,7 @@ def delete_memory(memory_id):
     return jsonify({"success":True})
 
 # ============================================================
-# IMAGE
+# IMAGE - MIDJOURNEY + FLUX
 # ============================================================
 @app.route("/image", methods=["POST"])
 @app.route("/api/image", methods=["POST"])
@@ -527,7 +616,7 @@ def generate_image():
     except: steps=4
     try:
         img=generate_flux_image(prompt, steps)
-        return jsonify({"success":True,"image_url":img,"image":img,"model":FLUX_MODEL})
+        return jsonify({"success":True,"image_url":img,"image":img,"model":"midjourney-style/flux"})
     except RuntimeError as e: return json_error(str(e),503)
     except Exception:
         logger.exception("Image error"); return json_error("Image generation failed.",502)
