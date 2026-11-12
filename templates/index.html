@@ -2,293 +2,458 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#080d19">
-<title>Tabby - Built by Faruq Sulaimon | AI & Automotive Intelligence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tabby - Built by Boss Faruq Sulaimon</title>
+<meta name="description" content="Tabby AI - Super smart AI assistant. Chat + voice + images + live news + location. Built by Boss Faruq Sulaimon.">
 <style>
-:root{--bg:#080d19;--panel:#101a2b;--panel2:#142137;--line:#263650;--text:#edf3ff;--muted:#91a2bd;--blue:#4d8dff;--cyan:#35d5e8;--green:#42d69b;--red:#ff647c;--radius:16px}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
-button,input,textarea,select{font:inherit}
-button{cursor:pointer}
-.app{display:flex;min-height:100vh}
-.sidebar{width:250px;background:#0b1322;border-right:1px solid var(--line);padding:22px 15px;display:flex;flex-direction:column;gap:20px;flex-shrink:0}
-.brand{display:flex;align-items:center;gap:12px;padding:5px 8px}
-.brand-icon{width:43px;height:43px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:linear-gradient(135deg,#267cff,#22c6d9);box-shadow:0 8px 25px #267cff44}
-.brand h1{font-size:20px;margin:0;letter-spacing:1px}
-.brand small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
-.nav-label{color:#657995;font-size:10px;font-weight:800;letter-spacing:1.5px;padding:5px 10px}
-.nav{display:flex;flex-direction:column;gap:6px}
-.nav button{background:transparent;border:0;color:#aebed4;text-align:left;padding:12px;border-radius:11px;display:flex;gap:12px;align-items:center;width:100%}
-.nav button:hover,.nav button.active{background:#192b45;color:white}
-.nav button.active{box-shadow:inset 3px 0 var(--blue)}
-.sidebar-bottom{margin-top:auto}
-.connection{background:#101d30;border:1px solid var(--line);padding:13px;border-radius:12px;font-size:12px;color:var(--muted)}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:7px}
-.main{flex:1;min-width:0}
-.topbar{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:#0b1322}
-.topbar h2{font-size:17px;margin:0}
-.top-actions{display:flex;align-items:center;gap:12px}
-.user-chip{font-size:12px;color:var(--muted)}
-.mobile-menu{display:none}
-.content{padding:25px;max-width:1500px;margin:auto}
-.page{display:none}
-.page.active{display:block}
-.heading{margin-bottom:22px}
-.heading h2{font-size:25px;margin:0 0 7px}
-.heading p{color:var(--muted);margin:0;font-size:13px;line-height:1.6}
-.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
-.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;min-width:0}
-.card h3{font-size:14px;margin:0 0 15px}
-.stat-label{color:var(--muted);font-size:12px}
-.stat-value{font-size:26px;font-weight:750;margin-top:9px}
-.stat-note{font-size:11px;color:var(--muted);margin-top:7px}
-.primary{background:linear-gradient(135deg,#347fff,#2863d8);color:white;border:0;border-radius:10px;padding:11px 16px;font-weight:700}
-.secondary{background:#1a2b44;color:#dce9ff;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
-.danger{background:#3a1b2b;color:#ff9aac;border:1px solid #693047}
-.small-btn{padding:7px 10px;font-size:11px}
-input,textarea,select{background:#091323;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:12px;width:100%;outline:none}
-input:focus,textarea:focus,select:focus{border-color:var(--blue)}
-label{font-size:12px;color:var(--muted);display:block;margin-bottom:7px}
-.field{margin-bottom:14px}
-.muted{color:var(--muted)}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b1220;--card:#13203a;--card2:#1a2b4a;--blue:#2563eb;--blue2:#1d4ed8;--text:#e5e7eb;--muted:#94a3b8;--border:#1e293b;--user:#2563eb;--assistant:#1e293b;--green:#22c55e;--red:#ef4444}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+a{color:#60a5fa}
+/* HEADER */
+header{padding:14px 16px 10px;border-bottom:1px solid var(--border);background:#0f172a;position:sticky;top:0;z-index:10}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:900px;margin:0 auto;width:100%}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:40px;height:40px;border-radius:12px;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:22px}
+.logo h1{font-size:19px;line-height:1.1}
+.logo p{font-size:11px;color:var(--muted);font-weight:500}
+.header-actions{display:flex;gap:6px}
+.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:999px;font-size:12px;cursor:pointer;white-space:nowrap}
+.icon-btn.active{background:var(--blue);border-color:var(--blue)}
+.header-sub{max-width:900px;margin:8px auto 0;font-size:12px;color:var(--muted);line-height:1.4}
+/* AUTH */
+#authScreen{max-width:420px;margin:30px auto;padding:0 16px;width:100%}
+.auth-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px}
+.auth-card h2{font-size:22px;margin-bottom:4px}
+.auth-card p{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.tabs{display:flex;background:#0f172a;border-radius:999px;padding:4px;margin-bottom:16px}
+.tab{flex:1;padding:9px;border-radius:999px;border:0;background:transparent;color:var(--muted);font-weight:700;cursor:pointer}
+.tab.active{background:var(--blue);color:white}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.field input{width:100%;padding:12px 13px;border-radius:12px;border:1px solid var(--border);background:#0f172a;color:white;font-size:15px;outline:none}
+.field input:focus{border-color:var(--blue)}
+.btn-primary{width:100%;padding:13px;border:0;border-radius:12px;background:var(--blue);color:white;font-weight:800;font-size:15px;cursor:pointer;margin-top:4px}
+.btn-primary:disabled{opacity:.6}
+.btn-ghost{width:100%;padding:11px;border:1px solid var(--border);border-radius:12px;background:transparent;color:var(--text);font-weight:600;cursor:pointer;margin-top:8px}
+.small-note{font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
+.error-box{display:none;background:#7f1d1d;border:1px solid #ef4444;color:#fecaca;padding:10px 12px;border-radius:12px;font-size:13px;margin-bottom:12px}
+.success-box{display:none;background:#14532d;border:1px solid #22c55e;color:#bbf7d0;padding:10px 12px;border-radius:12px;font-size:13px;margin-bottom:12px}
+/* CHAT */
+#chatScreen{display:none;flex-direction:column;flex:1;max-width:900px;width:100%;margin:0 auto;padding:0 12px 12px}
+#chatBox{flex:1;overflow-y:auto;padding:16px 4px;display:flex;flex-direction:column;gap:12px;min-height:340px}
+.msg{max-width:85%;padding:12px 14px;border-radius:18px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg.user{background:var(--user);color:white;align-self:flex-end;border-bottom-right-radius:6px}
+.msg.assistant{background:var(--assistant);color:var(--text);align-self:flex-start;border-bottom-left-radius:6px;border:1px solid var(--border)}
+.msg.system{background:#fef3c7;color:#92400e;align-self:center;font-size:13px;text-align:center}
+.msg img.chat-img{width:100%;max-width:420px;border-radius:14px;display:block;margin-top:10px;border:1px solid var(--border)}
+.msg .img-actions{display:flex;gap:8px;margin-top:8px}
+.img-btn{background:#0f172a;border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:999px;font-size:12px;cursor:pointer;text-decoration:none}
+.typing{display:none;align-self:flex-start;background:var(--assistant);padding:10px 14px;border-radius:18px;font-size:13px;color:var(--muted)}
+/* INPUT AREA */
+.composer{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:12px;margin-top:8px}
+.input-row{display:flex;gap:8px}
+#msgInput{flex:1;padding:13px 14px;border-radius:12px;border:1px solid var(--border);background:#0f172a;color:white;font-size:15px;outline:none;min-width:0}
+#msgInput:focus{border-color:var(--blue)}
+#sendBtn{width:52px;height:52px;border-radius:12px;border:0;background:var(--blue);color:white;font-size:20px;cursor:pointer;flex-shrink:0}
+#sendBtn:disabled{opacity:.6}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.chip{background:#0f172a;border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:999px;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:5px}
+.chip.active{background:var(--blue);border-color:var(--blue);color:white}
+.chip.recording{background:var(--red);border-color:var(--red);color:white;animation:pulse 1s infinite}
+@keyframes pulse{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
+.composer-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4}
+.location-status{font-size:12px;color:var(--green);margin-top:6px;display:none}
+footer{text-align:center;padding:12px;font-size:11px;color:var(--muted)}
+#voiceBanner{display:none;background:#7c3aed;color:white;padding:10px 12px;border-radius:12px;font-size:13px;margin:10px 0;align-items:center;justify-content:space-between;gap:10px}
+#voiceBanner button{background:white;color:#7c3aed;border:0;padding:7px 10px;border-radius:999px;font-weight:700;cursor:pointer}
 .hidden{display:none!important}
-.row{display:flex;gap:10px;align-items:center}
-.between{justify-content:space-between}
-.wrap{flex-wrap:wrap}
-.pill{font-size:10px;padding:5px 9px;border-radius:20px;background:#173b34;color:#6be4b3;display:inline-block}
-.pill.blue{background:#19345b;color:#8dbaff}
-.pill.gray{background:#263247;color:#b7c5d9}
-.list{display:flex;flex-direction:column;gap:9px}
-.list-item{padding:12px;background:#0b1627;border:1px solid var(--line);border-radius:11px;display:flex;justify-content:space-between;align-items:center;gap:10px}
-.list-item strong{font-size:13px}
-.list-item small{display:block;color:var(--muted);margin-top:5px;font-size:11px}
-.empty{color:var(--muted);font-size:13px;text-align:center;padding:25px 10px}
-.chat-layout{display:grid;grid-template-columns:230px minmax(0,1fr);height:min(72vh,760px);min-height:500px;gap:14px}
-.chat-history{overflow:auto}
-.chat-history button{display:block;width:100%;text-align:left;background:transparent;border:0;color:#b7c6dc;padding:11px;border-radius:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
-.chat-history button:hover{background:#1a2b44}
-.chat-panel{border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;min-width:0;background:#0c1627}
-.chat-messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:15px}
-.message{max-width:85%;padding:13px 15px;border-radius:14px;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
-.message.user{align-self:flex-end;background:#214b88}
-.message.assistant{align-self:flex-start;background:#17263b;border:1px solid #263650}
-.chat-welcome{text-align:center;margin:auto;max-width:440px;padding:20px}
-.chat-welcome .orb{width:65px;height:65px;border-radius:22px;margin:0 auto 18px;background:linear-gradient(135deg,#347fff,#27d3d5);display:grid;place-items:center;font-size:29px}
-.chat-welcome h2{margin:0 0 8px}
-.chat-welcome p{font-size:13px;color:var(--muted);line-height:1.6}
-.chat-input-area{padding:14px;border-top:1px solid var(--line)}
-.chat-input-row{display:flex;gap:9px;align-items:flex-end}
-.chat-input-row textarea{resize:none;min-height:48px;max-height:130px}
-.chat-tools{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
-.chat-tools button{font-size:11px}
-.generated-image{max-width:100%;width:min(520px,100%);border-radius:12px;border:1px solid var(--line);display:block;margin-top:10px}
-.vehicle-card{cursor:pointer}
-.vehicle-card.selected{border-color:var(--blue);background:#12223a}
-.metric{background:#0a1526;border:1px solid var(--line);padding:13px;border-radius:12px}
-.metric strong{font-size:22px;display:block;margin-top:8px}
-.metric small{font-size:11px;color:var(--muted)}
-.auth-wrap{max-width:430px;margin:6vh auto}
-.auth-card{background:var(--panel);border:1px solid var(--line);padding:25px;border-radius:18px}
-.auth-card h2{margin:0 0 8px}
-.toast{position:fixed;bottom:22px;right:22px;z-index:99;padding:13px 17px;background:#19344d;border:1px solid #31577b;border-radius:11px;font-size:13px;display:none;max-width:90vw}
-.toast.show{display:block}
-table{border-collapse:collapse;width:100%;font-size:12px}
-th,td{padding:12px;text-align:left;border-bottom:1px solid var(--line)}
-th{color:var(--muted);font-weight:600}
-pre{white-space:pre-wrap;overflow-wrap:anywhere}
-footer{color:#63758f;font-size:10px;text-align:center;padding:25px}
-@media(max-width:900px){.sidebar{width:215px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:680px){.sidebar{position:fixed;z-index:20;left:-270px;top:0;bottom:0;width:250px;transition:left .2s;box-shadow:10px 0 30px #0008}.sidebar.open{left:0}.mobile-menu{display:inline-block}.topbar{padding:0 15px;height:62px}.content{padding:16px}.grid,.grid.two{grid-template-columns:1fr}.chat-layout{grid-template-columns:1fr;height:72vh;min-height:480px}.chat-history{display:none}.message{max-width:95%}.user-chip{display:none}}
 </style>
 </head>
 <body>
-<div class="app">
-<aside class="sidebar" id="sidebar">
-  <div class="brand"><div class="brand-icon">✦</div><div><h1>TABBY</h1><small>BUILT BY FARUQ SULAIMON • BOSS</small></div></div>
-  <div><div class="nav-label">WORKSPACE</div><nav class="nav">
-    <button class="active" data-page="home" onclick="showPage('home')">⌂ <span>Overview</span></button>
-    <button id="navChat" data-page="chat" onclick="showPage('chat')">✧ <span>Tabby AI</span></button>
-    <button id="navAutomotive" data-page="automotive" onclick="showPage('automotive')">◈ <span>Automotive Dashboard</span></button>
-    <button id="navRide" data-page="ride" onclick="showPage('ride')">⌁ <span>Tabby Ride</span></button>
-  </nav></div>
-  <div><div class="nav-label">PERSONAL</div><nav class="nav">
-    <button data-page="account" onclick="showPage('account')">♙ <span>Account & Login</span></button>
-    <button id="navMemory" data-page="memory" onclick="showPage('memory')">▤ <span>Saved Memories</span></button>
-    <button data-page="settings" onclick="showPage('settings')">⚙ <span>Settings</span></button>
-  </nav></div>
-  <div class="sidebar-bottom"><div class="connection"><div><span class="dot"></span><span id="connectionText">Checking connection...</span></div><div style="margin-top:9px">Tabby - Built by Faruq Sulaimon</div></div></div>
-</aside>
-<main class="main">
-<header class="topbar"><div class="row"><button class="secondary mobile-menu" onclick="toggleSidebar()">☰</button><h2 id="topTitle">Overview</h2></div><div class="top-actions"><span class="user-chip" id="topUser">Not signed in</span><span class="pill gray" id="roleBadge">GUEST</span></div></header>
-<div class="content">
-<section class="page active" id="page-home">
-  <div class="heading"><h2 id="welcomeTitle">Welcome to Tabby</h2><p>Your personal AI and automotive intelligence platform. Built by Faruq Sulaimon.</p></div>
-  <div id="guestHome" class="card"><h3>Your Tabby experience starts here.</h3><p class="muted">Sign in to access your account and the services available to you.</p><button class="primary" onclick="showPage('account')">Sign in / Create account</button></div>
-  <div id="ownerHome" class="hidden">
-    <div class="grid">
-      <div class="card"><div class="stat-label">Motorbikes in system</div><div class="stat-value" id="homeVehicleCount">—</div><div class="stat-note">Registered fleet</div></div>
-      <div class="card"><div class="stat-label">Registered accounts</div><div class="stat-value" id="homeCustomerCount">—</div><div class="stat-note">Owner and customer accounts</div></div>
-      <div class="card"><div class="stat-label">Automotive connection</div><div class="stat-value" style="font-size:19px" id="homeHardware">Checking...</div><div class="stat-note">Hardware integration status</div></div>
-    </div>
-    <div class="card" style="margin-top:16px"><div class="row between"><h3>Owner workspace — Welcome Boss</h3><span class="pill">OWNER ACCESS</span></div><p class="muted">Manage Tabby AI, motorbike records, customer assignments and fleet information.</p><div class="row wrap"><button class="primary" onclick="showPage('chat')">Open Tabby AI</button><button class="secondary" onclick="showPage('automotive')">Manage fleet</button><button class="secondary" onclick="showPage('memory')">Manage memories</button></div></div>
-  </div>
-  <div id="customerHome" class="hidden"><div class="card"><span class="pill blue">TABBY RIDE CUSTOMER</span><h3 style="margin-top:15px">Welcome to Tabby Ride</h3><p class="muted">View your assigned motorbike, available telemetry and payment records.</p><button class="primary" onclick="showPage('ride')">Open my ride dashboard</button></div></div>
-</section>
 
-<section class="page" id="page-chat">
-  <div class="heading"><h2>Tabby AI</h2><p>Your private AI workspace. Super smart, friendly, live news + images + voice call. Built by Boss Faruq Sulaimon.</p></div>
-  <div class="chat-layout">
-    <div class="card chat-history"><div class="row between"><h3>Conversations</h3><button class="primary small-btn" onclick="newConversation()">＋</button></div><div id="historyList" class="list"></div></div>
-    <div class="chat-panel">
-      <div class="chat-messages" id="chatMessages"><div class="chat-welcome" id="chatWelcome"><div class="orb">✦</div><h2>I'm Tabby.</h2><p>Your super smart AI assistant, built by Boss Faruq Sulaimon. Ask me anything, latest news, generate dope images, or start a voice call like phone call.</p></div></div>
-      <div class="chat-input-area">
-        <div class="chat-input-row"><textarea id="chatInput" rows="1" placeholder="Message Tabby..." onkeydown="handleChatKey(event)"></textarea><button class="primary" id="sendButton" onclick="sendMessage()">➤</button></div>
-        <div class="chat-tools">
-          <button class="secondary small-btn" onclick="startVoiceInput()">🎙 Voice input</button>
-          <button class="secondary small-btn" id="voiceReply" onclick="toggleVoiceReply()">🔊 Voice replies: Off</button>
-          <button class="secondary small-btn" id="voiceCallButton" onclick="toggleVoiceCall()">☎ Start voice conversation</button>
-          <button class="secondary small-btn" onclick="generateImage()">▧ Generate image</button>
-          <button class="secondary small-btn" onclick="toggleWebSearch()">🌐 <span id="webSearchLabel">Web search: Auto</span></button>
-          <button class="secondary small-btn" onclick="shareMyLocation()">📍 Share My Location</button>
-          <button class="secondary small-btn" onclick="trackMyLocation()">🗺 Track Location</button>
-        </div>
-        <p class="muted" id="voiceStatus" style="font-size:11px;margin:8px 2px 0">Voice conversation = phone call style. Location needs Allow permission + https.</p>
-        <p class="muted" id="locationStatus" style="font-size:11px;margin:4px 2px 0"></p>
-      </div>
+<header>
+  <div class="top-row">
+    <div class="logo">
+      <div class="logo-icon">🐱</div>
+      <div><h1>Tabby</h1><p>Built by Boss Faruq Sulaimon</p></div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="newChatBtn" onclick="newChat()">＋ New</button>
+      <button class="icon-btn" id="logoutBtn" onclick="logout()" style="display:none">Logout</button>
     </div>
   </div>
-</section>
+  <div class="header-sub">Super smart AI • Chat + Voice Call + Images + Live news + Location. Built by Boss Faruq Sulaimon.</div>
+</header>
 
-<section class="page" id="page-automotive">
-  <div class="heading"><h2>Automotive Intelligence</h2><p>Owner fleet management and motorbike administration.</p></div>
-  <div class="grid">
-    <div class="card"><div class="stat-label">Registered motorbikes</div><div class="stat-value" id="vehicleCount">0</div></div>
-    <div class="card"><div class="stat-label">Hardware status</div><div class="stat-value" style="font-size:18px" id="hardwareStatus">Checking...</div></div>
-    <div class="card"><div class="stat-label">Selected motorbike</div><div class="stat-value" style="font-size:18px" id="selectedVehicleName">None</div></div>
+<!-- AUTH -->
+<div id="authScreen">
+  <div class="auth-card">
+    <h2>Welcome to Tabby 👋</h2>
+    <p>Your super smart assistant. Chat in English or Pidgin — Tabby go understand you. Generate dope images, ask live news, track location, make voice call.</p>
+    <div id="authError" class="error-box"></div>
+    <div id="authSuccess" class="success-box"></div>
+    <div class="tabs">
+      <button class="tab active" id="loginTab" onclick="switchTab('login')">Login</button>
+      <button class="tab" id="registerTab" onclick="switchTab('register')">Register</button>
+    </div>
+    <div id="registerFields" style="display:none">
+      <div class="field"><label>Your Name</label><input id="regName" placeholder="e.g. Faruq Sulaimon" autocomplete="name"></div>
+    </div>
+    <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+    <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="At least 8 characters" autocomplete="current-password"></div>
+    <button class="btn-primary" id="authBtn" onclick="doAuth()">Login</button>
+    <button class="btn-ghost" onclick="fillDemo()">Use my Boss account (demo)</button>
+    <div class="small-note">By continuing, you agree Tabby go remember your chats to serve you better. No password or API key go ever be saved. Tabby na English by default, but e sabi Pidgin too.</div>
   </div>
-  <div class="grid two" style="margin-top:16px">
-    <div class="card"><div class="row between"><h3>Motorbike fleet</h3><button class="primary small-btn" onclick="openVehicleForm()">＋ Add motorbike</button></div><div id="vehicleList" class="list"><div class="empty">Loading motorbikes...</div></div></div>
-    <div class="card"><h3>Register a motorbike</h3><div id="vehicleForm" class="hidden">
-      <div class="field"><label>Motorbike name</label><input id="vehicleName" placeholder="e.g. Tabby One"></div>
-      <div class="field"><label>Model / brand</label><input id="vehicleModel" placeholder="Brand and model"></div>
-      <div class="field"><label>Registration number</label><input id="vehicleRegistration"></div>
-      <div class="field"><label>Assign to customer (optional)</label><select id="vehicleCustomer"><option value="">Assign to owner</option></select></div>
-      <button class="primary" onclick="createVehicle()">Save motorbike</button><button class="secondary" onclick="closeVehicleForm()">Cancel</button></div><p class="muted" id="vehicleFormHint">Select Add motorbike to register a vehicle.</p></div>
+</div>
+
+<!-- CHAT -->
+<div id="chatScreen">
+  <div id="voiceBanner"><span>🎙️ Voice conversation ON — Talking like phone call...</span><button onclick="stopVoiceConversation()">End voice conversation</button></div>
+  <div id="chatBox"></div>
+  <div id="typing" class="typing">Tabby dey type...</div>
+
+  <div class="composer">
+    <div class="input-row">
+      <input id="msgInput" placeholder="Message Tabby... e.g. Generate image of a man in 2d anime style" autocomplete="off" onkeydown="if(event.key==='Enter') sendMessage()">
+      <button id="sendBtn" onclick="sendMessage()">➤</button>
+    </div>
+    <div class="chips">
+      <button class="chip" id="voiceInputBtn" onclick="toggleVoiceInput()">🎤 Voice input</button>
+      <button class="chip" id="voiceReplyBtn" onclick="toggleVoiceReplies()">🔊 Voice replies: Off</button>
+      <button class="chip" id="voiceConvBtn" onclick="toggleVoiceConversation()">🎙️ Start voice conversation</button>
+      <button class="chip" onclick="promptGenerateImage()">🎨 Generate image</button>
+      <button class="chip" id="webSearchBtn" onclick="toggleWebSearch()">🌐 Web search: Auto</button>
+      <button class="chip" onclick="shareLocation()">📍 Share My Location</button>
+      <button class="chip" onclick="trackLocation()">🗺️ Track Location</button>
+    </div>
+    <div class="composer-note">Voice conversation = phone call style. Location needs Allow permission + https. You fit change your location anytime — just press Share My Location again or type "Change my location to Abuja".</div>
+    <div id="locationStatus" class="location-status"></div>
   </div>
-  <div class="card" style="margin-top:16px"><div class="row between wrap"><h3>📍 Live Location Tracking</h3><div class="row"><button class="secondary small-btn" onclick="shareMyLocation()">📍 Share My Location</button><button class="secondary small-btn" onclick="trackMyLocation()">🗺 Track Location</button></div></div><p class="muted" id="liveLocationText" style="font-size:12px;margin-top:10px">No location shared yet. Press Share My Location and Allow permission.</p><div id="liveLocationLink"></div></div>
-  <div class="card" style="margin-top:16px"><div class="row between wrap"><h3>Live telemetry</h3><button class="secondary small-btn" onclick="loadSelectedTelemetry()">Refresh readings</button></div><div class="grid"><div class="metric"><small>Battery</small><strong id="teleBattery">—</strong></div><div class="metric"><small>Estimated range</small><strong id="teleRange">—</strong></div><div class="metric"><small>Speed</small><strong id="teleSpeed">—</strong></div></div><p class="muted" id="teleDiagnostics" style="font-size:12px;margin-top:14px">No telemetry loaded.</p><p class="muted" id="telemetryTime" style="font-size:11px"></p></div>
-  <div class="card" style="margin-top:16px"><div class="row between"><h3>Payment records</h3><button class="secondary small-btn" onclick="recordPayment()">＋ Record pending payment</button></div><div id="paymentList" class="list"><div class="empty">Select a motorbike to view payments.</div></div></div>
-  <div class="card" style="margin-top:16px"><h3>Customer accounts</h3><div id="customerList" class="list"><div class="empty">Customer list will appear here.</div></div></div>
-</section>
-
-<section class="page" id="page-ride">
-  <div class="heading"><h2>Tabby Ride</h2><p>Your motorbike information and available ride data.</p></div>
-  <div class="card"><h3>My motorbikes</h3><div id="rideVehicleList" class="list"></div></div>
-  <div class="card" style="margin-top:16px"><div class="row between"><h3>My motorbike telemetry</h3><button class="secondary small-btn" onclick="loadSelectedTelemetry()">Refresh</button></div><div class="grid"><div class="metric"><small>Battery</small><strong id="rideBattery">—</strong></div><div class="metric"><small>Estimated range</small><strong id="rideRange">—</strong></div><div class="metric"><small>Speed</small><strong id="rideSpeed">—</strong></div></div><p class="muted" id="rideDiagnostics" style="font-size:12px;margin-top:14px">No telemetry available.</p><p class="muted" id="rideTelemetryTime" style="font-size:11px"></p></div>
-  <div class="card" style="margin-top:16px"><h3>My payment records</h3><div id="ridePayments" class="list"></div></div>
-</section>
-
-<section class="page" id="page-account">
-  <div class="heading"><h2>Account & Login</h2><p>Sign in to your Tabby account or create a customer account.</p></div>
-  <div class="auth-wrap" id="authPanel"><div class="auth-card"><div class="row" style="margin-bottom:20px"><button class="secondary" id="loginTab" onclick="setAuthMode('login')">Sign in</button><button class="secondary" id="registerTab" onclick="setAuthMode('register')">Register</button></div><h2 id="authTitle">Welcome back</h2><p class="muted" id="authDescription" style="font-size:12px">Sign in to continue.</p><form id="authForm" onsubmit="submitAuth(event)"><div class="field hidden" id="nameField"><label>Your name</label><input id="authName" autocomplete="name" placeholder="Full name"></div><div class="field"><label>Email address</label><input id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com"></div><div class="field"><label>Password</label><input id="authPassword" type="password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters"></div><button class="primary" id="authSubmit" type="submit" style="width:100%">Sign in</button></form><p class="muted" style="font-size:11px;margin-top:14px">Customer accounts access Tabby Ride. The owner account is configured securely on the server.</p></div></div>
-  <div id="signedInPanel" class="card hidden"><div class="row between"><h3>Account details</h3><button class="secondary danger" onclick="logout()">Sign out</button></div><div id="accountDetails" class="muted"></div></div>
-</section>
-
-<section class="page" id="page-memory">
-  <div class="heading"><h2>Saved Memories</h2><p>Private owner memory used to give Tabby useful long-term context. Tabby can also save useful information automatically.</p></div>
-  <div class="card"><div class="field"><label>New memory</label><textarea id="memoryInput" rows="3" placeholder="What should Tabby remember?"></textarea></div><button class="primary" onclick="saveMemory()">Save memory</button></div>
-  <div class="card" style="margin-top:16px"><h3>Your saved memories</h3><div id="memoryList" class="list"></div></div>
-</section>
-
-<section class="page" id="page-settings">
-  <div class="heading"><h2>Settings</h2><p>Manage your Tabby interface preferences.</p></div>
-  <div class="card"><h3>Voice preferences</h3><div class="field"><label>Speech voice</label><select id="voiceSelect"></select></div><button class="secondary" onclick="testVoice()">Test voice</button><button class="secondary" onclick="toggleVoiceReply()">Toggle voice replies</button></div>
-  <div class="card" style="margin-top:15px"><h3>System information</h3><p class="muted" style="font-size:12px">Tabby web interface · Flask API · OpenRouter AI · Cloudflare FLUX image generation · Built by Faruq Sulaimon.</p><button class="secondary" onclick="checkHealth()">Check server connection</button><p id="healthResult" class="muted" style="font-size:12px"></p></div>
-</section>
-<footer>Tabby · Built by Faruq Sulaimon · AI & Automotive Intelligence</footer>
 </div>
-</main>
-</div>
-<div class="toast" id="toast"></div>
+
+<footer>Tabby • Built by Faruq Sulaimon • AI & Automotive Intelligence</footer>
+
 <script>
-const API = "";
-const TOKEN_KEY = "tabby_auth_token";
-let token = localStorage.getItem(TOKEN_KEY) || "";
-let currentUser = null;
-let currentConversation = null;
-let selectedVehicle = null;
-let motorcycles = [];
-let customers = [];
-let authMode = "login";
-let voiceReplyEnabled = false;
-let voiceCallActive = false;
+const API_BASE = window.location.origin;
+let token = localStorage.getItem('tabby_token') || '';
+let user = null;
+let conversationId = localStorage.getItem('tabby_conversation_id') || null;
+let currentMode = 'login';
+let voiceReplies = false;
+let voiceConversation = false;
+let voiceInputActive = false;
+let webSearchMode = 'auto'; // auto | on | off
 let recognition = null;
-let speechVoices = [];
-let webSearchMode = "auto";
-let recognitionTranscript = "";
-let isSending = false;
-let locationWatchId = null;
-const $ = id => document.getElementById(id);
-function toast(m){const el=$("toast");el.textContent=m;el.classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove("show"),3500);}
-async function apiFetch(path, options={}){const headers={...(options.headers||{})};if(options.body&&!headers["Content-Type"])headers["Content-Type"]="application/json";if(token)headers.Authorization="Bearer "+token;const r=await fetch(API+path,{...options,headers});let d={};try{d=await r.json();}catch(_){}if(!r.ok){const e=new Error(d.error||d.message||`Request failed (${r.status})`);e.status=r.status;throw e;}return d;}
-function escapeHTML(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
-function showPage(name){const allowed={chat:currentUser?.role==="owner",memory:currentUser?.role==="owner",automotive:currentUser?.role==="owner",ride:!!currentUser};if(name in allowed&&!allowed[name]){toast("This section is not available for your account.");name=currentUser?"home":"account";}document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));$("page-"+name)?.classList.add("active");document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===name));const titles={home:"Overview",chat:"Tabby AI",automotive:"Automotive Dashboard",ride:"Tabby Ride",account:"Account & Login",memory:"Saved Memories",settings:"Settings"};$("topTitle").textContent=titles[name]||"Tabby";$("sidebar").classList.remove("open");if(name==="chat")loadConversations();if(name==="automotive")loadAutomotive();if(name==="ride")loadRide();if(name==="memory")loadMemories();}
-function toggleSidebar(){$("sidebar").classList.toggle("open");}
-function updateInterface(){const owner=currentUser?.role==="owner";const customer=currentUser?.role==="customer";$("navChat").classList.toggle("hidden",!owner);$("navMemory").classList.toggle("hidden",!owner);$("navAutomotive").classList.toggle("hidden",!owner);$("navRide").classList.toggle("hidden",!currentUser);$("roleBadge").textContent=owner?"OWNER":customer?"CUSTOMER":"GUEST";$("topUser").textContent=currentUser?currentUser.name:"Not signed in";$("welcomeTitle").textContent=currentUser?`Welcome Boss, ${currentUser.name}`:"Welcome to Tabby";$("guestHome").classList.toggle("hidden",!!currentUser);$("ownerHome").classList.toggle("hidden",!owner);$("customerHome").classList.toggle("hidden",!customer);$("authPanel").classList.toggle("hidden",!!currentUser);$("signedInPanel").classList.toggle("hidden",!currentUser);if(currentUser){$("accountDetails").innerHTML=`<p><strong>Name:</strong> ${escapeHTML(currentUser.name)}</p><p><strong>Email:</strong> ${escapeHTML(currentUser.email)}</p><p><strong>Role:</strong> ${escapeHTML(currentUser.role)}</p>`;}}
-async function initialise(){loadVoices();checkHealth();if(token){try{const r=await apiFetch("/api/me");currentUser=r.user;}catch(_){token="";localStorage.removeItem(TOKEN_KEY);}}updateInterface();if(currentUser?.role==="owner"){loadAutomotive();loadConversations();}else if(currentUser){loadRide();}}
-function setAuthMode(mode){authMode=mode;const reg=mode==="register";$("nameField").classList.toggle("hidden",!reg);$("authName").required=reg;$("authTitle").textContent=reg?"Create your account":"Welcome back";$("authDescription").textContent=reg?"Create a customer account for Tabby Ride.":"Sign in to continue.";$("authSubmit").textContent=reg?"Create account":"Sign in";$("authPassword").autocomplete=reg?"new-password":"current-password";}
-async function submitAuth(e){e.preventDefault();const payload={email:$("authEmail").value.trim(),password:$("authPassword").value};if(authMode==="register"){payload.name=$("authName").value.trim();try{const r=await apiFetch("/api/register",{method:"POST",body:JSON.stringify(payload)});if(r.token&&r.user){token=r.token;localStorage.setItem(TOKEN_KEY,token);currentUser=r.user;updateInterface();toast("Your Tabby account is ready.");showPage("home");if(currentUser.role==="owner")loadAutomotive();else loadRide();}else{toast("Account created. Please sign in.");setAuthMode("login");}}catch(err){toast(err.message);}return;}try{const r=await apiFetch("/api/login",{method:"POST",body:JSON.stringify(payload)});token=r.token;localStorage.setItem(TOKEN_KEY,token);currentUser=r.user;updateInterface();toast("Welcome Boss.");showPage("home");if(currentUser.role==="owner"){loadAutomotive();loadConversations();}else{loadRide();}}catch(err){toast(err.message);}}
-function logout(){stopVoiceCall();token="";currentUser=null;currentConversation=null;localStorage.removeItem(TOKEN_KEY);motorcycles=[];selectedVehicle=null;updateInterface();clearChat();showPage("home");toast("You have signed out.");}
-function clearChat(){currentConversation=null;$("chatMessages").innerHTML=`<div class="chat-welcome" id="chatWelcome"><div class="orb">✦</div><h2>I'm Tabby.</h2><p>Your super smart AI assistant, built by Boss Faruq Sulaimon.</p></div>`;}
-function addMessage(role,content){const w=$("chatWelcome");if(w)w.remove();const el=document.createElement("div");el.className="message "+role;el.textContent=content;$("chatMessages").appendChild(el);$("chatMessages").scrollTop=$("chatMessages").scrollHeight;if(role==="assistant"&&voiceReplyEnabled)speak(content);return el;}
-function addImageMessage(url,prompt){const w=$("chatWelcome");if(w)w.remove();const wrap=document.createElement("div");wrap.className="message assistant";const cap=document.createElement("div");cap.textContent="Your dope generated image, Boss";wrap.appendChild(cap);const img=document.createElement("img");img.src=url;img.alt=prompt||"Image by Tabby";img.className="generated-image";img.loading="lazy";wrap.appendChild(img);const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener";link.textContent="Open full image";link.style.color="#8dbaff";link.style.display="inline-block";link.style.marginTop="9px";wrap.appendChild(link);$("chatMessages").appendChild(wrap);$("chatMessages").scrollTop=$("chatMessages").scrollHeight;}
-function handleChatKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}
-function toggleWebSearch(){webSearchMode=webSearchMode==="auto"?"on":webSearchMode==="on"?"off":"auto";$("webSearchLabel").textContent=webSearchMode==="auto"?"Web search: Auto":webSearchMode==="on"?"Web search: On":"Web search: Off";toast("Web search: "+webSearchMode);}
-async function sendMessage(textOverride=null){if(isSending)return;const input=$("chatInput");const message=(textOverride??input.value).trim();if(!message)return;if(currentUser?.role!=="owner"){toast("Please sign in with the owner account to use Tabby AI.");return;}input.value="";addMessage("user",message);isSending=true;$("sendButton").disabled=true;$("sendButton").textContent="…";try{const payload={message,conversation_id:currentConversation};if(webSearchMode==="on")payload.web_search=true;if(webSearchMode==="off")payload.web_search=false;if(webSearchMode==="auto")payload.web_search=true;const result=await apiFetch("/api/chat",{method:"POST",body:JSON.stringify(payload)});if(result.conversation_id)currentConversation=result.conversation_id;addMessage("assistant",result.reply||result.response||"I couldn't produce a response.");loadConversations();}catch(err){addMessage("assistant","I ran into a problem Boss: "+err.message);}finally{isSending=false;$("sendButton").disabled=false;$("sendButton").textContent="➤";if(voiceCallActive)setTimeout(startRecognition,700);}}
-async function newConversation(){if(currentUser?.role!=="owner")return;try{const r=await apiFetch("/api/conversations",{method:"POST",body:JSON.stringify({title:"New Chat"})});currentConversation=r.conversation_id;clearChat();loadConversations();}catch(e){toast(e.message);}}
-async function loadConversations(){if(currentUser?.role!=="owner")return;try{const r=await apiFetch("/api/conversations");const list=$("historyList");list.innerHTML="";(r.conversations||[]).forEach(c=>{const b=document.createElement("button");b.textContent=c.title||"New Chat";b.title=c.title||"New Chat";b.classList.toggle("active",Number(currentConversation)===Number(c.id));b.onclick=()=>openConversation(c.id);list.appendChild(b);});if(!list.children.length)list.innerHTML='<div class="empty">No conversations yet.</div>';}catch(e){$("historyList").innerHTML=`<div class="empty">${escapeHTML(e.message)}</div>`;}}
-async function openConversation(id){try{const r=await apiFetch(`/api/conversations/${id}`);currentConversation=id;$("chatMessages").innerHTML="";(r.messages||[]).forEach(m=>{if(m.role==="user"||m.role==="assistant")addMessage(m.role,m.content);});if(!(r.messages||[]).length)clearChat();loadConversations();}catch(e){toast(e.message);}}
-async function generateImage(){const prompt=$("chatInput").value.trim();if(!prompt){toast("Enter an image description first.");return;}if(!currentUser){toast("Sign in before generating images.");return;}const btn=document.querySelector('button[onclick="generateImage()"]');btn.disabled=true;btn.textContent="Generating dope image...";try{toast("Tabby is creating your dope image Boss...");const r=await apiFetch("/api/image",{method:"POST",body:JSON.stringify({prompt,steps:4})});if(r.image_url||r.image){$("chatInput").value="";addImageMessage(r.image_url||r.image,prompt);toast("Your image is ready Boss.");}else{toast(r.message||"Image service did not return an image.");}}catch(e){toast(e.message);}finally{btn.disabled=false;btn.textContent="▧ Generate image";}}
-// LOCATION - TRACK PHONE / ANY LOCATION
-async function shareMyLocation(){if(!navigator.geolocation){toast("Geolocation not supported.");return;}if(!token){toast("Sign in first Boss.");return;}toast("Allow location permission Boss...");navigator.geolocation.getCurrentPosition(async pos=>{try{await apiFetch("/api/location/update",{method:"POST",body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude,speed:pos.coords.speed,accuracy:pos.coords.accuracy})});const txt=`Live location saved: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;$("locationStatus").textContent=txt;$("liveLocationText").textContent=txt;$("liveLocationLink").innerHTML=`<a href="https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}" target="_blank" style="color:#8dbaff">Open in Google Maps</a>`;toast("Location shared Boss.");if(locationWatchId) navigator.geolocation.clearWatch(locationWatchId);locationWatchId=navigator.geolocation.watchPosition(async p=>{try{await apiFetch("/api/location/update",{method:"POST",body:JSON.stringify({latitude:p.coords.latitude,longitude:p.coords.longitude,speed:p.coords.speed,accuracy:p.coords.accuracy})});}catch(_){}},null,{enableHighAccuracy:true});}catch(e){toast(e.message);}},()=>toast("Please Allow location permission in browser."),{enableHighAccuracy:true});}
-async function trackMyLocation(){try{const r=await apiFetch("/api/location/latest");if(!r.location){toast("No location yet. Press Share My Location first.");return;}const loc=r.location;const lat=loc.latitude,lng=loc.longitude;const maps=`https://www.google.com/maps?q=${lat},${lng}`;$("locationStatus").textContent=`Tracked: ${lat}, ${lng}`;$("liveLocationText").textContent=`Last tracked location: ${lat}, ${lng} - ${loc.created_at||""}`;$("liveLocationLink").innerHTML=`<a href="${maps}" target="_blank" style="color:#8dbaff">Open in Google Maps - ${lat}, ${lng}</a>`;window.open(maps,"_blank");}catch(e){toast(e.message);}}
-// VOICE - PHONE CALL STYLE
-function loadVoices(){if(!("speechSynthesis" in window))return;speechVoices=speechSynthesis.getVoices();const s=$("voiceSelect");if(!s)return;const prev=s.value;s.innerHTML="";speechVoices.forEach((v,i)=>{const o=document.createElement("option");o.value=i;o.textContent=`${v.name} (${v.lang})`;s.appendChild(o);});if(prev&&Number(prev)<speechVoices.length)s.value=prev;}
-if("speechSynthesis" in window){speechSynthesis.onvoiceschanged=loadVoices;}
-function speak(text,onEnd=null){if(!("speechSynthesis" in window)){toast("Speech not supported.");if(onEnd)onEnd();return;}speechSynthesis.cancel();const clean=String(text).replace(/https?:\/\/\S+/g,"link").replace(/[*_#`]/g,"").slice(0,5000);const u=new SpeechSynthesisUtterance(clean);const v=speechVoices[Number($("voiceSelect").value)];if(v)u.voice=v;u.rate=1;u.pitch=1;u.onend=()=>{if(onEnd)onEnd();else if(voiceCallActive)setTimeout(startRecognition,500);};u.onerror=()=>{if(onEnd)onEnd();else if(voiceCallActive)setTimeout(startRecognition,800);};speechSynthesis.speak(u);}
-function testVoice(){speak("Hello Boss. I'm Tabby. Built by Faruq Sulaimon. Your voice system is ready.");}
-function toggleVoiceReply(){voiceReplyEnabled=!voiceReplyEnabled;$("voiceReply").textContent=voiceReplyEnabled?"🔊 Voice replies: On":"🔊 Voice replies: Off";toast(voiceReplyEnabled?"Voice replies enabled.":"Voice replies disabled.");}
-function getRecognitionConstructor(){return window.SpeechRecognition||window.webkitSpeechRecognition;}
-function startVoiceInput(){const R=getRecognitionConstructor();if(!R){toast("Voice input not supported. Try Chrome.");return;}if(voiceCallActive)stopVoiceCall();const o=new R();o.lang="en-NG";o.interimResults=false;o.maxAlternatives=1;o.onresult=e=>{$("chatInput").value=e.results[0][0].transcript;$("chatInput").focus();};o.onerror=()=>toast("Voice input could not be completed.");o.start();}
-function toggleVoiceCall(){if(voiceCallActive)stopVoiceCall();else startVoiceCall();}
-function startVoiceCall(){const R=getRecognitionConstructor();if(!R){toast("Browser does not support voice. Try Chrome.");return;}if(!("speechSynthesis" in window)){toast("Speech not supported.");return;}if(currentUser?.role!=="owner"){toast("Sign in with owner account.");return;}voiceCallActive=true;voiceReplyEnabled=true;$("voiceReply").textContent="🔊 Voice replies: On";$("voiceCallButton").textContent="■ End voice conversation";$("voiceStatus").textContent="Voice call active Boss. Speak naturally, Tabby go answer with voice like phone call.";toast("Voice call started Boss.");startRecognition();}
-function startRecognition(){if(!voiceCallActive||isSending)return;const R=getRecognitionConstructor();if(!R)return;try{if(recognition){recognition.onend=null;recognition.onerror=null;recognition.onresult=null;}recognition=new R();recognition.lang="en-NG";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t)recognitionTranscript=t;};recognition.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed"){toast("Please allow microphone.");stopVoiceCall();}};recognition.onend=()=>{if(!voiceCallActive)return;const t=recognitionTranscript;recognitionTranscript="";if(t)sendMessage(t);else setTimeout(startRecognition,500);};recognition.start();}catch(_){if(voiceCallActive)setTimeout(startRecognition,1200);}}
-function stopVoiceCall(){voiceCallActive=false;recognitionTranscript="";if(recognition){try{recognition.onend=null;recognition.stop();}catch(_){}recognition=null;}if("speechSynthesis" in window)speechSynthesis.cancel();if($("voiceCallButton"))$("voiceCallButton").textContent="☎ Start voice conversation";if($("voiceStatus"))$("voiceStatus").textContent="Voice conversation ended.";}
-// AUTOMOTIVE - MOTORBIKE
-async function loadAutomotive(){if(currentUser?.role!=="owner")return;await Promise.all([loadMotorcycles(),loadCustomers(),loadAutomotiveStatus()]);loadAllPayments();}
-async function loadAutomotiveStatus(){try{const r=await apiFetch("/api/automotive/status");const s=r.message||r.status||"Unknown";$("hardwareStatus").textContent=r.status==="awaiting_hardware_connection"?"Awaiting hardware":s;$("homeHardware").textContent=r.status==="awaiting_hardware_connection"?"Awaiting hardware":s;}catch(_){$("hardwareStatus").textContent="Unavailable";$("homeHardware").textContent="Unavailable";}}
-async function loadMotorcycles(){try{const r=await apiFetch("/api/motorcycles");motorcycles=r.motorcycles||r.motorbikes||[];$("vehicleCount").textContent=motorcycles.length;$("homeVehicleCount").textContent=motorcycles.length;if(selectedVehicle&&!motorcycles.some(v=>Number(v.id)===Number(selectedVehicle.id)))selectedVehicle=null;renderVehicleLists();}catch(e){$("vehicleList").innerHTML=`<div class="empty">${escapeHTML(e.message)}</div>`;}}
-function renderVehicleLists(){const o=$("vehicleList");const ride=$("rideVehicleList");o.innerHTML="";ride.innerHTML="";if(!motorcycles.length){o.innerHTML='<div class="empty">No motorbikes registered yet.</div>';ride.innerHTML='<div class="empty">No motorbike assigned yet.</div>';return;}motorcycles.forEach(v=>{const name=v.name||"Motorbike";const det=v.model||"Motorbike profile";const item=document.createElement("div");item.className="list-item vehicle-card"+(Number(selectedVehicle?.id)===Number(v.id)?" selected":"");item.innerHTML=`<div><strong>${escapeHTML(name)}</strong><small>${escapeHTML(det)}</small><small>${escapeHTML(v.registration_number||"No registration number")}</small></div><div class="row"><button class="secondary small-btn viewVehicle">View</button>${currentUser?.role==="owner"?'<button class="secondary danger small-btn deleteVehicle">Delete</button>':""}</div>`;item.querySelector(".viewVehicle").onclick=()=>selectVehicle(v);const del=item.querySelector(".deleteVehicle");if(del)del.onclick=e=>{e.stopPropagation();deleteVehicle(v.id);};o.appendChild(item);const ri=document.createElement("div");ri.className="list-item";ri.innerHTML=`<div><strong>${escapeHTML(name)}</strong><small>${escapeHTML(det)}</small></div><button class="secondary small-btn">View</button>`;ri.querySelector("button").onclick=()=>selectVehicle(v);ride.appendChild(ri);});$("selectedVehicleName").textContent=selectedVehicle?.name||"None";}
-async function selectVehicle(v){selectedVehicle=v;$("selectedVehicleName").textContent=v.name||"Motorbike";renderVehicleLists();await loadSelectedTelemetry();await loadPayments();}
-function openVehicleForm(){$("vehicleForm").classList.remove("hidden");$("vehicleFormHint").classList.add("hidden");}
-function closeVehicleForm(){$("vehicleForm").classList.add("hidden");$("vehicleFormHint").classList.remove("hidden");}
-async function createVehicle(){const payload={name:$("vehicleName").value.trim(),model:$("vehicleModel").value.trim(),registration_number:$("vehicleRegistration").value.trim()||null};if($("vehicleCustomer").value)payload.assigned_user_id=Number($("vehicleCustomer").value);if(!payload.name){toast("Enter a motorbike name.");return;}try{await apiFetch("/api/motorcycles",{method:"POST",body:JSON.stringify(payload)});toast("Motorbike registered Boss.");closeVehicleForm();["vehicleName","vehicleModel","vehicleRegistration"].forEach(id=>$(id).value="");await loadMotorcycles();}catch(e){toast(e.message);}}
-async function deleteVehicle(id){if(!confirm("Delete this motorbike record?"))return;try{await apiFetch(`/api/motorcycles/${id}`,{method:"DELETE"});if(Number(selectedVehicle?.id)===Number(id))selectedVehicle=null;toast("Motorbike deleted.");await loadMotorcycles();resetTelemetry();loadAllPayments();}catch(e){toast(e.message);}}
-function resetTelemetry(){["teleBattery","teleRange","teleSpeed","rideBattery","rideRange","rideSpeed"].forEach(id=>$(id).textContent="—");$("teleDiagnostics").textContent="No telemetry loaded.";$("rideDiagnostics").textContent="No telemetry available.";$("telemetryTime").textContent="";$("rideTelemetryTime").textContent="";}
-async function loadSelectedTelemetry(){if(!selectedVehicle){toast("Select a motorbike first.");return;}try{const r=await apiFetch(`/api/motorcycles/${selectedVehicle.id}/telemetry`);const latest=r.latest;if(!latest){resetTelemetry();$("teleDiagnostics").textContent="No telemetry for this motorbike yet.";$("rideDiagnostics").textContent="No telemetry for this motorbike yet.";return;}const extra=latest.extra_data||{};const b=latest.battery_level??extra.battery_percentage??extra.battery??null;const range=extra.estimated_range??extra.range??null;const sp=latest.speed??null;const battery=b==null?"—":`${b}%`;const rg=range==null?"Not supplied":`${range} km`;const speed=sp==null?"—":`${sp} km/h`;const diag=extra.diagnostics||extra.message||"Telemetry received.";const time=latest.created_at?new Date(latest.created_at).toLocaleString():"Time unavailable";$("teleBattery").textContent=battery;$("teleRange").textContent=rg;$("teleSpeed").textContent=speed;$("rideBattery").textContent=battery;$("rideRange").textContent=rg;$("rideSpeed").textContent=speed;$("teleDiagnostics").textContent=diag;$("rideDiagnostics").textContent=diag;$("telemetryTime").textContent=`Last reading: ${time}`;$("rideTelemetryTime").textContent=`Last reading: ${time}`;}catch(e){toast(e.message);}}
-async function loadCustomers(){if(currentUser?.role!=="owner")return;try{const r=await apiFetch("/api/customers");customers=r.customers||[];$("homeCustomerCount").textContent=customers.length;const list=$("customerList");const sel=$("vehicleCustomer");list.innerHTML="";sel.innerHTML='<option value="">Assign to owner</option>';customers.filter(u=>u.role==="customer").forEach(u=>{const item=document.createElement("div");item.className="list-item";item.innerHTML=`<div><strong>${escapeHTML(u.name)}</strong><small>${escapeHTML(u.email)}</small></div><span class="pill blue">CUSTOMER</span>`;list.appendChild(item);const o=document.createElement("option");o.value=u.id;o.textContent=`${u.name} (${u.email})`;sel.appendChild(o);});if(!list.children.length)list.innerHTML='<div class="empty">No customer accounts yet.</div>';}catch(e){$("customerList").innerHTML=`<div class="empty">${escapeHTML(e.message)}</div>`;}}
-async function loadAllPayments(){if(!currentUser)return;try{const r=await apiFetch("/api/payments");renderPayments(r.payments||[]);}catch(e){toast(e.message);}}
-function renderPayments(payments){const ownerT=$("paymentList");const rideT=$("ridePayments");const sel=selectedVehicle?payments.filter(p=>Number(p.motorcycle_id)===Number(selectedVehicle.id)):[];ownerT.innerHTML="";rideT.innerHTML="";const targets=currentUser?.role==="owner"?[ownerT]:[rideT];targets.forEach(t=>{sel.forEach(p=>{const item=document.createElement("div");item.className="list-item";item.innerHTML=`<div><strong>${escapeHTML(p.currency)} ${Number(p.amount).toLocaleString()}</strong><small>${escapeHTML(p.reference||"No reference")}</small></div><span class="pill gray">${escapeHTML(p.status)}</span>`;t.appendChild(item);});if(!t.children.length)t.innerHTML='<div class="empty">No payment records for this motorbike.</div>';});}
-async function loadPayments(){if(!selectedVehicle)return;await loadAllPayments();}
-async function recordPayment(){if(currentUser?.role!=="owner"||!selectedVehicle){toast("Select a motorbike first.");return;}const amt=prompt("Enter payment amount:");if(amt===null)return;const n=Number(amt);if(!Number.isFinite(n)||n<=0){toast("Enter valid amount.");return;}const cur=(prompt("Currency: NGN or USD","NGN")||"NGN").toUpperCase();if(!["NGN","USD"].includes(cur)){toast("Currency must be NGN or USD.");return;}try{const r=await apiFetch("/api/payments",{method:"POST",body:JSON.stringify({amount:n,currency:cur,motorcycle_id:selectedVehicle.id})});toast(`Pending payment created: ${r.reference}`);loadPayments();}catch(e){toast(e.message);}}
-async function loadRide(){if(!currentUser)return;try{const r=await apiFetch("/api/motorcycles");motorcycles=r.motorcycles||r.motorbikes||[];if(selectedVehicle&&!motorcycles.some(v=>Number(v.id)===Number(selectedVehicle.id)))selectedVehicle=null;renderVehicleLists();if(!selectedVehicle&&motorcycles.length)await selectVehicle(motorcycles[0]);else if(!motorcycles.length){resetTelemetry();$("ridePayments").innerHTML='<div class="empty">No payment records.</div>';}await loadAllPayments();}catch(e){toast(e.message);}}
-async function loadMemories(){if(currentUser?.role!=="owner")return;try{const r=await apiFetch("/api/memory");const list=$("memoryList");list.innerHTML="";(r.memories||[]).forEach(m=>{const item=document.createElement("div");item.className="list-item";const c=document.createElement("div");c.style.flex="1";c.innerHTML=`<strong>${escapeHTML(m.content)}</strong><small>${m.created_at?new Date(m.created_at).toLocaleString():""}</small>`;const del=document.createElement("button");del.className="secondary danger small-btn";del.textContent="Delete";del.onclick=()=>deleteMemory(m.id);item.appendChild(c);item.appendChild(del);list.appendChild(item);});if(!list.children.length)list.innerHTML='<div class="empty">No saved memories yet.</div>';}catch(e){$("memoryList").innerHTML=`<div class="empty">${escapeHTML(e.message)}</div>`;}}
-async function saveMemory(){const c=$("memoryInput").value.trim();if(!c){toast("Enter something to save.");return;}try{const r=await apiFetch("/api/memory",{method:"POST",body:JSON.stringify({content:c})});$("memoryInput").value="";toast(r.saved?"Memory saved Boss.":"Already saved.");loadMemories();}catch(e){toast(e.message);}}
-async function deleteMemory(id){if(!confirm("Delete this memory?"))return;try{await apiFetch(`/api/memory/${id}`,{method:"DELETE"});toast("Memory deleted.");loadMemories();}catch(e){toast(e.message);}}
-async function checkHealth(){try{const res=await fetch(API+"/health");const d=await res.json();$("connectionText").textContent=res.ok?"Server connected":"Server issue";$("healthResult").textContent=JSON.stringify(d);}catch(_){$("connectionText").textContent="Server unavailable";$("healthResult").textContent="Could not reach Tabby server.";}}
-initialise();
+let synth = window.speechSynthesis;
+let lastImagePrompt = '';
+
+function showError(msg){
+  const el=document.getElementById('authError');
+  el.style.display='block'; el.textContent=msg;
+  setTimeout(()=>el.style.display='none',6000);
+}
+function showSuccess(msg){
+  const el=document.getElementById('authSuccess');
+  el.style.display='block'; el.textContent=msg;
+  setTimeout(()=>el.style.display='none',5000);
+}
+function switchTab(mode){
+  currentMode=mode;
+  document.getElementById('loginTab').classList.toggle('active', mode==='login');
+  document.getElementById('registerTab').classList.toggle('active', mode==='register');
+  document.getElementById('registerFields').style.display = mode==='register' ? 'block' : 'none';
+  document.getElementById('authBtn').textContent = mode==='login' ? 'Login' : 'Create Account';
+}
+function fillDemo(){
+  document.getElementById('authEmail').value='faruq@tabby.ai';
+  document.getElementById('authPassword').value='TabbyBoss123';
+  showSuccess('Demo filled. Click Login or Register if you never create account before.');
+}
+async function doAuth(){
+  const email=document.getElementById('authEmail').value.trim().toLowerCase();
+  const pwd=document.getElementById('authPassword').value;
+  const name=document.getElementById('regName').value.trim();
+  if(!email||!pwd){showError('Please enter email and password.');return;}
+  if(currentMode==='register' && !name){showError('Please enter your name.');return;}
+  if(pwd.length<8){showError('Password must be at least 8 characters.');return;}
+  const btn=document.getElementById('authBtn'); btn.disabled=true; btn.textContent='Please wait...';
+  try{
+    const endpoint = currentMode==='login' ? '/api/login' : '/api/register';
+    const body = currentMode==='login' ? {email,password:pwd} : {name,email,password:pwd};
+    const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await res.json();
+    if(!res.ok || !data.success){showError(data.error||'Auth failed.');return;}
+    token=data.token; user=data.user;
+    localStorage.setItem('tabby_token',token);
+    showChat();
+  }catch(e){showError('Network error. Check internet and try again.');}
+  finally{btn.disabled=false; btn.textContent= currentMode==='login'?'Login':'Create Account';}
+}
+async function checkAuth(){
+  if(!token) return;
+  try{
+    const res=await fetch('/api/me',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    if(data.success){user=data.user; showChat();}
+    else{localStorage.removeItem('tabby_token'); token='';}
+  }catch(e){}
+}
+function showChat(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('chatScreen').style.display='flex';
+  document.getElementById('logoutBtn').style.display='block';
+  if(document.getElementById('chatBox').children.length===0){
+    addMessage('assistant', `Welcome back Boss ${user?.name||''} 👋\n\nI be Tabby, built by you — Faruq Sulaimon. I sabi English and Pidgin.\n\nTry me:\n• "Generate image of a man in 2d anime style"\n• "What's my location?"\n• "What's latest news today?"\n• Press 📍 Share My Location to save your location. You fit change am anytime.`);
+  }
+  if(conversationId) loadConversation(conversationId);
+}
+function logout(){
+  token=''; user=null; conversationId=null;
+  localStorage.removeItem('tabby_token'); localStorage.removeItem('tabby_conversation_id');
+  document.getElementById('authScreen').style.display='block';
+  document.getElementById('chatScreen').style.display='none';
+  document.getElementById('logoutBtn').style.display='none';
+  document.getElementById('chatBox').innerHTML='';
+}
+function newChat(){
+  conversationId=null; localStorage.removeItem('tabby_conversation_id');
+  document.getElementById('chatBox').innerHTML='';
+  addMessage('assistant','New chat started Boss. Wetin you want make we do? Generate image, check news, or track location?');
+}
+async function loadConversation(id){
+  try{
+    const res=await fetch(`/api/conversations/${id}`,{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    if(data.success && data.messages){
+      const box=document.getElementById('chatBox'); box.innerHTML='';
+      data.messages.forEach(m=>{
+        if(m.role==='user') addMessage('user',m.content);
+        else if(m.role==='assistant'){
+          // If assistant message was an image generation, don't show fake placeholder
+          if(m.content.includes('[IMAGE]')) return;
+          addMessage('assistant',m.content);
+        }
+      });
+    }
+  }catch(e){}
+}
+
+// --- MESSAGES + IMAGE DISPLAY - FIXED ---
+function addMessage(role, text){
+  const box=document.getElementById('chatBox');
+  const div=document.createElement('div');
+  div.className='msg '+ (role==='user'?'user':'assistant');
+  div.textContent=text;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+  return div;
+}
+function addImageMessage(imageUrl, prompt){
+  const box=document.getElementById('chatBox');
+  const div=document.createElement('div');
+  div.className='msg assistant';
+  const label=document.createElement('div');
+  label.textContent = `Here is your dope image Boss 🎨\n${prompt||''}`;
+  div.appendChild(label);
+  const img=document.createElement('img');
+  img.className='chat-img';
+  img.src=imageUrl;
+  img.alt=prompt||'Generated image';
+  img.onerror=()=>{ label.textContent='Image failed to load Boss. Try again or check your connection.'; };
+  div.appendChild(img);
+  const actions=document.createElement('div');
+  actions.className='img-actions';
+  const dl=document.createElement('a');
+  dl.className='img-btn'; dl.href=imageUrl; dl.download='tabby-image.jpg'; dl.target='_blank'; dl.textContent='⬇️ Download';
+  const open=document.createElement('a');
+  open.className='img-btn'; open.href=imageUrl; open.target='_blank'; open.textContent='🔍 Open full';
+  actions.appendChild(dl); actions.appendChild(open);
+  div.appendChild(actions);
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+  if(voiceReplies) speakText('Here is your dope image Boss');
+}
+function showTyping(show){ document.getElementById('typing').style.display = show ? 'block' : 'none'; }
+
+// --- MAIN SEND - FIXED TO SHOW IMAGE ---
+async function sendMessage(){
+  const input=document.getElementById('msgInput');
+  const message=input.value.trim();
+  if(!message) return;
+  if(!token){showError('Please login first Boss.'); document.getElementById('authScreen').style.display='block'; return;}
+  addMessage('user', message);
+  input.value='';
+  const btn=document.getElementById('sendBtn'); btn.disabled=true;
+  showTyping(true);
+  try{
+    const payload={message, conversation_id: conversationId ? parseInt(conversationId) : null};
+    if(webSearchMode==='on') payload.web_search=true;
+    if(webSearchMode==='off') payload.web_search=false;
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
+    const data=await res.json();
+    showTyping(false);
+    if(!res.ok || (!data.success && !data.reply)){
+      addMessage('assistant','Sorry Boss, Tabby couldn\'t reach AI service. Try again in a few seconds.');
+      return;
+    }
+    if(data.conversation_id){ conversationId=data.conversation_id; localStorage.setItem('tabby_conversation_id', String(conversationId)); }
+    const reply = data.reply || data.response || 'Done Boss.';
+
+    // FIX: If backend returned an image, SHOW IT - don't just show text
+    if(data.image || data.image_url){
+      addImageMessage(data.image_url || data.image, message);
+    } else {
+      addMessage('assistant', reply);
+      if(voiceReplies || voiceConversation) speakText(reply);
+    }
+    // If location returned, show it
+    if(data.latitude && data.longitude){
+      showLocationStatus(`📍 Location: ${data.latitude}, ${data.longitude} — ${data.google_maps||''}`);
+    }
+  }catch(e){
+    showTyping(false);
+    addMessage('assistant','Network error Boss. Check your internet and try again.');
+  } finally{ btn.disabled=false; }
+}
+
+// --- GENERATE IMAGE BUTTON - FIXED ---
+async function promptGenerateImage(){
+  const prompt = window.prompt('What image you want Boss? e.g. a man in 2d anime style, a dope motorbike, a ball', lastImagePrompt || 'a man in 2d anime style');
+  if(!prompt) return;
+  lastImagePrompt=prompt;
+  if(!token){alert('Please login first Boss'); return;}
+  addMessage('user', `Generate image of ${prompt}`);
+  showTyping(true);
+  try{
+    const res=await fetch('/api/generate-image',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({prompt, steps:4})});
+    const data=await res.json();
+    showTyping(false);
+    if(data.image || data.image_url){
+      addImageMessage(data.image_url || data.image, prompt);
+    } else if(data.success && data.image_url){
+      addImageMessage(data.image_url, prompt);
+    } else {
+      addMessage('assistant','Image failed Boss: '+(data.error||'Try again. Check Cloudflare token or try another prompt.'));
+    }
+  }catch(e){
+    showTyping(false);
+    addMessage('assistant','Image failed Boss — network error. Try again.');
+  }
+}
+
+// --- VOICE ---
+function toggleVoiceReplies(){
+  voiceReplies=!voiceReplies;
+  const b=document.getElementById('voiceReplyBtn');
+  b.textContent = voiceReplies ? '🔊 Voice replies: On' : '🔊 Voice replies: Off';
+  b.classList.toggle('active', voiceReplies);
+  if(voiceReplies) speakText('Voice replies on Boss. I go talk now.');
+  else if(synth) synth.cancel();
+}
+function speakText(text){
+  if(!('speechSynthesis' in window)) return;
+  try{
+    synth.cancel();
+    const clean = String(text).replace(/https?:\/\/\S+/g,'').replace(/[*#_>]/g,'').slice(0,500);
+    if(!clean.trim()) return;
+    const u=new SpeechSynthesisUtterance(clean);
+    u.lang='en-NG'; u.rate=1; u.pitch=1;
+    synth.speak(u);
+  }catch(e){}
+}
+function toggleVoiceInput(){
+  if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){ alert('Voice input no dey supported for this browser Boss. Use Chrome.'); return; }
+  if(voiceInputActive){ if(recognition) recognition.stop(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition=new SR();
+  recognition.lang='en-NG'; recognition.interimResults=false; recognition.continuous=false;
+  recognition.onstart=()=>{ voiceInputActive=true; const b=document.getElementById('voiceInputBtn'); b.textContent='🔴 Listening... tap to stop'; b.classList.add('recording'); };
+  recognition.onend=()=>{ voiceInputActive=false; const b=document.getElementById('voiceInputBtn'); b.textContent='🎤 Voice input'; b.classList.remove('recording'); };
+  recognition.onresult=(e)=>{
+    const transcript=e.results[0][0].transcript;
+    document.getElementById('msgInput').value=transcript;
+    sendMessage();
+  };
+  recognition.onerror=()=>{ voiceInputActive=false; const b=document.getElementById('voiceInputBtn'); b.textContent='🎤 Voice input'; b.classList.remove('recording'); };
+  recognition.start();
+}
+function toggleVoiceConversation(){
+  voiceConversation=!voiceConversation;
+  const b=document.getElementById('voiceConvBtn');
+  const banner=document.getElementById('voiceBanner');
+  if(voiceConversation){
+    b.textContent='🔴 Stop voice conversation'; b.classList.add('active');
+    banner.style.display='flex';
+    voiceReplies=true; document.getElementById('voiceReplyBtn').textContent='🔊 Voice replies: On'; document.getElementById('voiceReplyBtn').classList.add('active');
+    speakText('Voice conversation on Boss. Talk to me like phone call.');
+    // Auto start listening
+    toggleVoiceInput();
+  } else { stopVoiceConversation(); }
+}
+function stopVoiceConversation(){
+  voiceConversation=false;
+  document.getElementById('voiceConvBtn').textContent='🎙️ Start voice conversation';
+  document.getElementById('voiceConvBtn').classList.remove('active');
+  document.getElementById('voiceBanner').style.display='none';
+  if(recognition) try{recognition.stop();}catch(e){}
+  if(synth) synth.cancel();
+}
+
+// --- WEB SEARCH ---
+function toggleWebSearch(){
+  if(webSearchMode==='auto') webSearchMode='on';
+  else if(webSearchMode==='on') webSearchMode='off';
+  else webSearchMode='auto';
+  const b=document.getElementById('webSearchBtn');
+  b.textContent = webSearchMode==='auto' ? '🌐 Web search: Auto' : webSearchMode==='on' ? '🌐 Web search: On' : '🌐 Web search: Off';
+}
+
+// --- LOCATION - CHANGE ANYTIME ---
+function showLocationStatus(msg){
+  const el=document.getElementById('locationStatus');
+  el.style.display='block'; el.textContent=msg;
+}
+async function shareLocation(){
+  if(!navigator.geolocation){ alert('Geolocation no dey supported for this device Boss.'); return; }
+  showLocationStatus('📍 Getting your location... Allow permission Boss.');
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    const lat=pos.coords.latitude; const lng=pos.coords.longitude;
+    showLocationStatus(`📍 Live location saved: ${lat}, ${lng}. You fit change am anytime.`);
+    try{
+      const res=await fetch('/api/location/update',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({latitude:lat,longitude:lng,accuracy:pos.coords.accuracy,speed:pos.coords.speed})});
+      const data=await res.json();
+      if(data.success){
+        addMessage('assistant', `Done Boss, I don save your new location: ${lat}, ${lng}. Maps: ${data.google_maps}. You fit change am anytime — just press Share My Location again or tell me "Change my location to Abuja".`);
+        if(voiceReplies) speakText('Location saved Boss');
+      } else {
+        addMessage('assistant','Location got but save failed: '+(data.error||'Try again'));
+      }
+    }catch(e){ addMessage('assistant','Location got but network failed to save. Try again.'); }
+  }, (err)=>{
+    showLocationStatus('📍 Location failed: '+err.message+' — Make sure you Allow permission and use https.');
+    alert('Location failed Boss: '+err.message+'\n\nTry: Allow permission, use https, or type "I am in Lagos" for chat.');
+  }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+}
+async function trackLocation(){
+  if(!token){alert('Login first Boss');return;}
+  try{
+    const res=await fetch('/api/location/latest',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    if(data.location){
+      const l=data.location;
+      const msg=`Boss, you dey here right now:\nLatitude: ${l.latitude}\nLongitude: ${l.longitude}\nMaps: ${l.google_maps}\n\nIf you don move, press Share My Location again — I go update am sharp sharp.`;
+      addMessage('assistant', msg);
+      showLocationStatus(`📍 Tracked: ${l.latitude}, ${l.longitude}`);
+    } else {
+      addMessage('assistant','Boss, I never get your location yet. Press 📍 Share My Location and Allow, or tell me "I am in Lagos".');
+    }
+  }catch(e){ addMessage('assistant','Track failed Boss — network error.'); }
+}
+
+// Init
+checkAuth();
 </script>
 </body>
 </html>
