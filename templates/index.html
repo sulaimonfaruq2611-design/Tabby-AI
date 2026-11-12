@@ -7,10 +7,10 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0a0f1e;--sidebar:#080d1a;--card:#111827;--border:#1e293b;--text:#e5e7eb;--muted:#8b93a7;--blue:#2563eb;--blue2:#3b82f6;--user:#2563eb;--assistant:#1a2233}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 a{color:#60a5fa}
 #app{display:flex;width:100%;min-height:100vh}
-aside{width:260px;min-width:260px;background:var(--sidebar);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:18px;flex-shrink:0}
+aside{width:260px;min-width:260px;background:var(--sidebar);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:18px;flex-shrink:0;z-index:50}
 .logo{display:flex;align-items:center;gap:10px;padding:4px 8px}
 .logo-icon{width:38px;height:38px;border-radius:10px;background:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;color:white}
 .logo b{font-size:15px;letter-spacing:1px}
@@ -18,23 +18,23 @@ aside{width:260px;min-width:260px;background:var(--sidebar);border-right:1px sol
 .side-label{font-size:10px;letter-spacing:1.2px;color:var(--muted);padding:0 10px;margin-top:4px}
 .nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 10px;border-radius:10px;border:0;background:transparent;color:#cbd5e1;font-size:13.5px;cursor:pointer;text-align:left}
 .nav-btn.active{background:#1e293b;color:white}
-.nav-btn:hover{background:#111827}
-main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)}
-.topbar b{font-size:14px}
+main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);width:100%}
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.hamburger{display:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:#111827;color:white;font-size:18px;cursor:pointer;flex-shrink:0}
+.topbar b{font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-chip{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
 .owner-badge{background:#1e293b;border:1px solid var(--border);color:#94a3b8;padding:3px 8px;border-radius:999px;font-size:10px;letter-spacing:.5px}
-.content{flex:1;display:flex;flex-direction:column;padding:18px 20px;max-width:1100px;width:100%;margin:0 auto}
+.content{flex:1;display:flex;flex-direction:column;padding:16px;max-width:1100px;width:100%;margin:0 auto}
 .content h1{font-size:20px}
-.content p.sub{font-size:12.5px;color:var(--muted);margin:4px 0 16px}
+.content p.sub{font-size:12.5px;color:var(--muted);margin:4px 0 14px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
 .stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
 .stat small{font-size:11px;color:var(--muted)}
 .stat b{font-size:18px;display:block;margin:6px 0 2px}
 .stat span{font-size:11px;color:var(--muted)}
 .owner-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
-.owner-box h3{display:flex;justify-content:space-between;font-size:13px}
-.owner-badge-green{background:#14532d;color:#86efac;padding:3px 8px;border-radius:999px;font-size:9px}
+.owner-box h3{display:flex;justify-content:space-between;font-size:13px;gap:8px}
+.owner-badge-green{background:#14532d;color:#86efac;padding:3px 8px;border-radius:999px;font-size:9px;white-space:nowrap}
 .owner-box p{font-size:12.5px;color:var(--muted);margin:8px 0 12px;line-height:1.5}
 .btn-blue{background:var(--blue);color:white;border:0;padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
 .btn-dark{background:#1e293b;color:white;border:1px solid var(--border);padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
@@ -50,21 +50,21 @@ main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
 .msg.user{background:var(--user);color:white;align-self:flex-end;border-bottom-right-radius:5px}
 .msg.assistant{background:var(--assistant);color:var(--text);align-self:flex-start;border-bottom-left-radius:5px;border:1px solid var(--border)}
 .msg img.chat-img{width:100%;max-width:420px;border-radius:12px;display:block;margin-top:10px;border:1px solid var(--border)}
-.img-actions{display:flex;gap:8px;margin-top:8px}
+.img-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .img-btn{background:#0f172a;border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:999px;font-size:12px;cursor:pointer;text-decoration:none}
-.composer{padding:12px;border-top:1px solid var(--border)}
+.composer{padding:12px;border-top:1px solid var(--border);background:var(--card)}
 .input-row{display:flex;gap:8px}
-#msgInput{flex:1;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:#0f172a;color:white;font-size:14px;outline:none;min-width:0}
+#msgInput{flex:1;padding:12px 13px;border-radius:12px;border:1px solid var(--border);background:#0f172a;color:white;font-size:15px;outline:none;min-width:0}
 #msgInput:focus{border-color:var(--blue2)}
-#sendBtn{width:42px;height:42px;border-radius:10px;border:0;background:var(--blue);color:white;font-size:16px;cursor:pointer}
+#sendBtn{width:46px;height:46px;border-radius:12px;border:0;background:var(--blue);color:white;font-size:16px;cursor:pointer;flex-shrink:0}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-.chip{background:#0f172a;border:1px solid var(--border);color:#cbd5e1;padding:7px 10px;border-radius:999px;font-size:11.5px;cursor:pointer}
+.chip{background:#0f172a;border:1px solid var(--border);color:#cbd5e1;padding:8px 11px;border-radius:999px;font-size:12px;cursor:pointer}
 .chip.active{background:var(--blue);color:white}
 .chip.recording{background:#dc2626;color:white}
-.location-status{font-size:12px;color:#22c55e;margin-top:6px;display:none}
+.location-status{font-size:12px;color:#22c55e;margin-top:6px;display:none;word-break:break-word}
 .typing{display:none;align-self:flex-start;background:var(--assistant);padding:9px 13px;border-radius:14px;font-size:12px;color:var(--muted)}
-#voiceBanner{display:none;background:#4c1d95;color:white;padding:9px 12px;border-radius:10px;font-size:12.5px;margin:0 0 10px;align-items:center;justify-content:space-between}
-#voiceBanner button{background:white;color:#4c1d95;border:0;padding:6px 10px;border-radius:999px;font-weight:700;cursor:pointer;font-size:12px}
+#voiceBanner{display:none;background:#4c1d95;color:white;padding:9px 12px;border-radius:10px;font-size:12.5px;margin:0 0 10px;align-items:center;justify-content:space-between;gap:8px}
+#voiceBanner button{background:white;color:#4c1d95;border:0;padding:6px 10px;border-radius:999px;font-weight:700;cursor:pointer;font-size:12px;flex-shrink:0}
 .settings-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
 .settings-card h3{font-size:13.5px;margin-bottom:2px}
 .settings-card small{font-size:11px;color:var(--muted)}
@@ -73,7 +73,7 @@ main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
 .bike-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .bike-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
 .bike-card b{font-size:15px}
-.bike-card p{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
+.bike-card p{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;word-break:break-word}
 footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
 #authWrap{display:none;width:100%;min-height:100vh;align-items:center;justify-content:center;padding:20px;background:var(--bg)}
 .auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:420px}
@@ -89,21 +89,29 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
 .btn-ghost{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);cursor:pointer;margin-top:8px}
 .error-box{display:none;background:#7f1d1d;border:1px solid #ef4444;color:#fecaca;padding:10px;border-radius:10px;font-size:13px;margin-bottom:10px}
 .success-box{display:none;background:#14532d;border:1px solid #22c55e;color:#bbf7d0;padding:10px;border-radius:10px;font-size:13px;margin-bottom:10px}
+#sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40}
+/* MOBILE FIRST - THIS IS THE FIX */
 @media(max-width:820px){
-  aside{width:170px;min-width:170px;padding:10px 8px}
-  .logo b{font-size:12px}
-  .logo span{font-size:7.5px}
-  .nav-btn{font-size:11.5px;padding:8px 7px;gap:6px}
+  .hamburger{display:flex;align-items:center;justify-content:center}
+  aside{position:fixed;left:-280px;top:0;bottom:0;transition:left .25s ease;box-shadow:20px 0 40px rgba(0,0,0,.5)}
+  aside.open{left:0}
+  #sidebarOverlay.show{display:block}
   .content{padding:10px}
   .stats{grid-template-columns:1fr}
   .chat-grid{flex-direction:column}
-  .convo-list{width:100%;max-height:150px}
+  .convo-list{width:100%;max-height:120px;order:2}
+  .chat-panel{order:1}
+  #chatBox{padding:12px;min-height:320px}
+  .msg{max-width:92%;font-size:14px}
   .bike-grid{grid-template-columns:1fr}
+  .topbar{padding:10px}
+  #topUserName{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+  .composer{position:sticky;bottom:0}
 }
 </style>
 </head>
 <body>
-
+<div id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
 <div id="authWrap">
   <div class="auth-card">
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="logo-icon">✦</div><div><b style="letter-spacing:1px">TABBY</b><span style="display:block;font-size:9px;color:var(--muted);letter-spacing:.7px">AI & AUTOMOTIVE INTELLIGENCE</span></div></div>
@@ -119,33 +127,30 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
     <button class="btn-ghost" onclick="fillDemo()">Use my Boss account</button>
   </div>
 </div>
-
 <div id="app">
-  <aside>
+  <aside id="sidebar">
     <div class="logo"><div class="logo-icon">✦</div><div><b>TABBY</b><span>AI & AUTOMOTIVE<br>INTELLIGENCE</span></div></div>
     <div>
       <div class="side-label">WORKSPACE</div>
-      <button class="nav-btn" id="navOverview" onclick="showSection('overview')">⌂ Overview</button>
-      <button class="nav-btn active" id="navTabby" onclick="showSection('tabby')">✦ Tabby AI</button>
-      <button class="nav-btn" id="navAuto" onclick="showSection('auto')">◇ Automotive Dashboard</button>
-      <button class="nav-btn" id="navRide" onclick="showSection('ride')">~ Tabby Ride</button>
+      <button class="nav-btn" id="navOverview" onclick="showSection('overview');toggleSidebar(false)">⌂ Overview</button>
+      <button class="nav-btn active" id="navTabby" onclick="showSection('tabby');toggleSidebar(false)">✦ Tabby AI</button>
+      <button class="nav-btn" id="navAuto" onclick="showSection('auto');toggleSidebar(false)">◇ Automotive Dashboard</button>
+      <button class="nav-btn" id="navRide" onclick="showSection('ride');toggleSidebar(false)">~ Tabby Ride</button>
     </div>
     <div>
       <div class="side-label">PERSONAL</div>
-      <button class="nav-btn" id="navAccount" onclick="showSection('account')">◐ Account & Login</button>
-      <button class="nav-btn" id="navMemories" onclick="showSection('memories')">▭ Saved Memories</button>
-      <button class="nav-btn" id="navSettings" onclick="showSection('settings')">○ Settings</button>
+      <button class="nav-btn" id="navAccount" onclick="showSection('account');toggleSidebar(false)">◐ Account & Login</button>
+      <button class="nav-btn" id="navMemories" onclick="showSection('memories');toggleSidebar(false)">▭ Saved Memories</button>
+      <button class="nav-btn" id="navSettings" onclick="showSection('settings');toggleSidebar(false)">○ Settings</button>
     </div>
     <div style="margin-top:auto">
       <button class="nav-btn" onclick="logout()" style="color:#fca5a5">Logout</button>
       <div style="font-size:10px;color:var(--muted);padding:8px 10px">Tabby • AI & Automotive Intelligence<br>Built by Boss Faruq Sulaimon</div>
     </div>
   </aside>
-
   <main>
-    <div class="topbar"><b id="topTitle">Tabby AI</b><div class="user-chip"><span id="topUserName">Faruq Sulaimon</span><span class="owner-badge" id="topUserRole">OWNER</span></div></div>
+    <div class="topbar"><button class="hamburger" onclick="toggleSidebar()">☰</button><b id="topTitle">Tabby AI</b><div class="user-chip"><span id="topUserName">Faruq Sulaimon</span><span class="owner-badge" id="topUserRole">OWNER</span></div></div>
     <div class="content">
-
       <div id="sectionOverview" style="display:none">
         <h1 id="overviewWelcome">Welcome, Faruq Sulaimon</h1>
         <p class="sub">Your personal AI and automotive intelligence platform.</p>
@@ -160,25 +165,17 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="showSection('tabby')">Open Tabby AI</button><button class="btn-dark" onclick="showSection('auto')">Manage fleet</button><button class="btn-dark" onclick="showSection('memories')">Manage memories</button></div>
         </div>
       </div>
-
       <div id="sectionTabby">
         <h1>Tabby AI</h1>
         <p class="sub">Your private AI workspace. Conversations are stored in your account.</p>
         <div id="voiceBanner"><span>Voice conversation ON — Talking like phone call...</span><button onclick="stopVoiceConversation()">End voice conversation</button></div>
         <div class="chat-grid">
-          <div class="convo-list">
-            <h3>Conversations <button onclick="newChat()">+</button></h3>
-            <div id="convoList"></div>
-            <div class="convo-item" onclick="newChat()">New Chat</div>
-          </div>
+          <div class="convo-list"><h3>Conversations <button onclick="newChat()">+</button></h3><div id="convoList"></div><div class="convo-item" onclick="newChat()">New Chat</div></div>
           <div class="chat-panel">
             <div id="chatBox"></div>
             <div id="typing" class="typing">Tabby dey type...</div>
             <div class="composer">
-              <div class="input-row">
-                <input id="msgInput" placeholder="Message Tabby..." autocomplete="off" onkeydown="if(event.key==='Enter') sendMessage()">
-                <button id="sendBtn" onclick="sendMessage()">➤</button>
-              </div>
+              <div class="input-row"><input id="msgInput" placeholder="Message Tabby..." autocomplete="off" onkeydown="if(event.key==='Enter') sendMessage()"><button id="sendBtn" onclick="sendMessage()">➤</button></div>
               <div class="chips">
                 <button class="chip" id="voiceInputBtn" onclick="toggleVoiceInput()">🎤 Voice input</button>
                 <button class="chip" id="voiceReplyBtn" onclick="toggleVoiceReplies()">🔊 Voice replies: Off</button>
@@ -193,61 +190,30 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
           </div>
         </div>
       </div>
-
       <div id="sectionAuto" style="display:none">
         <h1>Automotive Dashboard</h1>
         <p class="sub">Your bike dashboard. Motorbike status, telemetry, battery, GPS, fuel.</p>
         <div class="bike-grid">
-          <div class="bike-card"><b>Motorbike Fleet</b><p id="fleetBox">Loading fleet...</p><div style="margin-top:10px;display:flex;gap:8px"><button class="btn-blue" onclick="loadFleet()">Refresh fleet</button><button class="btn-dark" onclick="addBikePrompt()">Add motorbike</button></div></div>
+          <div class="bike-card"><b>Motorbike Fleet</b><p id="fleetBox">Loading fleet...</p><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="loadFleet()">Refresh fleet</button><button class="btn-dark" onclick="addBikePrompt()">Add motorbike</button></div></div>
           <div class="bike-card"><b>Live Telemetry</b><p id="telemetryBox">Awaiting connection — Hardware integration status: awaiting connection. When your bike device connect, speed, battery, fuel, GPS go show here live.</p></div>
-          <div class="bike-card"><b>GPS & Location</b><p id="gpsBox">No live GPS yet. Press Share My Location for phone GPS, or connect bike tracker.</p><div style="margin-top:10px"><button class="btn-blue" onclick="shareLocation()">Share My Location</button> <button class="btn-dark" onclick="trackLocation()">Track Location</button></div></div>
+          <div class="bike-card"><b>GPS & Location</b><p id="gpsBox">No live GPS yet. Press Share My Location for phone GPS, or connect bike tracker.</p><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="shareLocation()">Share My Location</button><button class="btn-dark" onclick="trackLocation()">Track Location</button></div></div>
           <div class="bike-card"><b>Battery & Fuel</b><p>Battery: --%<br>Fuel: --%<br>Engine temp: --°C<br><span style="color:var(--muted)">Connect hardware to see live values.</span></p></div>
         </div>
         <div class="owner-box" style="margin-top:14px"><h3>Automotive Status</h3><p id="autoStatusBox">Checking server connection...</p></div>
       </div>
-
-      <div id="sectionRide" style="display:none">
-        <h1>Tabby Ride</h1>
-        <p class="sub">Customer-facing ride service.</p>
-        <div class="owner-box"><h3>Tabby Ride</h3><p>Book a ride, track motorbike, pay. Customer view go be simple, no owner controls.</p><button class="btn-blue" onclick="showSection('tabby')">Ask Tabby to book a ride</button></div>
-      </div>
-
-      <div id="sectionAccount" style="display:none">
-        <h1>Account & Login</h1>
-        <p class="sub">Your account details.</p>
-        <div class="owner-box"><h3 id="accountName">Faruq Sulaimon</h3><p id="accountEmail">Email: -<br>Role: OWNER</p><button class="btn-dark" onclick="logout()">Logout</button></div>
-      </div>
-
-      <div id="sectionMemories" style="display:none">
-        <h1>Saved Memories</h1>
-        <p class="sub">Tabby go remember wetin you tell am.</p>
-        <div class="owner-box"><h3>Memories</h3><p id="memoriesBox">Loading memories...</p><div style="margin-top:10px"><button class="btn-blue" onclick="loadMemoriesBox()">Refresh</button></div></div>
-      </div>
-
+      <div id="sectionRide" style="display:none"><h1>Tabby Ride</h1><p class="sub">Customer-facing ride service.</p><div class="owner-box"><h3>Tabby Ride</h3><p>Book a ride, track motorbike, pay. Customer view go be simple, no owner controls.</p><button class="btn-blue" onclick="showSection('tabby')">Ask Tabby to book a ride</button></div></div>
+      <div id="sectionAccount" style="display:none"><h1>Account & Login</h1><p class="sub">Your account details.</p><div class="owner-box"><h3 id="accountName">Faruq Sulaimon</h3><p id="accountEmail">Email: -<br>Role: OWNER</p><button class="btn-dark" onclick="logout()">Logout</button></div></div>
+      <div id="sectionMemories" style="display:none"><h1>Saved Memories</h1><p class="sub">Tabby go remember wetin you tell am.</p><div class="owner-box"><h3>Memories</h3><p id="memoriesBox">Loading memories...</p><div style="margin-top:10px"><button class="btn-blue" onclick="loadMemoriesBox()">Refresh</button></div></div></div>
       <div id="sectionSettings" style="display:none">
-        <h1>Settings</h1>
-        <p class="sub">Manage your Tabby interface preferences.</p>
-        <div class="settings-card">
-          <h3>Voice preferences</h3><small>Speech voice</small>
-          <select id="voiceSelect"><option>Assamese India (as_IN)</option><option>English Nigeria (en_NG)</option><option>English US (en_US)</option><option>English UK (en_GB)</option><option>Yoruba (yo_NG)</option></select>
-          <div class="settings-row"><button class="btn-dark" onclick="testVoice()">Test voice</button><button class="btn-dark" id="settingsVoiceBtn" onclick="toggleVoiceReplies()">Toggle voice replies</button></div>
-        </div>
-        <div class="settings-card">
-          <h3>System Information</h3><small>Tabby web interface - Flask API, Owner/customer access control.</small>
-          <div class="settings-row"><button class="btn-dark" onclick="checkServer()">Check server connection</button></div>
-          <p id="serverStatus" style="font-size:11px;color:var(--muted);margin-top:10px;word-break:break-all">Press Check server connection to see status.</p>
-        </div>
-        <div class="settings-card">
-          <h3>Language & Style</h3><small>English, Pidgin and Yoruba. No asterisks in messages. Say lol or haha in words, not laughing emoji.</small>
-          <div class="settings-row"><button class="btn-dark" onclick="alert('Language: Tabby go answer in the language you use - English, Pidgin or Yoruba.')">Language: Auto</button></div>
-        </div>
+        <h1>Settings</h1><p class="sub">Manage your Tabby interface preferences.</p>
+        <div class="settings-card"><h3>Voice preferences</h3><small>Speech voice</small><select id="voiceSelect"><option>Assamese India (as_IN)</option><option>English Nigeria (en_NG)</option><option>English US (en_US)</option><option>English UK (en_GB)</option><option>Yoruba (yo_NG)</option></select><div class="settings-row"><button class="btn-dark" onclick="testVoice()">Test voice</button><button class="btn-dark" id="settingsVoiceBtn" onclick="toggleVoiceReplies()">Toggle voice replies</button></div></div>
+        <div class="settings-card"><h3>System Information</h3><small>Tabby web interface - Flask API, Owner/customer access control.</small><div class="settings-row"><button class="btn-dark" onclick="checkServer()">Check server connection</button></div><p id="serverStatus" style="font-size:11px;color:var(--muted);margin-top:10px;word-break:break-all">Press Check server connection to see status.</p></div>
+        <div class="settings-card"><h3>Language & Style</h3><small>English, Pidgin and Yoruba. No asterisks in messages. Say lol or haha in words, not laughing emoji.</small><div class="settings-row"><button class="btn-dark" onclick="alert('Language: Tabby go answer in the language you use - English, Pidgin or Yoruba.')">Language: Auto</button></div></div>
       </div>
-
     </div>
     <footer>Tabby • AI & Automotive Intelligence</footer>
   </main>
 </div>
-
 <script>
 let token = localStorage.getItem('tabby_token') || '';
 let user = null;
@@ -260,6 +226,7 @@ let webSearchMode = 'auto';
 let recognition = null;
 let synth = window.speechSynthesis;
 let lastImagePrompt = '';
+function toggleSidebar(force){ const s=document.getElementById('sidebar'); const o=document.getElementById('sidebarOverlay'); const open = force!==undefined ? force : !s.classList.contains('open'); s.classList.toggle('open', open); o.classList.toggle('show', open); }
 function cleanText(t){ if(!t) return ''; return String(t).replace(/\*\*/g,'').replace(/\*/g,'').replace(/__/g,'').trim(); }
 function showError(msg){ const el=document.getElementById('authError'); el.style.display='block'; el.textContent=cleanText(msg); setTimeout(()=>el.style.display='none',6000); }
 function showSuccess(msg){ const el=document.getElementById('authSuccess'); el.style.display='block'; el.textContent=cleanText(msg); setTimeout(()=>el.style.display='none',5000); }
@@ -338,12 +305,8 @@ function showSection(name){
   if(name==='overview'){ loadOverviewStats(); }
 }
 async function loadOverviewStats(){
-  try{
-    const r1=await fetch('/api/motorcycles',{headers:{'Authorization':'Bearer '+token}}); const d1=await r1.json(); const bikes=(d1.motorcycles||d1.motorbikes||[]); document.getElementById('statBikes').textContent=bikes.length;
-  }catch(e){}
-  try{
-    const r2=await fetch('/api/customers',{headers:{'Authorization':'Bearer '+token}}); const d2=await r2.json(); if(d2.customers) document.getElementById('statAccounts').textContent=d2.customers.length;
-  }catch(e){}
+  try{ const r1=await fetch('/api/motorcycles',{headers:{'Authorization':'Bearer '+token}}); const d1=await r1.json(); const bikes=(d1.motorcycles||d1.motorbikes||[]); document.getElementById('statBikes').textContent=bikes.length; }catch(e){}
+  try{ const r2=await fetch('/api/customers',{headers:{'Authorization':'Bearer '+token}}); const d2=await r2.json(); if(d2.customers) document.getElementById('statAccounts').textContent=d2.customers.length; }catch(e){}
 }
 async function loadFleet(){
   try{
@@ -437,14 +400,7 @@ function toggleVoiceReplies(){
 }
 function speakText(text){
   if(!('speechSynthesis' in window)) return;
-  try{
-    synth.cancel();
-    let clean = cleanText(text).replace(/https?:\/\/\S+/g,'').slice(0,500);
-    if(!clean.trim()) return;
-    const u=new SpeechSynthesisUtterance(clean);
-    const sel=document.getElementById('voiceSelect'); if(sel) u.lang = sel.value.includes('en_NG') ? 'en-NG' : 'en-US';
-    u.rate=1; u.pitch=1; synth.speak(u);
-  }catch(e){}
+  try{ synth.cancel(); let clean = cleanText(text).replace(/https?:\/\/\S+/g,'').slice(0,500); if(!clean.trim()) return; const u=new SpeechSynthesisUtterance(clean); const sel=document.getElementById('voiceSelect'); if(sel) u.lang = sel.value.includes('en_NG') ? 'en-NG' : 'en-US'; u.rate=1; u.pitch=1; synth.speak(u); }catch(e){}
 }
 function toggleVoiceInput(){
   if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){ alert('Voice input no dey supported for this browser Boss. Use Chrome.'); return; }
@@ -476,17 +432,17 @@ async function shareLocation(){
     try{
       const res=await fetch('/api/location/update',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({latitude:lat,longitude:lng,accuracy:pos.coords.accuracy,speed:pos.coords.speed})});
       const data=await res.json();
-      if(data.success){ addMessage('assistant', `Done Boss, I don save your new location: ${lat}, ${lng}. Maps: ${data.google_maps}. You fit change am anytime - just press Share My Location again or tell me Change my location to Abuja.`); if(voiceReplies) speakText('Location saved Boss'); }
+      if(data.success){ addMessage('assistant', `Done Boss, I don save your new location: ${lat}, ${lng}. Maps: ${data.google_maps}. You fit change am anytime.`); if(voiceReplies) speakText('Location saved Boss'); }
       else { addMessage('assistant','Location got but save failed: '+(cleanText(data.error)||'Try again')); }
     }catch(e){ addMessage('assistant','Location got but network failed to save. Try again.'); }
-  }, (err)=>{ showLocationStatus('Location failed: '+err.message+' - Make sure you Allow permission and use https.'); alert('Location failed Boss: '+err.message+'\n\nTry: Allow permission, use https, or type I am in Lagos for chat.'); }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+  }, (err)=>{ showLocationStatus('Location failed: '+err.message); alert('Location failed Boss: '+err.message); }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
 }
 async function trackLocation(){
   if(!token){alert('Login first Boss');return;}
   try{
     const res=await fetch('/api/location/latest',{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
-    if(data.location){ const l=data.location; const msg=`Boss, you dey here right now:\nLatitude: ${l.latitude}\nLongitude: ${l.longitude}\nMaps: ${l.google_maps}\n\nIf you don move, press Share My Location again - I go update am sharp sharp.`; addMessage('assistant', msg); showLocationStatus(`Tracked: ${l.latitude}, ${l.longitude}`); }
+    if(data.location){ const l=data.location; const msg=`Boss, you dey here right now:\nLatitude: ${l.latitude}\nLongitude: ${l.longitude}\nMaps: ${l.google_maps}`; addMessage('assistant', msg); showLocationStatus(`Tracked: ${l.latitude}, ${l.longitude}`); }
     else { addMessage('assistant','Boss, I never get your location yet. Press Share My Location and Allow, or tell me I am in Lagos.'); }
   }catch(e){ addMessage('assistant','Track failed Boss - network error.'); }
 }
