@@ -7,7 +7,6 @@ import secrets
 import logging
 from datetime import datetime, timezone
 from functools import wraps
-from contextlib import contextmanager
 
 import requests
 import psycopg2
@@ -39,7 +38,6 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 OPENROUTER_MODEL = (os.getenv("OPENROUTER_MODEL", "openrouter/free").strip() or "openrouter/free")
 VISION_MODEL = os.getenv("VISION_MODEL", "openai/gpt-4o-mini").strip()
 DEVICE_INGEST_KEY = os.getenv("DEVICE_INGEST_KEY", "")
-# SUPABASE ONLY - DO NOT USE DATABASE_URL, DO NOT USE DATABASE_PATH / SQLITE
 SUPABASE_DATABASE_URL = os.getenv("SUPABASE_DATABASE_URL", "").strip()
 CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
 CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
@@ -50,8 +48,6 @@ MIDJOURNEY_API_KEY = os.getenv("MIDJOURNEY_API_KEY", "").strip() or GOAPI_API_KE
 AUTO_MEMORY_ENABLED = (os.getenv("AUTO_MEMORY_ENABLED", "true").lower() == "true")
 LIVE_SEARCH_ENABLED = (os.getenv("LIVE_SEARCH_ENABLED", "true").lower() == "true")
 TABBY_DEVICE_KEY = os.getenv("TABBY_DEVICE_KEY", DEVICE_INGEST_KEY).strip()
-
-# ===== FALLBACK PROVIDERS - GEMINI / GROQ / CEREBRAS / POLLINATIONS =====
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "").strip()
@@ -78,7 +74,7 @@ def clean_ai_text(t):
     return t
 
 # ============================================================
-# DATABASE - SUPABASE POSTGRESQL
+# DATABASE - SUPABASE POSTGRESQL (POOLER FIXED)
 # ============================================================
 _pool = None
 
@@ -87,7 +83,13 @@ def _get_pool():
     if _pool is None:
         if not SUPABASE_DATABASE_URL:
             raise RuntimeError("SUPABASE_DATABASE_URL not configured.")
-        _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, SUPABASE_DATABASE_URL, sslmode="require", connect_timeout=10)
+        url = SUPABASE_DATABASE_URL.strip()
+        if ":5432" in url and "pooler.supabase.com" not in url:
+            logger.warning("SUPABASE_DATABASE_URL looks like Direct 5432 - use Transaction Pooler 6543 for Render, Direct is IPv6 and Render cannot reach it")
+        if "sslmode=" in url:
+            _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, url, connect_timeout=10)
+        else:
+            _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, url, sslmode="require", connect_timeout=10)
     return _pool
 
 class PGResult:
@@ -109,40 +111,29 @@ class PGResult:
         return [dict(r) for r in rows]
 
 class PGConnection:
-    """Drop-in replacement for sqlite3 connection used in original code.
-    Converts ? -> %s, handles RETURNING id so .lastrowid still works,
-    handles INSERT OR IGNORE -> ON CONFLICT DO NOTHING."""
     def __init__(self):
         self._conn = _get_pool().getconn()
         self._conn.autocommit = False
         self._cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         self._closed = False
     def _convert(self, sql):
-        # INSERT OR IGNORE -> ON CONFLICT DO NOTHING (Postgres)
         sql = sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
-        # Convert ? placeholders to %s, but not inside ?? - original code has no ?? 
         sql = sql.replace("?", "%s")
-        # Handle INSERT OR IGNORE variant already done; handle ON CONFLICT for bike_status inserts
         return sql
     def execute(self, sql, params=()):
         original = sql.strip()
         sql2 = self._convert(sql)
         is_insert = original.upper().startswith("INSERT")
-        # If INSERT OR IGNORE was in original, append ON CONFLICT DO NOTHING
         if "INSERT OR IGNORE" in original.upper():
-            # If it already has RETURNING, keep it; else add conflict clause before RETURNING
             if "RETURNING" not in sql2.upper():
                 sql2 = sql2 + " ON CONFLICT DO NOTHING"
             else:
                 sql2 = sql2.replace(" RETURNING", " ON CONFLICT DO NOTHING RETURNING")
-        # For plain INSERTs that callers expect lastrowid from, add RETURNING id if table has id and no RETURNING already
         needs_returning = False
         if is_insert and "RETURNING" not in sql2.upper() and "ON CONFLICT DO NOTHING" not in sql2.upper():
-            # bike_status has no id column - it has motorcycle_id PK, skip RETURNING for it
             if "INTO bike_status" not in sql2.lower():
                 sql2 = sql2 + " RETURNING id"
                 needs_returning = True
-        # For INSERT OR IGNORE on bike_status, we need no RETURNING
         if params is None:
             params = ()
         self._cur.execute(sql2, tuple(params) if isinstance(params, (list, tuple)) else (params,))
@@ -191,24 +182,8 @@ class PGConnection:
             self.close()
         return False
 
-@contextmanager
 def get_db():
-    conn = PGConnection()
-    try:
-        yield conn
-    finally:
-        # __exit__ logic is handled by PGConnection context, but get_db is a generator contextmanager
-        # Commit on success is done by callers via PGConnection.__exit__? We handle here:
-        pass
-    # NOTE: PGConnection commit/close is handled below via wrapper - see get_db_ctx
-    # This function is replaced by get_db_ctx for actual use
-
-# Real get_db used everywhere - returns PGConnection as context manager
-def get_db_ctx():
     return PGConnection()
-
-# Monkey-patch: all original code calls `with get_db() as db:` - make get_db return PGConnection
-get_db = get_db_ctx
 
 def init_db():
     try:
@@ -244,21 +219,16 @@ DATABASE_READY = init_db()
 
 def row_dict(r):
     return dict(r) if r else None
-
 def json_error(m, s=400):
     return jsonify({"success": False, "error": clean_ai_text(m)}), s
-
 def current_time():
     return datetime.now(timezone.utc).isoformat()
-
 def get_user_by_id(uid):
     with get_db() as db:
         row = db.execute("SELECT * FROM users WHERE id=%s", (uid,)).fetchone()
     return row_dict(row)
-
 def create_token(user):
     return serializer.dumps({"user_id": user["id"], "email": user["email"]})
-
 def get_authenticated_user():
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
@@ -268,7 +238,6 @@ def get_authenticated_user():
         return get_user_by_id(data["user_id"])
     except Exception:
         return None
-
 def auth_required(f):
     @wraps(f)
     def w(*a, **k):
@@ -278,7 +247,6 @@ def auth_required(f):
         request.current_user = u
         return f(*a, **k)
     return w
-
 def owner_required(f):
     @wraps(f)
     @auth_required
@@ -287,14 +255,12 @@ def owner_required(f):
             return json_error("Owner access required.", 403)
         return f(*a, **k)
     return w
-
 def user_can_access_motorcycle(user, mid):
     with get_db() as db:
         m = db.execute("SELECT * FROM motorcycles WHERE id=%s", (mid,)).fetchone()
     if not m:
         return False
     return (user["role"] == "owner" or m["assigned_user_id"] == user["id"])
-
 def get_memories(uid, limit=100):
     try:
         limit = max(1, min(int(limit), 200))
@@ -303,14 +269,12 @@ def get_memories(uid, limit=100):
     with get_db() as db:
         rows = db.execute("SELECT id, content, created_at FROM memories WHERE user_id=%s ORDER BY id DESC LIMIT %s", (uid, limit)).fetchall()
     return [dict(r) for r in rows]
-
 def get_latest_location(user_id):
     with get_db() as db:
         row = db.execute("SELECT * FROM locations WHERE user_id=%s ORDER BY id DESC LIMIT 1", (user_id,)).fetchone()
         if row:
             return dict(row)
     return None
-
 def save_location(user_id, lat, lng, label="phone_location", accuracy=None, speed=None):
     with get_db() as db:
         cur = db.execute("INSERT INTO locations (user_id, latitude, longitude, label, accuracy, speed, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s)", (user_id, lat, lng, label, accuracy, speed, current_time()))
@@ -321,7 +285,6 @@ def save_location(user_id, lat, lng, label="phone_location", accuracy=None, spee
         except Exception:
             pass
         return cur.lastrowid
-
 def parse_location_from_text(text):
     m = re.search(r"(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)", text)
     if m:
@@ -362,7 +325,6 @@ def call_openrouter(messages, temperature=0.7, max_tokens=1800):
         except Exception as e:
             last = str(e)
     raise RuntimeError(clean_ai_text(last))
-
 def call_gemini(messages, temperature=0.7, max_tokens=1800):
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY not configured.")
@@ -389,7 +351,6 @@ def call_gemini(messages, temperature=0.7, max_tokens=1800):
     if not ans.strip():
         raise RuntimeError("Gemini empty answer")
     return clean_ai_text(ans.strip())
-
 def call_groq(messages, temperature=0.7, max_tokens=1800):
     if not GROQ_API_KEY:
         raise RuntimeError("GROQ_API_KEY not configured.")
@@ -406,7 +367,6 @@ def call_groq(messages, temperature=0.7, max_tokens=1800):
     if not str(ans).strip():
         raise RuntimeError("Groq empty")
     return clean_ai_text(str(ans).strip())
-
 def call_cerebras(messages, temperature=0.7, max_tokens=1800):
     if not CEREBRAS_API_KEY:
         raise RuntimeError("CEREBRAS_API_KEY not configured.")
@@ -421,7 +381,6 @@ def call_cerebras(messages, temperature=0.7, max_tokens=1800):
     if not str(ans).strip():
         raise RuntimeError("Cerebras empty")
     return clean_ai_text(str(ans).strip())
-
 def call_pollinations_text(messages, temperature=0.7, max_tokens=1800):
     r = requests.post("https://text.pollinations.ai/", headers={"Content-Type": "application/json"}, json={"messages": messages, "model": "openai", "temperature": temperature, "max_tokens": max_tokens}, timeout=90)
     if r.status_code != 200:
@@ -438,7 +397,6 @@ def call_pollinations_text(messages, temperature=0.7, max_tokens=1800):
     if r.text and r.text.strip():
         return clean_ai_text(r.text.strip())
     raise RuntimeError("Pollinations empty")
-
 def call_ai_with_fallback(messages, temperature=0.7, max_tokens=1800):
     errors = []
     try:
@@ -476,7 +434,6 @@ def call_ai_with_fallback(messages, temperature=0.7, max_tokens=1800):
     except Exception as e:
         errors.append(f"Pollinations: {e}")
     raise RuntimeError(" | ".join(errors)[:1000])
-
 def call_vision(image_b64, question, user, bike_context=""):
     if not OPENROUTER_API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY not configured for Vision.")
@@ -497,7 +454,6 @@ def call_vision(image_b64, question, user, bike_context=""):
     if isinstance(ans, list):
         ans = "\n".join(x.get("text", "") for x in ans if isinstance(x, dict))
     return clean_ai_text(ans)
-
 def build_system_prompt(user, memories, search_results=None, location_text="", bike_context=""):
     mem = "\n".join(f"- {clean_ai_text(m['content'])}" for m in memories) or "No saved memories yet."
     search = "\n".join(search_results or []) or "No live search results."
@@ -520,11 +476,9 @@ TABBY EV BRAND: Tabby supports Tabby Automotive and Tabby Ride. Always say motor
 TABBY COMMANDS: If user says Hey Tabby lock my bike, unlock my bike, check my bike, turn on light, turn off light, lock house, turn on AC, fly drone - treat as command, confirm and explain what you did.
 Be helpful, honest, clear, conversational and super smart.
 """
-
 LIVE_KEYWORDS = ("latest", "today", "current", "currently", "right now", "this week", "this month", "recent", "news", "weather", "price", "exchange rate", "2026", "2027", "who won", "live score", "new update", "release date", "breaking", "headlines", "naira", "dollar", "football", "election", "trending", "fuel", "petrol", "lagos traffic", "rain", "sunny", "this year", "as of now")
 RESEARCH_INTENT = ("search for", "look up", "research", "investigate", "fact check", "verify", "reviews of", "compare the latest", "who is", "what happened to", "tell me about", "information about", "how much does", "how much is", "is it true that", "available in", "best ", "top ", "recommend", "statistics", "data on")
 NON_SEARCH_INTENT = ("write me", "rewrite", "translate", "summarize this", "make a poem", "create a story", "give me a prompt", "brainstorm", "explain this code", "what do you think", "i feel", "i am sad")
-
 def needs_live_search(message):
     text = re.sub(r"\s+", " ", str(message or "").lower()).strip()
     if not text or any(term in text for term in NON_SEARCH_INTENT):
@@ -537,7 +491,6 @@ def needs_live_search(message):
         if re.search(r"\b(company|president|minister|model|phone|laptop|software|website|service|product|event|university|platform|technology|AI)\b", text):
             return True
     return False
-
 def live_search(query, max_results=5):
     if not LIVE_SEARCH_ENABLED or DDGS is None:
         return []
@@ -551,7 +504,6 @@ def live_search(query, max_results=5):
     except Exception:
         logger.exception("Live search failed")
         return []
-
 def save_memory(uid, content):
     content = clean_ai_text(re.sub(r"\s+", " ", str(content)).strip())
     if not content or len(content) > 500:
@@ -564,7 +516,6 @@ def save_memory(uid, content):
             return False
         db.execute("INSERT INTO memories (user_id, content) VALUES (%s, %s)", (uid, content))
     return True
-
 def extract_automatic_memories(user, conversation_text):
     if not AUTO_MEMORY_ENABLED:
         return
@@ -593,7 +544,6 @@ def enhance_image_prompt(prompt, style="midjourney"):
     if style == "midjourney":
         return f"{prompt}, Midjourney style, ultra detailed, cinematic lighting, sharp focus, professional photography, 8k, vibrant colors, highly detailed, beautiful lighting"
     return f"Ultra detailed, cinematic, sharp focus, professional photography, 8k, vibrant colors, highly detailed, beautiful lighting, {prompt}"
-
 def generate_via_goapi_midjourney(prompt):
     if not MIDJOURNEY_API_KEY:
         raise RuntimeError("No Midjourney key")
@@ -617,7 +567,6 @@ def generate_via_goapi_midjourney(prompt):
         if data.get("status") in ("failed", "error"):
             raise RuntimeError(f"Midjourney task failed: {data}")
     raise RuntimeError("Midjourney timed out after 90s")
-
 def generate_via_replicate(prompt):
     if not REPLICATE_API_TOKEN:
         raise RuntimeError("No Replicate key")
@@ -641,7 +590,6 @@ def generate_via_replicate(prompt):
         if data.get("status") in ("failed", "canceled"):
             raise RuntimeError(f"Replicate failed: {data}")
     raise RuntimeError("Replicate timed out")
-
 def generate_flux_image(prompt, steps=4):
     if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN:
         try:
@@ -692,7 +640,6 @@ def get_bike_context_for_user(user):
             return "Customer has no bike assigned yet."
     except Exception:
         return ""
-
 def handle_tabby_bike_command(user, low_msg):
     if "my bike" not in low_msg and "bike" not in low_msg:
         return None
@@ -725,7 +672,6 @@ def handle_tabby_bike_command(user, low_msg):
             db.execute("UPDATE bike_status SET access_mode='restricted' WHERE motorcycle_id=%s", (motorcycle_id,))
             return f"Done Boss, your bike {bike.get('name')} don enter restricted mode."
     return None
-
 def handle_tabby_house_command(user, low_msg):
     house_words = ["light", "fan", "ac", "air conditioner", "tv", "television", "door", "house", "generator", "socket"]
     if not any(word in low_msg for word in house_words):
@@ -761,7 +707,6 @@ def handle_tabby_house_command(user, low_msg):
     if device in ("door", "house"):
         return f"Done Boss, house {device} don {action}. E dey secure now."
     return f"Done Boss, {room} {device} don turn {action}. Tabby don do am."
-
 def handle_tabby_scene(user, low_msg):
     if "i'm going home" in low_msg or "i am going home" in low_msg or "going home" in low_msg:
         bike_reply = handle_tabby_bike_command(user, "unlock my bike") or ""
@@ -785,11 +730,9 @@ def home():
     if os.path.isfile(root_path):
         return send_from_directory(app.root_path, "index.html")
     return "<h1>Tabby - Built by Faruq Sulaimon</h1><p>Upload index.html</p>", 200
-
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "6.0-tabby-vision-glasses-watch-house-bike", "database_ready": DATABASE_READY, "database": "supabase-postgres", "languages": ["English", "Pidgin", "Yoruba"], "live_search": LIVE_SEARCH_ENABLED, "voice": "phone-call-style", "vision": True, "tabby": {"glasses": True, "watch": True, "house": True, "bike": True, "drone": True, "hologram_design": True}, "image_providers": {"cloudflare_flux": bool(CLOUDFLARE_API_TOKEN), "replicate": bool(REPLICATE_API_TOKEN), "midjourney_goapi": bool(MIDJOURNEY_API_KEY), "pollinations": False}, "chat_providers": {"openrouter": bool(OPENROUTER_API_KEY), "gemini": bool(GEMINI_API_KEY), "groq": bool(GROQ_API_KEY), "cerebras": bool(CEREBRAS_API_KEY), "pollinations_text_fallback": True}, "time": current_time()})
-
 @app.route("/api/status", methods=["GET"])
 def api_status():
     return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "6.0-tabby-vision-glasses-watch-house-bike", "database_ready": DATABASE_READY})
@@ -816,7 +759,6 @@ def register():
         user = db.execute("SELECT * FROM users WHERE id=%s", (cur.lastrowid,)).fetchone()
     user = dict(user)
     return jsonify({"success": True, "token": create_token(user), "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}), 201
-
 @app.route("/login", methods=["POST"])
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -833,7 +775,6 @@ def login():
             db.execute("UPDATE users SET role='owner' WHERE id=%s", (user["id"],))
         user["role"] = "owner"
     return jsonify({"success": True, "token": create_token(user), "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}})
-
 @app.route("/me", methods=["GET"])
 @app.route("/api/me", methods=["GET"])
 @auth_required
@@ -851,7 +792,6 @@ def list_conversations():
     with get_db() as db:
         rows = db.execute("SELECT id,title,created_at,updated_at FROM conversations WHERE user_id=%s ORDER BY updated_at DESC", (user["id"],)).fetchall()
     return jsonify({"success": True, "conversations": [dict(row) for row in rows]})
-
 @app.route("/api/conversations", methods=["POST"])
 @auth_required
 def create_conversation():
@@ -861,7 +801,6 @@ def create_conversation():
     with get_db() as db:
         cur = db.execute("INSERT INTO conversations (user_id,title) VALUES (%s,%s)", (user["id"], title or "New conversation"))
     return jsonify({"success": True, "conversation_id": cur.lastrowid}), 201
-
 @app.route("/api/conversations/<int:conversation_id>", methods=["GET"])
 @auth_required
 def get_conversation(conversation_id):
@@ -872,7 +811,6 @@ def get_conversation(conversation_id):
             return json_error("Conversation not found.", 404)
         messages = db.execute("SELECT id,role,content,created_at FROM messages WHERE conversation_id=%s ORDER BY id ASC", (conversation_id,)).fetchall()
     return jsonify({"success": True, "conversation": dict(conversation), "messages": [dict(row) for row in messages]})
-
 @app.route("/api/conversations/<int:conversation_id>", methods=["DELETE"])
 @auth_required
 def delete_conversation(conversation_id):
@@ -1021,7 +959,6 @@ def vision_endpoint():
     except Exception as error:
         logger.exception("Vision failed")
         return json_error(f"Vision failed Boss: {str(error)}", 502)
-
 @app.route("/api/wake", methods=["POST"])
 @auth_required
 def wake_word():
@@ -1033,7 +970,6 @@ def wake_word():
     if any(word in transcript.lower() for word in ["what am i looking at", "wetin i dey look", "what is this", "what am i seeing"]):
         return jsonify({"success": True, "wake": True, "reply": "Snap am Boss, send the photo make I see am. I dey wait.", "need_image": True, "device": device})
     return jsonify({"success": True, "wake": True, "transcript": transcript, "reply": "I hear you Boss, talk am make I run am.", "device": device})
-
 @app.route("/api/voice-chat", methods=["POST"])
 @auth_required
 def voice_chat():
@@ -1049,7 +985,6 @@ def list_house_devices():
     with get_db() as db:
         rows = db.execute("SELECT * FROM house_devices WHERE user_id=%s ORDER BY id DESC", (user["id"],)).fetchall()
     return jsonify({"success": True, "devices": [dict(row) for row in rows]})
-
 @app.route("/api/house/devices", methods=["POST"])
 @auth_required
 def add_house_device():
@@ -1061,7 +996,6 @@ def add_house_device():
     with get_db() as db:
         cur = db.execute("INSERT INTO house_devices (user_id, name, room, type, status) VALUES (%s,%s,%s,%s, 'off')", (user["id"], name, room, device_type))
     return jsonify({"success": True, "device_id": cur.lastrowid}), 201
-
 @app.route("/api/house/devices/<int:device_id>/command", methods=["POST"])
 @auth_required
 def house_device_command(device_id):
@@ -1075,7 +1009,6 @@ def house_device_command(device_id):
         db.execute("UPDATE house_devices SET status=%s WHERE id=%s", (action, device_id))
         db.execute("INSERT INTO tabby_logs (user_id, device, command, action, result) VALUES (%s,%s,%s,%s,%s)", (user["id"], dict(row)["name"], f"command {action}", action, f"set to {action}"))
     return jsonify({"success": True, "message": f"Done Boss, {dict(row)['name']} don turn {action}."})
-
 @app.route("/api/tabby/devices", methods=["GET"])
 @auth_required
 def list_tabby_devices():
@@ -1083,7 +1016,6 @@ def list_tabby_devices():
     with get_db() as db:
         rows = db.execute("SELECT * FROM tabby_devices WHERE user_id=%s ORDER BY id DESC", (user["id"],)).fetchall()
     return jsonify({"success": True, "devices": [dict(row) for row in rows]})
-
 @app.route("/api/tabby/register", methods=["POST"])
 @auth_required
 def register_tabby_device():
@@ -1094,7 +1026,6 @@ def register_tabby_device():
     with get_db() as db:
         cur = db.execute("INSERT INTO tabby_devices (user_id, device_name, device_type, last_seen, battery) VALUES (%s,%s,%s,%s,%s)", (user["id"], name, device_type, current_time(), int(data.get("battery", 100))))
     return jsonify({"success": True, "device_id": cur.lastrowid, "message": f"Tabby {device_type} {name} registered Boss."})
-
 @app.route("/api/tabby/logs", methods=["GET"])
 @auth_required
 def tabby_logs():
@@ -1102,7 +1033,6 @@ def tabby_logs():
     with get_db() as db:
         rows = db.execute("SELECT * FROM tabby_logs WHERE user_id=%s ORDER BY id DESC LIMIT 50", (user["id"],)).fetchall()
     return jsonify({"success": True, "logs": [dict(row) for row in rows]})
-
 @app.route("/api/drone/command", methods=["POST"])
 @auth_required
 def drone_command():
@@ -1123,7 +1053,6 @@ def drone_command():
 @auth_required
 def list_memories():
     return jsonify({"success": True, "memories": get_memories(request.current_user["id"], 100)})
-
 @app.route("/api/memory", methods=["POST"])
 @app.route("/api/memories", methods=["POST"])
 @auth_required
@@ -1135,7 +1064,6 @@ def add_memory():
         return json_error("Memory content required.")
     saved = save_memory(u["id"], c)
     return jsonify({"success": True, "saved": saved, "memories": get_memories(u["id"], 100)})
-
 @app.route("/api/memory/<int:memory_id>", methods=["DELETE"])
 @app.route("/api/memories/<int:memory_id>", methods=["DELETE"])
 @auth_required
@@ -1181,7 +1109,6 @@ def generate_image():
 @app.route("/api/automotive/status", methods=["GET"])
 def automotive_status():
     return jsonify({"success": True, "system": "Tabby Automotive", "status": "awaiting_hardware_connection", "message": "Automotive system is online, but no live hardware telemetry is connected yet."})
-
 @app.route("/api/motorcycles", methods=["GET"])
 @app.route("/api/motorbikes", methods=["GET"])
 @auth_required
@@ -1198,7 +1125,6 @@ def list_motorcycles():
         d["motorbike_id"] = d["id"]
         out.append(d)
     return jsonify({"success": True, "motorcycles": out, "motorbikes": out})
-
 @app.route("/api/motorcycles", methods=["POST"])
 @app.route("/api/motorbikes", methods=["POST"])
 @owner_required
@@ -1218,7 +1144,6 @@ def create_motorcycle():
         cur = db.execute("INSERT INTO motorcycles (owner_id,assigned_user_id,name,model,registration_number) VALUES (%s,%s,%s,%s,%s)", (request.current_user["id"], assigned, name, model, reg))
         db.execute("INSERT INTO bike_status (motorcycle_id, battery_health, range_km) VALUES (%s,%s,%s) ON CONFLICT (motorcycle_id) DO NOTHING", (cur.lastrowid, 100, 0))
     return jsonify({"success": True, "motorcycle_id": cur.lastrowid, "motorbike_id": cur.lastrowid}), 201
-
 @app.route("/api/motorcycles/<int:motorcycle_id>", methods=["DELETE"])
 @app.route("/api/motorbikes/<int:motorcycle_id>", methods=["DELETE"])
 @owner_required
@@ -1229,7 +1154,6 @@ def delete_motorcycle(motorcycle_id):
     if cur.rowcount == 0:
         return json_error("Motorbike not found.", 404)
     return jsonify({"success": True})
-
 @app.route("/api/fleet/overview", methods=["GET"])
 @owner_required
 def fleet_overview():
@@ -1245,7 +1169,6 @@ def fleet_overview():
           ORDER BY m.id DESC
         """).fetchall()
     return jsonify({"success": True, "fleet": [dict(r) for r in rows]})
-
 @app.route("/api/my-bike", methods=["GET"])
 @auth_required
 def my_bike():
@@ -1261,7 +1184,6 @@ def my_bike():
         tel = db.execute("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (m["id"],)).fetchone()
         plan = db.execute("SELECT * FROM payment_plans WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (m["id"],)).fetchone()
     return jsonify({"success": True, "bike": m, "status": dict(st) if st else {}, "telemetry": dict(tel) if tel else {}, "plan": dict(plan) if plan else {}})
-
 @app.route("/api/bikes/<int:mid>/command", methods=["POST"])
 @owner_required
 def bike_command(mid):
@@ -1283,7 +1205,6 @@ def bike_command(mid):
         if cmd == "full_access":
             db.execute("UPDATE bike_status SET access_mode='full' WHERE motorcycle_id=%s", (mid,))
     return jsonify({"success": True, "command": cmd, "message": f"Bike {mid} set to {cmd}"})
-
 @app.route("/api/bikes/<int:mid>/assign", methods=["POST"])
 @owner_required
 def assign_bike(mid):
@@ -1296,7 +1217,6 @@ def assign_bike(mid):
             return json_error("User not found", 404)
         db.execute("UPDATE motorcycles SET assigned_user_id=%s WHERE id=%s", (uid, mid))
     return jsonify({"success": True, "message": "Bike assigned"})
-
 @app.route("/api/telemetry", methods=["POST"])
 @app.route("/api/telemetry/ingest", methods=["POST"])
 def ingest_telemetry():
@@ -1316,7 +1236,6 @@ def ingest_telemetry():
         if d.get("battery_level") is not None:
             db.execute("UPDATE bike_status SET last_seen=%s WHERE motorcycle_id=%s", (current_time(), mid))
     return jsonify({"success": True, "telemetry_id": cur.lastrowid}), 201
-
 @app.route("/api/motorcycles/<int:motorcycle_id>/telemetry", methods=["GET"])
 @app.route("/api/motorbikes/<int:motorcycle_id>/telemetry", methods=["GET"])
 @auth_required
@@ -1340,7 +1259,6 @@ def get_motorcycle_telemetry(motorcycle_id):
             it["extra_data"] = {}
         out.append(it)
     return jsonify({"success": True, "motorcycle_id": motorcycle_id, "motorbike_id": motorcycle_id, "latest": out[0] if out else None, "telemetry": out})
-
 @app.route("/api/location/update", methods=["POST"])
 @auth_required
 def update_location():
@@ -1363,7 +1281,6 @@ def update_location():
     label = str(d.get("label") or d.get("city") or "phone_location")
     save_location(u["id"], lat, lng, label=label, accuracy=d.get("accuracy"), speed=d.get("speed"))
     return jsonify({"success": True, "latitude": lat, "longitude": lng, "google_maps": f"https://www.google.com/maps?q={lat},{lng}"})
-
 @app.route("/api/location/latest", methods=["GET"])
 @auth_required
 def latest_location():
@@ -1372,7 +1289,6 @@ def latest_location():
         return jsonify({"success": True, "location": None})
     loc["google_maps"] = f"https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}"
     return jsonify({"success": True, "location": loc})
-
 @app.route("/api/payments", methods=["GET"])
 @auth_required
 def list_payments():
@@ -1383,7 +1299,6 @@ def list_payments():
         else:
             rows = db.execute("SELECT * FROM payments WHERE user_id=%s ORDER BY id DESC LIMIT 100", (u["id"],)).fetchall()
     return jsonify({"success": True, "payments": [dict(r) for r in rows]})
-
 @app.route("/api/payments", methods=["POST"])
 @auth_required
 def create_payment():
@@ -1399,7 +1314,6 @@ def create_payment():
     with get_db() as db:
         cur = db.execute("INSERT INTO payments (user_id, motorcycle_id, amount, currency, status, reference) VALUES (%s,%s,%s,%s,%s,%s)", (u["id"], d.get("motorcycle_id"), amount, str(d.get("currency", "NGN")), "pending", ref))
     return jsonify({"success": True, "payment_id": cur.lastrowid, "reference": ref}), 201
-
 @app.route("/api/payment-plans", methods=["GET"])
 @auth_required
 def list_plans():
@@ -1410,7 +1324,6 @@ def list_plans():
         else:
             rows = db.execute("SELECT * FROM payment_plans WHERE user_id=%s ORDER BY id DESC", (u["id"],)).fetchall()
     return jsonify({"success": True, "plans": [dict(r) for r in rows]})
-
 @app.route("/api/payment-plans", methods=["POST"])
 @owner_required
 def create_plan():
@@ -1422,13 +1335,11 @@ def create_plan():
     with get_db() as db:
         cur = db.execute("INSERT INTO payment_plans (user_id, motorcycle_id, total_amount, deposit, installment_amount, installments_total, next_due_date) VALUES (%s,%s,%s,%s,%s,%s,%s)", (d.get("user_id"), d.get("motorcycle_id"), total, float(d.get("deposit", 0)), inst_amt, inst_total, d.get("next_due_date")))
     return jsonify({"success": True, "plan_id": cur.lastrowid}), 201
-
 @app.route("/api/webhook", methods=["POST", "GET"])
 def webhook():
     if request.method == "GET":
         return jsonify({"success": True, "message": "Tabby webhook alive"})
     return jsonify({"success": True, "message": "Webhook received"})
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
