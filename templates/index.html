@@ -6,24 +6,24 @@
 <title>Tabby AI - Built by Boss Faruq Sulaimon</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0a0f1e;--sidebar:#080d1a;--card:#111827;--border:#1e293b;--text:#e5e7eb;--muted:#8b93a7;--blue:#2563eb;--blue2:#3b82f6;--user:#2563eb;--assistant:#1a2233}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-a{color:#60a5fa}
+:root{--bg:#101a2d;--sidebar:#0b1426;--card:#17243a;--border:#2a3b56;--text:#e5edf8;--muted:#9aaac1;--blue:#2878e5;--blue2:#55a5ff;--user:#2878e5;--assistant:#1c2b43}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,Arial,sans-serif;background:radial-gradient(ellipse at 50% 0%,#1c3455 0%,var(--bg) 58%);color:var(--text);min-height:100vh;overflow-x:hidden}
+a{color:#78baff}
 #app{display:flex;width:100%;min-height:100vh}
 aside{width:260px;min-width:260px;background:var(--sidebar);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:18px;flex-shrink:0;z-index:50}
 .logo{display:flex;align-items:center;gap:10px;padding:4px 8px}
-.logo-icon{width:38px;height:38px;border-radius:10px;background:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;color:white}
+.logo-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#2563eb);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;color:white;box-shadow:0 5px 18px #0ea5e944}
 .logo b{font-size:15px;letter-spacing:1px}
 .logo span{display:block;font-size:8.5px;color:var(--muted);letter-spacing:.8px;margin-top:2px;line-height:1.3}
 .side-label{font-size:10px;letter-spacing:1.2px;color:var(--muted);padding:0 10px;margin-top:4px}
-.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 10px;border-radius:10px;border:0;background:transparent;color:#cbd5e1;font-size:13.5px;cursor:pointer;text-align:left}
-.nav-btn.active{background:#1e293b;color:white}
-main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);width:100%}
-.topbar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}
-.hamburger{display:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:#111827;color:white;font-size:18px;cursor:pointer;flex-shrink:0}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border-radius:10px;border:0;background:transparent;color:#cbd5e1;font-size:13.5px;cursor:pointer;text-align:left}
+.nav-btn.active{background:#203653;color:white}
+main{flex:1;display:flex;flex-direction:column;min-width:0;background:transparent;width:100%}
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);background:#101a2ddd;backdrop-filter:blur(14px)}
+.hamburger{display:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:#172943;color:white;font-size:18px;cursor:pointer;flex-shrink:0}
 .topbar b{font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-chip{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
-.owner-badge{background:#1e293b;border:1px solid var(--border);color:#94a3b8;padding:3px 8px;border-radius:999px;font-size:10px;letter-spacing:.5px}
+.owner-badge{background:#203653;border:1px solid var(--border);color:#b8c9df;padding:3px 8px;border-radius:999px;font-size:10px;letter-spacing:.5px}
 .content{flex:1;display:flex;flex-direction:column;padding:16px;max-width:1100px;width:100%;margin:0 auto}
 .content h1{font-size:20px}
 .content p.sub{font-size:12.5px;color:var(--muted);margin:4px 0 14px}
@@ -39,39 +39,40 @@ main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);
 .owner-badge-yellow{background:#713f12;color:#fde68a;padding:3px 8px;border-radius:999px;font-size:9px;white-space:nowrap}
 .owner-box p{font-size:12.5px;color:var(--muted);margin:8px 0 12px;line-height:1.5}
 .btn-blue{background:var(--blue);color:white;border:0;padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
-.btn-dark{background:#1e293b;color:white;border:1px solid var(--border);padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
+.btn-dark{background:#203653;color:white;border:1px solid var(--border);padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
 .btn-red{background:#991b1b;color:white;border:0;padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
 .chat-grid{display:flex;gap:14px;flex:1;min-height:0}
 .convo-list{width:230px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
 .convo-list h3{font-size:13px;display:flex;justify-content:space-between;align-items:center}
 .convo-list h3 button{background:transparent;border:0;color:white;font-size:16px;cursor:pointer}
 .convo-item{padding:9px 10px;border-radius:9px;font-size:12.5px;color:#cbd5e1;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.convo-item:hover,.convo-item.active{background:#1e293b;color:white}
+.convo-item:hover,.convo-item.active{background:#203653;color:white}
 .chat-panel{flex:1;background:var(--card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-#chatBox{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:380px}
-.msg{max-width:82%;padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+#chatBox{flex:1;position:relative;isolation:isolate;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:380px;background:linear-gradient(145deg,#192a43,#142238)}
+#chatBox:before{content:"TABBY";position:absolute;z-index:0;pointer-events:none;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(76px,14vw,160px);font-weight:950;letter-spacing:12px;color:#a9cfff;opacity:.045;white-space:nowrap;user-select:none}
+.msg{position:relative;z-index:1;max-width:82%;padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
 .msg.user{background:var(--user);color:white;align-self:flex-end;border-bottom-right-radius:5px}
-.msg.assistant{background:var(--assistant);color:var(--text);align-self:flex-start;border-bottom-left-radius:5px;border:1px solid var(--border)}
+.msg.assistant{background:#20314a;color:var(--text);align-self:flex-start;border-bottom-left-radius:5px;border:1px solid #344965}
 .msg img.chat-img{width:100%;max-width:420px;border-radius:12px;display:block;margin-top:10px;border:1px solid var(--border)}
 .img-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-.img-btn{background:#0f172a;border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:999px;font-size:12px;cursor:pointer;text-decoration:none}
-.composer{padding:12px;border-top:1px solid var(--border);background:var(--card)}
+.img-btn{background:#142238;border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:999px;font-size:12px;cursor:pointer;text-decoration:none}
+.composer{padding:12px;border-top:1px solid var(--border);background:#17243a}
 .input-row{display:flex;gap:8px}
-#msgInput{flex:1;padding:12px 13px;border-radius:12px;border:1px solid var(--border);background:#0f172a;color:white;font-size:15px;outline:none;min-width:0}
+#msgInput{flex:1;padding:12px 13px;border-radius:12px;border:1px solid var(--border);background:#142238;color:white;font-size:15px;outline:none;min-width:0}
 #msgInput:focus{border-color:var(--blue2)}
 #sendBtn{width:46px;height:46px;border-radius:12px;border:0;background:var(--blue);color:white;font-size:16px;cursor:pointer;flex-shrink:0}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-.chip{background:#0f172a;border:1px solid var(--border);color:#cbd5e1;padding:8px 11px;border-radius:999px;font-size:12px;cursor:pointer}
+.chip{background:#142238;border:1px solid var(--border);color:#cbd5e1;padding:8px 11px;border-radius:999px;font-size:12px;cursor:pointer}
 .chip.active{background:var(--blue);color:white}
 .chip.recording{background:#dc2626;color:white}
-.location-status{font-size:12px;color:#22c55e;margin-top:6px;display:none;word-break:break-word}
-.typing{display:none;align-self:flex-start;background:var(--assistant);padding:9px 13px;border-radius:14px;font-size:12px;color:var(--muted)}
+.location-status{font-size:12px;color:#4ade80;margin-top:6px;display:none;word-break:break-word}
+.typing{position:relative;z-index:1;display:none;align-self:flex-start;background:var(--assistant);padding:9px 13px;border-radius:14px;font-size:12px;color:var(--muted)}
 #voiceBanner{display:none;background:#4c1d95;color:white;padding:9px 12px;border-radius:10px;font-size:12.5px;margin:0 0 10px;align-items:center;justify-content:space-between;gap:8px}
 #voiceBanner button{background:white;color:#4c1d95;border:0;padding:6px 10px;border-radius:999px;font-weight:700;cursor:pointer;font-size:12px;flex-shrink:0}
 .settings-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
 .settings-card h3{font-size:13.5px;margin-bottom:2px}
 .settings-card small{font-size:11px;color:var(--muted)}
-.settings-card select{width:100%;padding:10px;border-radius:9px;border:1px solid var(--border);background:#0f172a;color:white;margin-top:10px;font-size:13px}
+.settings-card select{width:100%;padding:10px;border-radius:9px;border:1px solid var(--border);background:#142238;color:white;margin-top:10px;font-size:13px}
 .settings-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .bike-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .bike-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
@@ -85,12 +86,12 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
 .auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:420px}
 .auth-card h2{font-size:21px}
 .auth-card p{font-size:13px;color:var(--muted);margin:6px 0 16px;line-height:1.5}
-.tabs{display:flex;background:#0f172a;border-radius:999px;padding:4px;margin-bottom:14px}
+.tabs{display:flex;background:#142238;border-radius:999px;padding:4px;margin-bottom:14px}
 .tab{flex:1;padding:9px;border-radius:999px;border:0;background:transparent;color:var(--muted);font-weight:700;cursor:pointer}
 .tab.active{background:var(--blue);color:white}
 .field{margin-bottom:12px}
 .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-.field input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:#0f172a;color:white;font-size:14px;outline:none}
+.field input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:#142238;color:white;font-size:14px;outline:none}
 .btn-primary{width:100%;padding:12px;border:0;border-radius:10px;background:var(--blue);color:white;font-weight:700;cursor:pointer}
 .btn-ghost{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);cursor:pointer;margin-top:8px}
 .error-box{display:none;background:#7f1d1d;border:1px solid #ef4444;color:#fecaca;padding:10px;border-radius:10px;font-size:13px;margin-bottom:10px}
@@ -164,13 +165,13 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
         <h1 id="overviewWelcome">Welcome, Faruq Sulaimon</h1>
         <p class="sub">Your personal AI and automotive intelligence platform. Built by Faruq Sulaimon.</p>
         <div class="stats">
-          <div class="stat"><small>Motorcycles in system</small><b id="statBikes">0</b><span>Registered fleet</span></div>
+          <div class="stat"><small>Motorbikes in system</small><b id="statBikes">0</b><span>Registered fleet</span></div>
           <div class="stat"><small>Registered accounts</small><b id="statAccounts">1</b><span>Owner and customer accounts</span></div>
           <div class="stat"><small>Automotive connection</small><b id="statAuto">awaiting connection</b><span>Hardware integration status</span></div>
         </div>
         <div class="owner-box" id="ownerOverviewBox">
           <h3>Owner workspace <span class="owner-badge-green">OWNER ACCESS</span></h3>
-          <p>Manage Tabby AI, motorcycle records, customer assignments and fleet information.</p>
+          <p>Manage Tabby AI, motorbike records, customer assignments and fleet information.</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="showSection('tabby')">Open Tabby AI</button><button class="btn-dark" onclick="showSection('fleet')">Manage fleet</button><button class="btn-dark" onclick="showSection('customers')">Customers + Payments</button><button class="btn-dark" onclick="showSection('memories')">Manage memories</button></div>
         </div>
         <div class="owner-box" id="customerOverviewBox" style="display:none;margin-top:12px">
@@ -182,7 +183,7 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
 
       <div id="sectionTabby">
         <h1>Tabby AI</h1>
-        <p class="sub">Your private AI workspace. English, Pidgin, Yoruba. Live internet, news, information. No emojis, only lol or haha. Built by Faruq Sulaimon.</p>
+        <p class="sub">Your private AI workspace. English, Pidgin, Yoruba. Live internet, news and information. No emojis, only lol or haha. Built by Faruq Sulaimon.</p>
         <div id="voiceBanner"><span>Voice conversation ON - Talking like phone call...</span><button onclick="stopVoiceConversation()">End voice conversation</button></div>
         <div class="chat-grid">
           <div class="convo-list"><h3>Conversations <button onclick="newChat()">+</button></h3><div id="convoList"></div><div class="convo-item" onclick="newChat()">New Chat</div></div>
@@ -195,7 +196,6 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
                 <button class="chip" id="voiceInputBtn" onclick="toggleVoiceInput()">Voice input</button>
                 <button class="chip" id="voiceReplyBtn" onclick="toggleVoiceReplies()">Voice replies: Off</button>
                 <button class="chip" onclick="promptGenerateImage()">Generate Image</button>
-                <button class="chip" id="webSearchBtn" onclick="toggleWebSearch()">Web search: Auto</button>
                 <button class="chip" id="voiceConvBtn" onclick="toggleVoiceConversation()">Start voice conversation</button>
                 <button class="chip" onclick="shareLocation()">Share My Location</button>
                 <button class="chip" onclick="trackLocation()">Track Location</button>
@@ -208,7 +208,7 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
 
       <div id="sectionAuto" style="display:none">
         <h1>Automotive Dashboard</h1>
-        <p class="sub">Your bike dashboard. Motorbike status, telemetry, battery, GPS, fuel.</p>
+        <p class="sub">Your motorbike dashboard. Status, telemetry, battery, GPS and fuel.</p>
         <div class="bike-grid">
           <div class="bike-card"><b>Motorbike Fleet</b><p id="fleetBox">Loading fleet...</p><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="loadFleet()">Refresh fleet</button><button class="btn-dark" id="addBikeBtn" onclick="addBikePrompt()">Add motorbike</button></div></div>
           <div class="bike-card"><b>Live Telemetry</b><p id="telemetryBox">Awaiting connection - Hardware integration status: awaiting connection. When your bike device connect, speed, battery, fuel, GPS go show here live.</p></div>
@@ -220,14 +220,14 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
 
       <div id="sectionFleet" style="display:none">
         <h1>Fleet - ALL Bikes - Owner Only</h1>
-        <p class="sub">Only Faruq Sulaimon fit see this page. All registered vehicles, riders, payments, battery, lock status.</p>
+        <p class="sub">Only Faruq Sulaimon fit see this page. All registered vehicles, riders, payments, battery and lock status.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn-blue" onclick="loadFleetOwner()">Refresh fleet</button><button class="btn-dark" onclick="addBikePrompt()">Add motorbike</button></div>
         <div id="fleetOwnerList"><p style="color:var(--muted);font-size:12.5px">Loading fleet...</p></div>
       </div>
 
       <div id="sectionCustomers" style="display:none">
         <h1>Customers + Payments - Owner Only</h1>
-        <p class="sub">All customers, their bikes, installment plans, who don pay, who overdue.</p>
+        <p class="sub">All customers, their bikes, installment plans, who don pay and who overdue.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn-blue" onclick="loadCustomers()">Refresh customers</button><button class="btn-dark" onclick="loadPlans()">Refresh plans</button><button class="btn-dark" onclick="createPlanPrompt()">Create installment plan</button></div>
         <div id="customersList"></div>
         <h3 style="font-size:14px;margin:14px 0 8px">Installment Plans</h3>
@@ -260,81 +260,144 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
   </main>
 </div>
 <script>
-let token = localStorage.getItem('tabby_token') || '';
-let user = null;
-let conversationId = localStorage.getItem('tabby_conversation_id') || null;
-let currentMode = 'login';
-let voiceReplies = false;
-let voiceConversation = false;
-let voiceInputActive = false;
-let webSearchMode = 'auto';
-let recognition = null;
-let synth = window.speechSynthesis;
-let lastImagePrompt = '';
-function toggleSidebar(force){ const s=document.getElementById('sidebar'); const o=document.getElementById('sidebarOverlay'); const open = force!==undefined ? force : !s.classList.contains('open'); s.classList.toggle('open', open); o.classList.toggle('show', open); }
-function cleanText(t){ if(!t) return ''; let s=String(t).replace(/\*\*/g,'').replace(/\*/g,'').replace(/__/g,'').trim(); s=s.replace(/😂|🤣/g,' lol ').replace(/😆|😅/g,' haha '); return s; }
-function showError(msg){ const el=document.getElementById('authError'); el.style.display='block'; el.textContent=cleanText(msg); setTimeout(()=>el.style.display='none',6000); }
-function showSuccess(msg){ const el=document.getElementById('authSuccess'); el.style.display='block'; el.textContent=cleanText(msg); setTimeout(()=>el.style.display='none',5000); }
-function switchTab(mode){ currentMode=mode; document.getElementById('loginTab').classList.toggle('active', mode==='login'); document.getElementById('registerTab').classList.toggle('active', mode==='register'); document.getElementById('registerFields').style.display = mode==='register' ? 'block' : 'none'; document.getElementById('authBtn').textContent = mode==='login' ? 'Login' : 'Create Account'; }
-function fillDemo(){ document.getElementById('authEmail').value='faruq@tabby.ai'; document.getElementById('authPassword').value='TabbyBoss123'; showSuccess('Demo filled. Click Login.'); }
+let token=localStorage.getItem('tabby_token')||'';
+let user=null;
+let conversationId=localStorage.getItem('tabby_conversation_id')||null;
+let currentMode='login';
+let voiceReplies=false;
+let voiceConversation=false;
+let voiceInputActive=false;
+let recognition=null;
+let synth=window.speechSynthesis;
+let lastImagePrompt='';
+
+function toggleSidebar(force){
+  const s=document.getElementById('sidebar');
+  const o=document.getElementById('sidebarOverlay');
+  const open=force!==undefined?force:!s.classList.contains('open');
+  s.classList.toggle('open',open);
+  o.classList.toggle('show',open);
+}
+function cleanText(t){
+  if(!t)return '';
+  let s=String(t).replace(/\*\*/g,'').replace(/\*/g,'').replace(/__/g,'').trim();
+  s=s.replace(/😂|🤣/g,' lol ').replace(/😆|😅/g,' haha ');
+  return s;
+}
+function showError(msg){
+  const el=document.getElementById('authError');
+  el.style.display='block';el.textContent=cleanText(msg);
+  setTimeout(()=>el.style.display='none',6000);
+}
+function showSuccess(msg){
+  const el=document.getElementById('authSuccess');
+  el.style.display='block';el.textContent=cleanText(msg);
+  setTimeout(()=>el.style.display='none',5000);
+}
+function switchTab(mode){
+  currentMode=mode;
+  document.getElementById('loginTab').classList.toggle('active',mode==='login');
+  document.getElementById('registerTab').classList.toggle('active',mode==='register');
+  document.getElementById('registerFields').style.display=mode==='register'?'block':'none';
+  document.getElementById('authBtn').textContent=mode==='login'?'Login':'Create Account';
+}
+function fillDemo(){
+  document.getElementById('authEmail').value='faruq@tabby.ai';
+  document.getElementById('authPassword').value='TabbyBoss123';
+  showSuccess('Demo filled. Click Login.');
+}
 async function doAuth(){
   const email=document.getElementById('authEmail').value.trim().toLowerCase();
   const pwd=document.getElementById('authPassword').value;
   const name=document.getElementById('regName').value.trim();
   if(!email||!pwd){showError('Please enter email and password.');return;}
-  if(currentMode==='register' && !name){showError('Please enter your name.');return;}
+  if(currentMode==='register'&&!name){showError('Please enter your name.');return;}
   if(pwd.length<8){showError('Password must be at least 8 characters.');return;}
-  const btn=document.getElementById('authBtn'); btn.disabled=true; btn.textContent='Please wait...';
+  const btn=document.getElementById('authBtn');
+  btn.disabled=true;btn.textContent='Please wait...';
   try{
-    const endpoint = currentMode==='login' ? '/api/login' : '/api/register';
-    const body = currentMode==='login' ? {email,password:pwd} : {name,email,password:pwd};
+    const endpoint=currentMode==='login'?'/api/login':'/api/register';
+    const body=currentMode==='login'?{email,password:pwd}:{name,email,password:pwd};
     const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const data=await res.json();
-    if(!res.ok || !data.success){showError(data.error||'Auth failed.');return;}
-    token=data.token; user=data.user; localStorage.setItem('tabby_token',token); showChat();
+    if(!res.ok||!data.success){showError(data.error||'Auth failed.');return;}
+    token=data.token;user=data.user;localStorage.setItem('tabby_token',token);showChat();
   }catch(e){showError('Network error. Check internet and try again.');}
-  finally{btn.disabled=false; btn.textContent= currentMode==='login'?'Login':'Create Account';}
+  finally{btn.disabled=false;btn.textContent=currentMode==='login'?'Login':'Create Account';}
 }
 async function checkAuth(){
-  if(!token){ document.getElementById('authWrap').style.display='flex'; document.getElementById('app').style.display='none'; return; }
+  if(!token){document.getElementById('authWrap').style.display='flex';document.getElementById('app').style.display='none';return;}
   try{
     const res=await fetch('/api/me',{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
-    if(data.success){user=data.user; showChat();}
-    else{ localStorage.removeItem('tabby_token'); token=''; document.getElementById('authWrap').style.display='flex'; document.getElementById('app').style.display='none'; }
-  }catch(e){ document.getElementById('authWrap').style.display='flex'; document.getElementById('app').style.display='none'; }
+    if(data.success){user=data.user;showChat();}
+    else{
+      localStorage.removeItem('tabby_token');token='';
+      document.getElementById('authWrap').style.display='flex';
+      document.getElementById('app').style.display='none';
+    }
+  }catch(e){
+    document.getElementById('authWrap').style.display='flex';
+    document.getElementById('app').style.display='none';
+  }
 }
-function isOwner(){ return user && user.role==='owner'; }
+function isOwner(){return user&&user.role==='owner';}
 function applyRoleUI(){
-  if(!user) return;
-  const owner = isOwner();
+  if(!user)return;
+  const owner=isOwner();
   document.getElementById('topUserRole').textContent=(user.role||'customer').toUpperCase();
-  document.getElementById('navFleet').style.display = owner ? 'flex' : 'none';
-  document.getElementById('navCustomers').style.display = owner ? 'flex' : 'none';
-  document.getElementById('navMyBike').style.display = !owner ? 'flex' : 'none';
-  document.getElementById('navOverview').style.display = 'flex';
-  document.getElementById('ownerOverviewBox').style.display = owner ? 'block' : 'none';
-  document.getElementById('customerOverviewBox').style.display = !owner ? 'block' : 'none';
-  document.getElementById('addBikeBtn').style.display = owner ? 'inline-block' : 'none';
-  document.getElementById('navAuto').textContent = owner ? 'Automotive Dashboard' : 'My Bike Dashboard';
-  if(!owner){ document.getElementById('navRide').textContent='Tabby Ride'; }
+  document.getElementById('navFleet').style.display=owner?'flex':'none';
+  document.getElementById('navCustomers').style.display=owner?'flex':'none';
+  document.getElementById('navMyBike').style.display=!owner?'flex':'none';
+  document.getElementById('navOverview').style.display='flex';
+  document.getElementById('ownerOverviewBox').style.display=owner?'block':'none';
+  document.getElementById('customerOverviewBox').style.display=!owner?'block':'none';
+  document.getElementById('addBikeBtn').style.display=owner?'inline-block':'none';
+  document.getElementById('navAuto').textContent=owner?'Automotive Dashboard':'My Bike Dashboard';
+  if(!owner)document.getElementById('navRide').textContent='Tabby Ride';
 }
 function showChat(){
   document.getElementById('authWrap').style.display='none';
   document.getElementById('app').style.display='flex';
-  if(user){ document.getElementById('topUserName').textContent=user.name; document.getElementById('overviewWelcome').textContent='Welcome, '+user.name; document.getElementById('accountName').textContent=user.name; document.getElementById('accountEmail').textContent='Email: '+user.email+'\nRole: '+(user.role||'').toUpperCase()+'\nCreator: Faruq Sulaimon'; applyRoleUI(); }
-  if(conversationId) loadConversation(conversationId);
-  loadConvoList(); loadOverviewStats();
+  if(user){
+    document.getElementById('topUserName').textContent=user.name;
+    document.getElementById('overviewWelcome').textContent='Welcome, '+user.name;
+    document.getElementById('accountName').textContent=user.name;
+    document.getElementById('accountEmail').textContent='Email: '+user.email+'\nRole: '+(user.role||'').toUpperCase()+'\nCreator: Faruq Sulaimon';
+    applyRoleUI();
+  }
+  if(conversationId)loadConversation(conversationId);
+  loadConvoList();loadOverviewStats();
 }
-function logout(){ token=''; user=null; conversationId=null; localStorage.removeItem('tabby_token'); localStorage.removeItem('tabby_conversation_id'); document.getElementById('authWrap').style.display='flex'; document.getElementById('app').style.display='none'; document.getElementById('chatBox').innerHTML=''; }
-function newChat(){ conversationId=null; localStorage.removeItem('tabby_conversation_id'); document.getElementById('chatBox').innerHTML=''; loadConvoList(); }
+function logout(){
+  token='';user=null;conversationId=null;
+  localStorage.removeItem('tabby_token');
+  localStorage.removeItem('tabby_conversation_id');
+  document.getElementById('authWrap').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('chatBox').innerHTML='';
+}
+function newChat(){
+  conversationId=null;
+  localStorage.removeItem('tabby_conversation_id');
+  document.getElementById('chatBox').innerHTML='';
+  loadConvoList();
+}
 async function loadConvoList(){
   try{
     const res=await fetch('/api/conversations',{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
-    const list=document.getElementById('convoList'); list.innerHTML='';
+    const list=document.getElementById('convoList');list.innerHTML='';
     (data.conversations||[]).slice(0,10).forEach(c=>{
-      const d=document.createElement('div'); d.className='convo-item'+(String(c.id)===String(conversationId)?' active':''); d.textContent=cleanText(c.title||'New Chat'); d.onclick=()=>{conversationId=c.id; localStorage.setItem('tabby_conversation_id',String(c.id)); loadConversation(c.id); loadConvoList();}; list.appendChild(d);
+      const d=document.createElement('div');
+      d.className='convo-item'+(String(c.id)===String(conversationId)?' active':'');
+      d.textContent=cleanText(c.title||'New Chat');
+      d.onclick=()=>{
+        conversationId=c.id;
+        localStorage.setItem('tabby_conversation_id',String(c.id));
+        loadConversation(c.id);loadConvoList();
+      };
+      list.appendChild(d);
     });
   }catch(e){}
 }
@@ -342,237 +405,343 @@ async function loadConversation(id){
   try{
     const res=await fetch(`/api/conversations/${id}`,{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
-    if(data.success && data.messages){
-      const box=document.getElementById('chatBox'); box.innerHTML='';
+    if(data.success&&data.messages){
+      const box=document.getElementById('chatBox');box.innerHTML='';
       data.messages.forEach(m=>{
-        if(m.role==='user') addMessage('user',m.content);
-        else if(m.role==='assistant'){ if(m.content.includes('[IMAGE]')) return; addMessage('assistant',m.content); }
+        if(m.role==='user')addMessage('user',m.content);
+        else if(m.role==='assistant'){if(m.content.includes('[IMAGE]'))return;addMessage('assistant',m.content);}
       });
     }
   }catch(e){}
 }
 function showSection(name){
   const map={overview:'sectionOverview',tabby:'sectionTabby',auto:'sectionAuto',ride:'sectionRide',fleet:'sectionFleet',customers:'sectionCustomers',mybike:'sectionMyBike',account:'sectionAccount',memories:'sectionMemories',settings:'sectionSettings'};
-  Object.values(map).forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  Object.values(map).forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const titles={overview:'Overview',tabby:'Tabby AI',auto:'Automotive Dashboard',ride:'Tabby Ride',fleet:'Fleet - ALL Bikes',customers:'Customers + Payments',mybike:'My Bike',account:'Account & Login',memories:'Saved Memories',settings:'Settings'};
   document.getElementById(map[name]).style.display='block';
   document.getElementById('topTitle').textContent=titles[name]||'Tabby AI';
   const navMap={overview:'navOverview',tabby:'navTabby',auto:'navAuto',ride:'navRide',fleet:'navFleet',customers:'navCustomers',mybike:'navMyBike',account:'navAccount',memories:'navMemories',settings:'navSettings'};
-  const nav=document.getElementById(navMap[name]); if(nav) nav.classList.add('active');
-  if(name==='auto'){ loadFleet(); checkAutoStatus(); if(!isOwner()) loadMyBike(); }
-  if(name==='memories'){ loadMemoriesBox(); }
-  if(name==='overview'){ loadOverviewStats(); }
-  if(name==='fleet'){ loadFleetOwner(); }
-  if(name==='customers'){ loadCustomers(); loadPlans(); }
-  if(name==='mybike'){ loadMyBike(); }
+  const nav=document.getElementById(navMap[name]);if(nav)nav.classList.add('active');
+  if(name==='auto'){loadFleet();checkAutoStatus();if(!isOwner())loadMyBike();}
+  if(name==='memories')loadMemoriesBox();
+  if(name==='overview')loadOverviewStats();
+  if(name==='fleet')loadFleetOwner();
+  if(name==='customers'){loadCustomers();loadPlans();}
+  if(name==='mybike')loadMyBike();
 }
 async function loadOverviewStats(){
-  try{ const r1=await fetch('/api/motorcycles',{headers:{'Authorization':'Bearer '+token}}); const d1=await r1.json(); const bikes=(d1.motorcycles||d1.motorbikes||[]); document.getElementById('statBikes').textContent=bikes.length; }catch(e){}
-  try{ const r2=await fetch('/api/customers',{headers:{'Authorization':'Bearer '+token}}); const d2=await r2.json(); if(d2.customers) document.getElementById('statAccounts').textContent=d2.customers.length; }catch(e){}
+  try{
+    const r1=await fetch('/api/motorcycles',{headers:{'Authorization':'Bearer '+token}});
+    const d1=await r1.json();
+    const bikes=d1.motorcycles||d1.motorbikes||[];
+    document.getElementById('statBikes').textContent=bikes.length;
+  }catch(e){}
+  try{
+    const r2=await fetch('/api/customers',{headers:{'Authorization':'Bearer '+token}});
+    const d2=await r2.json();
+    if(d2.customers)document.getElementById('statAccounts').textContent=d2.customers.length;
+  }catch(e){}
 }
 async function loadFleet(){
   try{
     const res=await fetch('/api/motorcycles',{headers:{'Authorization':'Bearer '+token}});
-    const data=await res.json(); const bikes=data.motorcycles||data.motorbikes||[];
-    if(bikes.length===0){ document.getElementById('fleetBox').textContent='No motorbike yet Boss. Press Add motorbike to add one.'; }
-    else { document.getElementById('fleetBox').innerHTML = bikes.map(b=> cleanText(b.name)+' - '+cleanText(b.model||'')+' - '+cleanText(b.registration_number||'') ).join('<br>'); }
-  }catch(e){ document.getElementById('fleetBox').textContent='Fleet load failed - check server connection.'; }
+    const data=await res.json();
+    const bikes=data.motorcycles||data.motorbikes||[];
+    if(bikes.length===0)document.getElementById('fleetBox').textContent='No motorbike yet Boss. Press Add motorbike to add one.';
+    else document.getElementById('fleetBox').innerHTML=bikes.map(b=>cleanText(b.name)+' - '+cleanText(b.model||'')+' - '+cleanText(b.registration_number||'')).join('<br>');
+  }catch(e){document.getElementById('fleetBox').textContent='Fleet load failed - check server connection.';}
 }
 async function loadFleetOwner(){
-  if(!isOwner()){ document.getElementById('fleetOwnerList').textContent='Owner only.'; return; }
+  if(!isOwner()){document.getElementById('fleetOwnerList').textContent='Owner only.';return;}
   try{
     const res=await fetch('/api/fleet/overview',{headers:{'Authorization':'Bearer '+token}});
-    const data=await res.json(); const fleet=data.fleet||[];
-    if(!fleet.length){ document.getElementById('fleetOwnerList').innerHTML='<p style="color:var(--muted)">No bike yet. Add one.</p>'; return; }
-    document.getElementById('fleetOwnerList').innerHTML = fleet.map(b=>{
-      const badge = b.access_mode==='restricted' ? '<span class="owner-badge-red">RESTRICTED</span>' : '<span class="owner-badge-green">FULL ACCESS</span>';
-      return `<div class="fleet-card"><b>${cleanText(b.name)} - ${cleanText(b.model||'')}</b> ${badge}<p style="font-size:12px;color:var(--muted);margin-top:6px">Rider: ${cleanText(b.rider_name||'No rider')} - ${cleanText(b.rider_email||'')}<br>Reg: ${cleanText(b.registration_number||'-')}<br>Battery Health: ${b.battery_health ?? '--'}% - Range: ${b.range_km ?? '--'} km - Lock: ${cleanText(b.lock_status||'-')}<br>Payment: ${b.installments_paid ?? 0}/${b.installments_total ?? 0} paid - Next due: ${cleanText(b.next_due_date||'-')} - Plan: ${cleanText(b.plan_status||'-')}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn-blue" onclick="sendBikeCommand(${b.id},'unlock')">Unlock</button><button class="btn-dark" onclick="sendBikeCommand(${b.id},'lock')">Lock</button><button class="btn-red" onclick="sendBikeCommand(${b.id},'restrict')">Restrict - Overdue</button><button class="btn-dark" onclick="sendBikeCommand(${b.id},'full_access')">Full Access</button></div></div>`;
+    const data=await res.json();const fleet=data.fleet||[];
+    if(!fleet.length){document.getElementById('fleetOwnerList').innerHTML='<p style="color:var(--muted)">No bike yet. Add one.</p>';return;}
+    document.getElementById('fleetOwnerList').innerHTML=fleet.map(b=>{
+      const badge=b.access_mode==='restricted'?'<span class="owner-badge-red">RESTRICTED</span>':'<span class="owner-badge-green">FULL ACCESS</span>';
+      return `<div class="fleet-card"><b>${cleanText(b.name)} - ${cleanText(b.model||'')}</b> ${badge}<p style="font-size:12px;color:var(--muted);margin-top:6px">Rider: ${cleanText(b.rider_name||'No rider')} - ${cleanText(b.rider_email||'')}<br>Reg: ${cleanText(b.registration_number||'-')}<br>Battery Health: ${b.battery_health??'--'}% - Range: ${b.range_km??'--'} km - Lock: ${cleanText(b.lock_status||'-')}<br>Payment: ${b.installments_paid??0}/${b.installments_total??0} paid - Next due: ${cleanText(b.next_due_date||'-')} - Plan: ${cleanText(b.plan_status||'-')}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn-blue" onclick="sendBikeCommand(${b.id},'unlock')">Unlock</button><button class="btn-dark" onclick="sendBikeCommand(${b.id},'lock')">Lock</button><button class="btn-red" onclick="sendBikeCommand(${b.id},'restrict')">Restrict - Overdue</button><button class="btn-dark" onclick="sendBikeCommand(${b.id},'full_access')">Full Access</button></div></div>`;
     }).join('');
-  }catch(e){ document.getElementById('fleetOwnerList').textContent='Fleet load failed.'; }
+  }catch(e){document.getElementById('fleetOwnerList').textContent='Fleet load failed.';}
 }
-async function sendBikeCommand(id, cmd){
+async function sendBikeCommand(id,cmd){
   try{
     const res=await fetch(`/api/bikes/${id}/command`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({command:cmd})});
-    const data=await res.json(); alert(cleanText(data.message||('Command sent: '+cmd))); loadFleetOwner();
-  }catch(e){ alert('Command failed'); }
+    const data=await res.json();
+    alert(cleanText(data.message||('Command sent: '+cmd)));
+    loadFleetOwner();
+  }catch(e){alert('Command failed');}
 }
 async function loadMyBike(){
   try{
     const res=await fetch('/api/my-bike',{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
-    if(!data.bike){ document.getElementById('myBikeInfo').textContent='No bike assigned yet. Contact Tabby support.'; document.getElementById('fleetBox').textContent='No bike assigned yet.'; return; }
-    const b=data.bike, st=data.status||{}, tel=data.telemetry||{}, plan=data.plan||{};
-    document.getElementById('myBikeName').textContent = cleanText(b.name)+' - '+cleanText(b.model||'');
-    document.getElementById('myBikeBattery').textContent = (tel.battery_level ?? st.battery_health ?? '--') + '%';
-    document.getElementById('myBikeInfo').textContent = `Reg: ${b.registration_number||'-'} - Status: ${b.status||'active'} - Speed: ${tel.speed ?? '--'} km/h - Engine: ${tel.engine_temperature ?? '--'}C`;
-    document.getElementById('myBikeTrip').innerHTML = `Total Trip: ${st.total_trip ?? '--'}<br>Total Distance: ${st.total_distance ?? '--'} km<br>CO2 Saved: ${st.co2_saved ?? '--'} kg<br>Range: ${st.range_km ?? '--'} km<br>Battery Health: ${st.battery_health ?? '--'}%`;
-    document.getElementById('myBikePlan').innerHTML = plan.id ? `Total: ${plan.total_amount} NGN<br>Deposit: ${plan.deposit} NGN<br>Installment: ${plan.installment_amount} NGN<br>Paid: ${plan.installments_paid}/${plan.installments_total}<br>Next due: ${plan.next_due_date||'-'}<br>Status: ${plan.status}` : 'No plan yet. Contact Tabby support.';
-    document.getElementById('myBikeSecurity').innerHTML = `Lock: ${st.lock_status||'--'}<br>Access: ${st.access_mode||'--'}<br>GPS: ${tel.latitude ? tel.latitude+','+tel.longitude : '--'}`;
-    document.getElementById('fleetBox').textContent = cleanText(b.name)+' - Battery '+(tel.battery_level ?? '--')+'% - Range '+(st.range_km ?? '--')+' km';
-    document.getElementById('batteryBox').innerHTML = `Battery: ${tel.battery_level ?? '--'}%<br>Fuel: ${tel.fuel_level ?? '--'}%<br>Engine temp: ${tel.engine_temperature ?? '--'}C`;
-    document.getElementById('telemetryBox').textContent = tel.id ? `Speed: ${tel.speed} - Battery: ${tel.battery_level}% - GPS: ${tel.latitude}, ${tel.longitude}` : 'Awaiting connection - Connect bike device.';
-    document.getElementById('gpsBox').textContent = tel.latitude ? `GPS: ${tel.latitude}, ${tel.longitude}` : 'No live GPS yet.';
-  }catch(e){ document.getElementById('myBikeInfo').textContent='Load failed.'; }
+    if(!data.bike){
+      document.getElementById('myBikeInfo').textContent='No bike assigned yet. Contact Tabby support.';
+      document.getElementById('fleetBox').textContent='No bike assigned yet.';
+      return;
+    }
+    const b=data.bike,st=data.status||{},tel=data.telemetry||{},plan=data.plan||{};
+    document.getElementById('myBikeName').textContent=cleanText(b.name)+' - '+cleanText(b.model||'');
+    document.getElementById('myBikeBattery').textContent=(tel.battery_level??st.battery_health??'--')+'%';
+    document.getElementById('myBikeInfo').textContent=`Reg: ${b.registration_number||'-'} - Status: ${b.status||'active'} - Speed: ${tel.speed??'--'} km/h - Engine: ${tel.engine_temperature??'--'}C`;
+    document.getElementById('myBikeTrip').innerHTML=`Total Trip: ${st.total_trip??'--'}<br>Total Distance: ${st.total_distance??'--'} km<br>CO2 Saved: ${st.co2_saved??'--'} kg<br>Range: ${st.range_km??'--'} km<br>Battery Health: ${st.battery_health??'--'}%`;
+    document.getElementById('myBikePlan').innerHTML=plan.id?`Total: ${plan.total_amount} NGN<br>Deposit: ${plan.deposit} NGN<br>Installment: ${plan.installment_amount} NGN<br>Paid: ${plan.installments_paid}/${plan.installments_total}<br>Next due: ${plan.next_due_date||'-'}<br>Status: ${plan.status}`:'No plan yet. Contact Tabby support.';
+    document.getElementById('myBikeSecurity').innerHTML=`Lock: ${st.lock_status||'--'}<br>Access: ${st.access_mode||'--'}<br>GPS: ${tel.latitude?tel.latitude+','+tel.longitude:'--'}`;
+    document.getElementById('fleetBox').textContent=cleanText(b.name)+' - Battery '+(tel.battery_level??'--')+'% - Range '+(st.range_km??'--')+' km';
+    document.getElementById('batteryBox').innerHTML=`Battery: ${tel.battery_level??'--'}%<br>Fuel: ${tel.fuel_level??'--'}%<br>Engine temp: ${tel.engine_temperature??'--'}C`;
+    document.getElementById('telemetryBox').textContent=tel.id?`Speed: ${tel.speed} - Battery: ${tel.battery_level}% - GPS: ${tel.latitude}, ${tel.longitude}`:'Awaiting connection - Connect bike device.';
+    document.getElementById('gpsBox').textContent=tel.latitude?`GPS: ${tel.latitude}, ${tel.longitude}`:'No live GPS yet.';
+  }catch(e){document.getElementById('myBikeInfo').textContent='Load failed.';}
 }
 async function loadCustomers(){
-  if(!isOwner()) return;
+  if(!isOwner())return;
   try{
     const res=await fetch('/api/customers',{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
-    document.getElementById('customersList').innerHTML = (data.customers||[]).map(c=> `<div class="fleet-card"><b>${cleanText(c.name)}</b> - ${cleanText(c.email)} - <span class="owner-badge">${cleanText(c.role)}</span><br><span style="font-size:11px;color:var(--muted)">Joined: ${cleanText(c.created_at||'')}</span></div>`).join('') || 'No customers yet.';
+    document.getElementById('customersList').innerHTML=(data.customers||[]).map(c=>`<div class="fleet-card"><b>${cleanText(c.name)}</b> - ${cleanText(c.email)} - <span class="owner-badge">${cleanText(c.role)}</span><br><span style="font-size:11px;color:var(--muted)">Joined: ${cleanText(c.created_at||'')}</span></div>`).join('')||'No customers yet.';
   }catch(e){}
 }
 async function loadPlans(){
   try{
     const res=await fetch('/api/payment-plans',{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
-    document.getElementById('plansList').innerHTML = (data.plans||[]).map(p=> `<div class="fleet-card"><b>Plan ${p.id}</b> - Bike ${p.motorcycle_id} - User ${p.user_id}<br><span style="font-size:12px;color:var(--muted)">Total: ${p.total_amount} - Paid: ${p.installments_paid}/${p.installments_total} - Next: ${p.next_due_date||'-'} - Status: ${p.status}</span><div style="margin-top:8px"><button class="btn-blue" onclick="payPlan(${p.id})">Mark installment paid</button></div></div>`).join('') || 'No plans yet.';
+    document.getElementById('plansList').innerHTML=(data.plans||[]).map(p=>`<div class="fleet-card"><b>Plan ${p.id}</b> - Bike ${p.motorcycle_id} - User ${p.user_id}<br><span style="font-size:12px;color:var(--muted)">Total: ${p.total_amount} - Paid: ${p.installments_paid}/${p.installments_total} - Next: ${p.next_due_date||'-'} - Status: ${p.status}</span><div style="margin-top:8px"><button class="btn-blue" onclick="payPlan(${p.id})">Mark installment paid</button></div></div>`).join('')||'No plans yet.';
   }catch(e){}
 }
-async function payPlan(id){ await fetch(`/api/payment-plans/${id}/pay`,{method:'POST',headers:{'Authorization':'Bearer '+token}}); alert('Installment recorded'); loadPlans(); loadFleetOwner(); }
+async function payPlan(id){
+  await fetch(`/api/payment-plans/${id}/pay`,{method:'POST',headers:{'Authorization':'Bearer '+token}});
+  alert('Installment recorded');loadPlans();loadFleetOwner();
+}
 async function createPlanPrompt(){
-  const userId=window.prompt('Customer user ID?'); if(!userId) return;
-  const bikeId=window.prompt('Bike ID?'); if(!bikeId) return;
-  const total=window.prompt('Total amount NGN? e.g. 1500000'); if(!total) return;
+  const userId=window.prompt('Customer user ID?');if(!userId)return;
+  const bikeId=window.prompt('Bike ID?');if(!bikeId)return;
+  const total=window.prompt('Total amount NGN? e.g. 1500000');if(!total)return;
   const deposit=window.prompt('Deposit NGN? e.g. 300000')||'0';
-  const inst=window.prompt('Installment amount NGN? e.g. 100000'); if(!inst) return;
-  const count=window.prompt('How many installments? e.g. 12'); if(!count) return;
+  const inst=window.prompt('Installment amount NGN? e.g. 100000');if(!inst)return;
+  const count=window.prompt('How many installments? e.g. 12');if(!count)return;
   const due=window.prompt('Next due date? e.g. 2026-12-01')||'';
   const res=await fetch('/api/payment-plans',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({user_id:parseInt(userId),motorcycle_id:parseInt(bikeId),total_amount:parseFloat(total),deposit:parseFloat(deposit),installment_amount:parseFloat(inst),installments_total:parseInt(count),next_due_date:due})});
-  const data=await res.json(); if(data.success){ alert('Plan created'); loadPlans(); } else { alert(cleanText(data.error||'Failed')); }
+  const data=await res.json();
+  if(data.success){alert('Plan created');loadPlans();}
+  else{alert(cleanText(data.error||'Failed'));}
 }
 async function addBikePrompt(){
-  if(!isOwner()){ alert('Owner only'); return; }
-  const name=window.prompt('Motorbike name Boss? e.g. Tabby Bike 1'); if(!name) return;
+  if(!isOwner()){alert('Owner only');return;}
+  const name=window.prompt('Motorbike name Boss? e.g. Tabby Bike 1');if(!name)return;
   const model=window.prompt('Model? e.g. 2025')||'';
   const reg=window.prompt('Registration number?')||'';
   const assign=window.prompt('Assign to customer user ID? Leave empty for no rider')||'';
   try{
     const res=await fetch('/api/motorcycles',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({name,model,registration_number:reg,assigned_user_id:assign?parseInt(assign):null})});
-    const data=await res.json(); if(data.success){ alert('Motorbike added Boss'); loadFleet(); loadOverviewStats(); loadFleetOwner(); } else { alert(cleanText(data.error||'Failed')); }
-  }catch(e){ alert('Network error'); }
+    const data=await res.json();
+    if(data.success){alert('Motorbike added Boss');loadFleet();loadOverviewStats();loadFleetOwner();}
+    else{alert(cleanText(data.error||'Failed'));}
+  }catch(e){alert('Network error');}
 }
 async function checkAutoStatus(){
-  try{ const res=await fetch('/api/automotive/status'); const data=await res.json(); document.getElementById('autoStatusBox').textContent=cleanText(data.message||'Automotive system online.'); document.getElementById('statAuto').textContent=data.status||'awaiting connection'; }catch(e){ document.getElementById('autoStatusBox').textContent='Automotive system online, awaiting hardware.'; }
+  try{
+    const res=await fetch('/api/automotive/status');
+    const data=await res.json();
+    document.getElementById('autoStatusBox').textContent=cleanText(data.message||'Automotive system online.');
+    document.getElementById('statAuto').textContent=data.status||'awaiting connection';
+  }catch(e){document.getElementById('autoStatusBox').textContent='Automotive system online, awaiting hardware.';}
 }
 async function loadMemoriesBox(){
-  try{ const res=await fetch('/api/memories',{headers:{'Authorization':'Bearer '+token}}); const data=await res.json(); const mems=data.memories||[]; document.getElementById('memoriesBox').textContent = mems.length? mems.map(m=>cleanText(m.content)).join('\n- ') : 'No memories yet Boss.'; }catch(e){ document.getElementById('memoriesBox').textContent='Memories load failed.'; }
+  try{
+    const res=await fetch('/api/memories',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    const mems=data.memories||[];
+    document.getElementById('memoriesBox').textContent=mems.length?mems.map(m=>cleanText(m.content)).join('\n- '):'No memories yet Boss.';
+  }catch(e){document.getElementById('memoriesBox').textContent='Memories load failed.';}
 }
-function testVoice(){ speakText('Hello Boss, this is Tabby voice test. Lol, I dey work well.'); }
+function testVoice(){speakText('Hello Boss, this is Tabby voice test. Lol, I dey work well.');}
 async function checkServer(){
-  try{ const res=await fetch('/api/status'); const data=await res.json(); document.getElementById('serverStatus').textContent=JSON.stringify(data); }catch(e){ document.getElementById('serverStatus').textContent='Server check failed - check Render.'; }
+  try{
+    const res=await fetch('/api/status');
+    const data=await res.json();
+    document.getElementById('serverStatus').textContent=JSON.stringify(data);
+  }catch(e){document.getElementById('serverStatus').textContent='Server check failed - check Render.';}
 }
-function addMessage(role, text){
+function addMessage(role,text){
   const box=document.getElementById('chatBox');
   const div=document.createElement('div');
   div.className='msg '+(role==='user'?'user':'assistant');
   div.textContent=cleanText(text);
-  box.appendChild(div); box.scrollTop=box.scrollHeight; return div;
+  box.appendChild(div);box.scrollTop=box.scrollHeight;
+  return div;
 }
-function addImageMessage(imageUrl, prompt){
+function addImageMessage(imageUrl,prompt){
   const box=document.getElementById('chatBox');
-  const div=document.createElement('div'); div.className='msg assistant';
-  const label=document.createElement('div'); label.textContent=cleanText(`Here is your dope image Boss - ${prompt||''}`); div.appendChild(label);
-  const img=document.createElement('img'); img.className='chat-img'; img.src=imageUrl; img.alt=prompt||'Generated image'; img.onerror=()=>{ label.textContent='Image failed to load Boss. Try again.'; }; div.appendChild(img);
-  const actions=document.createElement('div'); actions.className='img-actions';
-  const dl=document.createElement('a'); dl.className='img-btn'; dl.href=imageUrl; dl.download='tabby-image.jpg'; dl.target='_blank'; dl.textContent='Download';
-  const open=document.createElement('a'); open.className='img-btn'; open.href=imageUrl; open.target='_blank'; open.textContent='Open full';
-  actions.appendChild(dl); actions.appendChild(open); div.appendChild(actions);
-  box.appendChild(div); box.scrollTop=box.scrollHeight;
-  if(voiceReplies) speakText('Here is your dope image Boss');
+  const div=document.createElement('div');div.className='msg assistant';
+  const label=document.createElement('div');
+  label.textContent=cleanText(`Here is your dope image Boss - ${prompt||''}`);
+  div.appendChild(label);
+  const img=document.createElement('img');
+  img.className='chat-img';img.src=imageUrl;img.alt=prompt||'Generated image';
+  img.onerror=()=>{label.textContent='Image failed to load Boss. Try again.';};
+  div.appendChild(img);
+  const actions=document.createElement('div');actions.className='img-actions';
+  const dl=document.createElement('a');dl.className='img-btn';dl.href=imageUrl;dl.download='tabby-image.jpg';dl.target='_blank';dl.textContent='Download';
+  const open=document.createElement('a');open.className='img-btn';open.href=imageUrl;open.target='_blank';open.textContent='Open full';
+  actions.appendChild(dl);actions.appendChild(open);div.appendChild(actions);
+  box.appendChild(div);box.scrollTop=box.scrollHeight;
+  if(voiceReplies)speakText('Here is your dope image Boss');
 }
-function showTyping(show){ document.getElementById('typing').style.display = show ? 'block' : 'none'; }
+function showTyping(show){document.getElementById('typing').style.display=show?'block':'none';}
 async function sendMessage(){
   const input=document.getElementById('msgInput');
   const message=input.value.trim();
-  if(!message) return;
-  if(!token){ alert('Please login first Boss.'); return; }
-  addMessage('user', message); input.value='';
-  const btn=document.getElementById('sendBtn'); btn.disabled=true; showTyping(true);
+  if(!message)return;
+  if(!token){alert('Please login first Boss.');return;}
+  addMessage('user',message);input.value='';
+  const btn=document.getElementById('sendBtn');
+  btn.disabled=true;showTyping(true);
   try{
-    const payload={message, conversation_id: conversationId ? parseInt(conversationId) : null, voice_mode: voiceConversation};
-    if(webSearchMode==='on') payload.web_search=true;
-    if(webSearchMode==='off') payload.web_search=false;
+    const payload={message,conversation_id:conversationId?parseInt(conversationId):null,voice_mode:voiceConversation};
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
-    const data=await res.json(); showTyping(false);
-    if(!res.ok || (!data.success && !data.reply)){ addMessage('assistant','Sorry Boss, Tabby could not reach AI service. Check Render logs for OPENROUTER_API_KEY. Try again.'); return; }
-    if(data.conversation_id){ conversationId=data.conversation_id; localStorage.setItem('tabby_conversation_id', String(conversationId)); loadConvoList(); }
-    const reply = cleanText(data.reply || data.response || 'Done Boss.');
-    if(data.image || data.image_url){ addImageMessage(data.image_url || data.image, message); }
-    else { addMessage('assistant', reply); if(voiceReplies || voiceConversation) speakText(reply); }
-    if(data.latitude && data.longitude){ showLocationStatus(`Location: ${data.latitude}, ${data.longitude} - ${data.google_maps||''}`); }
-  }catch(e){ showTyping(false); addMessage('assistant','Network error Boss. Check your internet and try again.'); }
-  finally{ btn.disabled=false; }
+    const data=await res.json();showTyping(false);
+    if(!res.ok||(!data.success&&!data.reply)){
+      addMessage('assistant','Sorry Boss, Tabby could not reach AI service. Check Render logs for OPENROUTER_API_KEY. Try again.');
+      return;
+    }
+    if(data.conversation_id){
+      conversationId=data.conversation_id;
+      localStorage.setItem('tabby_conversation_id',String(conversationId));
+      loadConvoList();
+    }
+    const reply=cleanText(data.reply||data.response||'Done Boss.');
+    if(data.image||data.image_url)addImageMessage(data.image_url||data.image,message);
+    else{
+      addMessage('assistant',reply);
+      if(voiceReplies||voiceConversation)speakText(reply);
+    }
+    if(data.latitude&&data.longitude)showLocationStatus(`Location: ${data.latitude}, ${data.longitude} - ${data.google_maps||''}`);
+  }catch(e){
+    showTyping(false);
+    addMessage('assistant','Network error Boss. Check your internet and try again.');
+  }finally{btn.disabled=false;}
 }
 async function promptGenerateImage(){
-  const prompt = window.prompt('What image you want Boss? e.g. a man in 2d anime style, a dope motorbike, a ball', lastImagePrompt || 'a man in 2d anime style');
-  if(!prompt) return; lastImagePrompt=prompt;
-  if(!token){alert('Please login first Boss'); return;}
-  addMessage('user', `Generate image of ${prompt}`); showTyping(true);
+  const prompt=window.prompt('What image you want Boss? e.g. a man in 2d anime style, a dope motorbike, a ball',lastImagePrompt||'a man in 2d anime style');
+  if(!prompt)return;
+  lastImagePrompt=prompt;
+  if(!token){alert('Please login first Boss');return;}
+  addMessage('user',`Generate image of ${prompt}`);showTyping(true);
   try{
-    const res=await fetch('/api/generate-image',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({prompt, steps:4})});
-    const data=await res.json(); showTyping(false);
-    if(data.image || data.image_url){ addImageMessage(data.image_url || data.image, prompt); }
-    else { addMessage('assistant','Image failed Boss: '+(cleanText(data.error)||'Try again.')); }
-  }catch(e){ showTyping(false); addMessage('assistant','Image failed Boss - network error. Try again.'); }
+    const res=await fetch('/api/generate-image',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({prompt,steps:4})});
+    const data=await res.json();showTyping(false);
+    if(data.image||data.image_url)addImageMessage(data.image_url||data.image,prompt);
+    else addMessage('assistant','Image failed Boss: '+(cleanText(data.error)||'Try again.'));
+  }catch(e){showTyping(false);addMessage('assistant','Image failed Boss - network error. Try again.');}
 }
 function toggleVoiceReplies(){
   voiceReplies=!voiceReplies;
   const b=document.getElementById('voiceReplyBtn');
-  b.textContent = voiceReplies ? 'Voice replies: On' : 'Voice replies: Off';
-  b.classList.toggle('active', voiceReplies);
-  const sb=document.getElementById('settingsVoiceBtn'); if(sb) sb.textContent = voiceReplies ? 'Toggle voice replies - On' : 'Toggle voice replies - Off';
-  if(voiceReplies) speakText('Voice replies on Boss. I go talk now.');
-  else if(synth) synth.cancel();
+  b.textContent=voiceReplies?'Voice replies: On':'Voice replies: Off';
+  b.classList.toggle('active',voiceReplies);
+  const sb=document.getElementById('settingsVoiceBtn');
+  if(sb)sb.textContent=voiceReplies?'Toggle voice replies - On':'Toggle voice replies - Off';
+  if(voiceReplies)speakText('Voice replies on Boss. I go talk now.');
+  else if(synth)synth.cancel();
 }
 function speakText(text){
-  if(!('speechSynthesis' in window)) return;
-  try{ synth.cancel(); let clean = cleanText(text).replace(/https?:\/\/\S+/g,'').slice(0,500); if(!clean.trim()) return; const u=new SpeechSynthesisUtterance(clean); const sel=document.getElementById('voiceSelect'); if(sel) u.lang = sel.value.includes('en_NG') ? 'en-NG' : 'en-US'; u.rate=1; u.pitch=1; synth.speak(u); }catch(e){}
+  if(!('speechSynthesis' in window))return;
+  try{
+    synth.cancel();
+    let clean=cleanText(text).replace(/https?:\/\/\S+/g,'').slice(0,500);
+    if(!clean.trim())return;
+    const u=new SpeechSynthesisUtterance(clean);
+    const sel=document.getElementById('voiceSelect');
+    if(sel)u.lang=sel.value.includes('en_NG')?'en-NG':'en-US';
+    u.rate=1;u.pitch=1;synth.speak(u);
+  }catch(e){}
 }
 function toggleVoiceInput(){
-  if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){ alert('Voice input no dey supported for this browser Boss. Use Chrome.'); return; }
-  if(voiceInputActive){ if(recognition) recognition.stop(); return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition=new SR(); recognition.lang='en-NG'; recognition.interimResults=false; recognition.continuous=false;
-  recognition.onstart=()=>{ voiceInputActive=true; const b=document.getElementById('voiceInputBtn'); b.textContent='Listening... tap to stop'; b.classList.add('recording'); };
-  recognition.onend=()=>{ voiceInputActive=false; const b=document.getElementById('voiceInputBtn'); b.textContent='Voice input'; b.classList.remove('recording'); };
-  recognition.onresult=(e)=>{ const transcript=e.results[0][0].transcript; document.getElementById('msgInput').value=transcript; sendMessage(); };
-  recognition.onerror=()=>{ voiceInputActive=false; const b=document.getElementById('voiceInputBtn'); b.textContent='Voice input'; b.classList.remove('recording'); };
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    alert('Voice input no dey supported for this browser Boss. Use Chrome.');return;
+  }
+  if(voiceInputActive){if(recognition)recognition.stop();return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();recognition.lang='en-NG';recognition.interimResults=false;recognition.continuous=false;
+  recognition.onstart=()=>{
+    voiceInputActive=true;
+    const b=document.getElementById('voiceInputBtn');
+    b.textContent='Listening... tap to stop';b.classList.add('recording');
+  };
+  recognition.onend=()=>{
+    voiceInputActive=false;
+    const b=document.getElementById('voiceInputBtn');
+    b.textContent='Voice input';b.classList.remove('recording');
+  };
+  recognition.onresult=(e)=>{
+    const transcript=e.results[0][0].transcript;
+    document.getElementById('msgInput').value=transcript;
+    sendMessage();
+  };
+  recognition.onerror=()=>{
+    voiceInputActive=false;
+    const b=document.getElementById('voiceInputBtn');
+    b.textContent='Voice input';b.classList.remove('recording');
+  };
   recognition.start();
 }
 function toggleVoiceConversation(){
   voiceConversation=!voiceConversation;
   const b=document.getElementById('voiceConvBtn');
   const banner=document.getElementById('voiceBanner');
-  if(voiceConversation){ b.textContent='Stop voice conversation'; b.classList.add('active'); banner.style.display='flex'; voiceReplies=true; document.getElementById('voiceReplyBtn').textContent='Voice replies: On'; document.getElementById('voiceReplyBtn').classList.add('active'); speakText('Voice conversation on Boss. Talk to me like phone call.'); toggleVoiceInput(); }
-  else { stopVoiceConversation(); }
+  if(voiceConversation){
+    b.textContent='Stop voice conversation';b.classList.add('active');
+    banner.style.display='flex';voiceReplies=true;
+    document.getElementById('voiceReplyBtn').textContent='Voice replies: On';
+    document.getElementById('voiceReplyBtn').classList.add('active');
+    speakText('Voice conversation on Boss. Talk to me like phone call.');
+    toggleVoiceInput();
+  }else{stopVoiceConversation();}
 }
-function stopVoiceConversation(){ voiceConversation=false; document.getElementById('voiceConvBtn').textContent='Start voice conversation'; document.getElementById('voiceConvBtn').classList.remove('active'); document.getElementById('voiceBanner').style.display='none'; if(recognition) try{recognition.stop();}catch(e){} if(synth) synth.cancel(); }
-function toggleWebSearch(){ if(webSearchMode==='auto') webSearchMode='on'; else if(webSearchMode==='on') webSearchMode='off'; else webSearchMode='auto'; const b=document.getElementById('webSearchBtn'); b.textContent = webSearchMode==='auto' ? 'Web search: Auto' : webSearchMode==='on' ? 'Web search: On' : 'Web search: Off'; }
-function showLocationStatus(msg){ const el=document.getElementById('locationStatus'); el.style.display='block'; el.textContent=cleanText(msg); }
+function stopVoiceConversation(){
+  voiceConversation=false;
+  document.getElementById('voiceConvBtn').textContent='Start voice conversation';
+  document.getElementById('voiceConvBtn').classList.remove('active');
+  document.getElementById('voiceBanner').style.display='none';
+  if(recognition)try{recognition.stop();}catch(e){}
+  if(synth)synth.cancel();
+}
+function showLocationStatus(msg){
+  const el=document.getElementById('locationStatus');
+  el.style.display='block';el.textContent=cleanText(msg);
+}
 async function shareLocation(){
-  if(!navigator.geolocation){ alert('Geolocation no dey supported for this device Boss.'); return; }
+  if(!navigator.geolocation){alert('Geolocation no dey supported for this device Boss.');return;}
   showLocationStatus('Getting your location... Allow permission Boss.');
-  navigator.geolocation.getCurrentPosition(async (pos)=>{
-    const lat=pos.coords.latitude; const lng=pos.coords.longitude;
+  navigator.geolocation.getCurrentPosition(async(pos)=>{
+    const lat=pos.coords.latitude,lng=pos.coords.longitude;
     showLocationStatus(`Live location saved: ${lat}, ${lng}. You fit change am anytime.`);
     try{
       const res=await fetch('/api/location/update',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({latitude:lat,longitude:lng,accuracy:pos.coords.accuracy,speed:pos.coords.speed})});
       const data=await res.json();
-      if(data.success){ addMessage('assistant', `Done Boss, I don save your new location: ${lat}, ${lng}. Maps: ${data.google_maps}. You fit change am anytime.`); if(voiceReplies) speakText('Location saved Boss'); }
-      else { addMessage('assistant','Location got but save failed: '+(cleanText(data.error)||'Try again')); }
-    }catch(e){ addMessage('assistant','Location got but network failed to save. Try again.'); }
-  }, (err)=>{ showLocationStatus('Location failed: '+err.message); alert('Location failed Boss: '+err.message); }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+      if(data.success){
+        addMessage('assistant',`Done Boss, I don save your new location: ${lat}, ${lng}. Maps: ${data.google_maps}. You fit change am anytime.`);
+        if(voiceReplies)speakText('Location saved Boss');
+      }else addMessage('assistant','Location got but save failed: '+(cleanText(data.error)||'Try again'));
+    }catch(e){addMessage('assistant','Location got but network failed to save. Try again.');}
+  },(err)=>{
+    showLocationStatus('Location failed: '+err.message);
+    alert('Location failed Boss: '+err.message);
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
 }
 async function trackLocation(){
   if(!token){alert('Login first Boss');return;}
   try{
     const res=await fetch('/api/location/latest',{headers:{'Authorization':'Bearer '+token}});
     const data=await res.json();
-    if(data.location){ const l=data.location; const msg=`Boss, you dey here right now:\nLatitude: ${l.latitude}\nLongitude: ${l.longitude}\nMaps: ${l.google_maps}`; addMessage('assistant', msg); showLocationStatus(`Tracked: ${l.latitude}, ${l.longitude}`); }
-    else { addMessage('assistant','Boss, I never get your location yet. Press Share My Location and Allow, or tell me I am in Lagos.'); }
-  }catch(e){ addMessage('assistant','Track failed Boss - network error.'); }
+    if(data.location){
+      const l=data.location;
+      const msg=`Boss, you dey here right now:\nLatitude: ${l.latitude}\nLongitude: ${l.longitude}\nMaps: ${l.google_maps}`;
+      addMessage('assistant',msg);
+      showLocationStatus(`Tracked: ${l.latitude}, ${l.longitude}`);
+    }else addMessage('assistant','Boss, I never get your location yet. Press Share My Location and Allow, or tell me I am in Lagos.');
+  }catch(e){addMessage('assistant','Track failed Boss - network error.');}
 }
 checkAuth();
 </script>
