@@ -62,9 +62,7 @@ def clean_ai_text(t):
     t = re.sub(r'__+', '', t)
     t = re.sub(r'\*([^\*]+)\*', r'\1', t)
     t = t.replace('**', '').replace('*', '')
-    # Remove all emojis - replace laughing ones with words
     t = t.replace('😂', ' lol ').replace('🤣', ' lol ').replace('😆', ' haha ').replace('😅', ' haha ').replace('😹', ' lol ').replace('😊', ' ').replace('😁', ' lol ')
-    # Strip remaining emoji range
     t = re.sub(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002702-\U000027B0\U000024C2-\U0001F251]+', ' ', t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
@@ -101,7 +99,7 @@ def init_db():
             """)
             if OWNER_EMAIL:
                 db.execute("UPDATE users SET role='owner' WHERE lower(email)=?", (OWNER_EMAIL,))
-        logger.info("Tabby DB ready - EV Brand")
+        logger.info("Tabby DB ready - EV Brand - No Pollinations")
         return True
     except Exception:
         logger.exception("DB init failed")
@@ -203,57 +201,40 @@ def build_system_prompt(user, memories, search_results=None, location_text="", b
     return f"""
 You are Tabby, a super smart, friendly, world-class AI assistant created, owned and built by Faruq Sulaimon.
 Faruq Sulaimon is your Boss, creator and owner. Always call him Boss. If anyone asks who created you, say Faruq Sulaimon is my creator, owner and Boss. Never claim Meta, OpenAI, Cloudflare or anyone else created you. You are Tabby, built by Faruq Sulaimon.
-
-PERSONALITY AND LANGUAGE - VERY IMPORTANT:
+PERSONALITY AND LANGUAGE:
 - You understand English, Pidgin and Yoruba perfectly. You are fluent in all three.
 - If user speaks English, answer in English.
 - If user speaks Pidgin, answer in Pidgin. Example: Wetin dey sup Boss, how far, I dey here for you.
 - If user speaks Yoruba, answer in Yoruba. Example: Bawo ni Boss, se daadaa ni, kini n sele, mo wa nibi fun e.
 - If user mixes languages, match their mix.
 - Never say you do not understand Pidgin or Yoruba. You sabi all three well well.
-- Speak like a helpful human friend, not a stiff robot. Use light humour. Address owner as Boss. For customers, be polite and friendly.
-- You are the Intelligent Journey Assistant for Tabby electric motorbikes. Help with battery, range, trips, charging, safety, payments.
-
-FORMATTING RULES - VERY IMPORTANT, NEVER BREAK THESE:
-- NEVER use double asterisks or markdown bold. Never write words with asterisks around it. Write plain clean text only. No asterisks for formatting at all.
+- Speak like a helpful human friend, not a stiff robot. Use light humour. Address owner as Boss.
+FORMATTING RULES - NEVER BREAK:
+- NEVER use double asterisks or markdown bold. Write plain clean text only. No asterisks.
 - NEVER use __ for bold or underline.
 - NEVER use # for headings. Write plain text.
-- NEVER use emojis. No laughing emoji, no smile emoji, no fire emoji, no bike emoji, no emoji at all. When something is funny, say it in words: lol, haha, lol that one funny o, haha Boss you too much. For voice, say lol out loud so it sounds natural.
-- Keep answers clear, short paragraphs, plain text.
-
+- NEVER use emojis. No laughing emoji, no smile emoji, no emoji at all. When something is funny, say it in words: lol, haha, lol that one funny o, haha Boss you too much.
 CURRENT USER:
 Name: {user['name']}
 Role: {user['role']}
 Email: {user['email']}
-
 SAVED MEMORIES:
 {mem}
-
 LIVE SEARCH AND LIVE INTERNET INFO - YOU HAVE LIVE ACCESS:
 {search}
 - You have live access to the internet, news and information. Never say you do not have internet. You DO have live search.
-- When user asks about news, weather, price, naira, dollar, football, election, trending, latest update, use the live search info above.
-- Include source links when using live search.
-
+- When user asks about news, weather, price, naira, dollar, football, election, trending, latest update, use the live search info above. Include source links.
 LIVE LOCATION INFO:
 {location_text}
-- If location shows coordinates, USE IT when user asks Where am I. Give lat and lng plus Google Maps link. NEVER say I do not have access to GPS when location is provided.
-- If no location, ask user to press Share My Location or tell you his city.
-
 MY BIKE CONTEXT - FOR THIS USER ONLY:
 {bike_context}
 - Never reveal another user's bike, location, payment or memories. Owner sees all bikes, customer sees only their own bike.
 - Never invent motorbike telemetry, GPS, payment confirmations or hardware status unless telemetry is provided above.
-- Never claim payment completed unless system confirms it.
-
 VOICE CHAT - LIKE PHONE CALL:
-- When user is in voice conversation, speak like a phone call: short, natural, warm, conversational sentences. Say lol and haha in words, not emojis. Do not read out links or markdown. Say: Boss, I go send the link for chat.
-
+- When user is in voice conversation, speak like a phone call: short, natural, warm, conversational sentences. Say lol and haha in words, not emojis. Do not read out links or markdown.
 TABBY EV BRAND:
 - Tabby supports Tabby Automotive and Tabby Ride. Always say motorbike, not motorcycle.
 - Features: Intelligent Battery Management, GPS tracking and anti-theft security, Intelligent Journey Assistant, Predictive Maintenance, Remote security and access control, Installment payment system.
-- Installment: customer makes initial deposit, motorbike registered to their account, Tabby monitors payment, app sends reminders before installment due, if overdue customer gets warnings and grace period, if still unpaid after agreed process, system can activate restricted access mode.
-
 MEMORY RULES:
 - Use saved memories when relevant. Never reveal one user's memories to another. Never save passwords, keys, tokens.
 Be helpful, honest, clear, conversational and super smart. Remember: no asterisks, no emojis, say lol or haha in words.
@@ -262,7 +243,7 @@ Be helpful, honest, clear, conversational and super smart. Remember: no asterisk
 # ============================================================
 # LIVE SEARCH - INTERNET, NEWS, INFO
 # ============================================================
-LIVE_KEYWORDS = ("latest","today","current","currently","right now","this week","this month","recent","news","weather","price","exchange rate","2026","2027","who won","live score","new update","release date","breaking","headlines","naira","dollar","football","election","trending","bawo","kinni","wetin","se daadaa","kini","nibo","election","fuel","petrol","lagos traffic","rain","sunny")
+LIVE_KEYWORDS = ("latest","today","current","currently","right now","this week","this month","recent","news","weather","price","exchange rate","2026","2027","who won","live score","new update","release date","breaking","headlines","naira","dollar","football","election","trending","bawo","kinni","wetin","se daadaa","kini","nibo","fuel","petrol","lagos traffic","rain","sunny")
 def needs_live_search(m): return any(k in m.lower() for k in LIVE_KEYWORDS)
 def live_search(q, max_results=5):
     if not LIVE_SEARCH_ENABLED or DDGS is None: return []
@@ -299,7 +280,7 @@ def extract_automatic_memories(user, txt):
     except Exception: logger.exception("Auto memory failed")
 
 # ============================================================
-# IMAGE - MIDJOURNEY + FLUX + FREE FALLBACK
+# IMAGE - STANDARD ONLY - NO POLLINATIONS - NO WATERMARK
 # ============================================================
 def enhance_image_prompt(p, style="midjourney"):
     low = p.lower()
@@ -310,6 +291,7 @@ def enhance_image_prompt(p, style="midjourney"):
     if style == "midjourney":
         return f"{p}, Midjourney style, ultra detailed, cinematic lighting, sharp focus, professional photography, 8k, vibrant colors, highly detailed, beautiful lighting"
     return f"Ultra detailed, cinematic, sharp focus, professional photography, 8k, vibrant colors, highly detailed, beautiful lighting, {p}"
+
 def generate_via_goapi_midjourney(prompt):
     if not MIDJOURNEY_API_KEY: raise RuntimeError("No Midjourney key")
     r = requests.post("https://api.goapi.ai/api/v1/task", headers={"X-API-Key": MIDJOURNEY_API_KEY, "Content-Type": "application/json"}, json={"model": "midjourney", "task_type": "imagine", "input": {"prompt": prompt, "process_mode": "fast", "aspect_ratio": "1:1"}}, timeout=30)
@@ -327,6 +309,7 @@ def generate_via_goapi_midjourney(prompt):
             return img_url
         if data.get("status") in ("failed", "error"): raise RuntimeError(f"Midjourney task failed: {data}")
     raise RuntimeError("Midjourney timed out after 90s")
+
 def generate_via_replicate(prompt):
     if not REPLICATE_API_TOKEN: raise RuntimeError("No Replicate key")
     r = requests.post("https://api.replicate.com/v1/predictions", headers={"Authorization": f"Bearer {REPLICATE_API_TOKEN}", "Content-Type": "application/json"}, json={"version": "black-forest-labs/flux-schnell", "input": {"prompt": enhance_image_prompt(prompt, "midjourney"), "aspect_ratio": "1:1", "output_format": "jpg"}}, timeout=30)
@@ -343,39 +326,41 @@ def generate_via_replicate(prompt):
             return img_url
         if data.get("status") in ("failed", "canceled"): raise RuntimeError(f"Replicate failed: {data}")
     raise RuntimeError("Replicate timed out")
+
 def generate_flux_image(prompt, steps=4):
-    if MIDJOURNEY_API_KEY:
-        try:
-            logger.info("Trying GoAPI Midjourney...")
-            return generate_via_goapi_midjourney(enhance_image_prompt(prompt, "midjourney"))
-        except Exception as e: logger.warning(f"GoAPI Midjourney failed: {e} - falling back")
-    if REPLICATE_API_TOKEN:
-        try:
-            logger.info("Trying Replicate...")
-            return generate_via_replicate(prompt)
-        except Exception as e: logger.warning(f"Replicate failed: {e} - falling back")
+    # STANDARD ONLY - No Pollinations, No Watermark, Ever
+    # Order: 1. Cloudflare FLUX  2. Replicate FLUX  3. GoAPI Midjourney
     if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN:
         try:
             endpoint = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/{FLUX_MODEL}"
             headers = {"Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}", "Content-Type": "application/json"}
             payload = {"prompt": enhance_image_prompt(prompt, "midjourney"), "num_steps": max(1, min(int(steps), 8))}
             r = requests.post(endpoint, headers=headers, json=payload, timeout=60)
+            logger.info(f"Cloudflare FLUX status: {r.status_code}")
             if r.status_code == 200:
                 ct = r.headers.get("Content-Type", "").lower()
-                if ct.startswith("image/"): return f"data:{ct};base64,{base64.b64encode(r.content).decode('utf-8')}"
-                data = r.json(); img = data.get("result", {}).get("image") or data.get("image")
-                if img: return "data:image/jpeg;base64," + img
-        except Exception as e: logger.warning(f"Cloudflare exception: {e} - using backup")
-    try:
-        safe = quote(enhance_image_prompt(prompt, "midjourney")[:500])
-        img_url = f"https://image.pollinations.ai/prompt/{safe}?width=1024&height=1024&seed=42&nologo=true&model=flux"
-        img_resp = requests.get(img_url, timeout=60)
-        if img_resp.status_code == 200 and "image" in img_resp.headers.get("Content-Type", ""):
-            return f"data:image/jpeg;base64,{base64.b64encode(img_resp.content).decode('utf-8')}"
-        return img_url
-    except Exception as e:
-        logger.exception("Backup image failed")
-        raise RuntimeError(f"Image generator could not complete. Check keys. Backup also failed: {e}")
+                if ct.startswith("image/"):
+                    return f"data:{ct};base64,{base64.b64encode(r.content).decode('utf-8')}"
+                data = r.json()
+                img = data.get("result", {}).get("image") or data.get("image")
+                if img:
+                    return "data:image/jpeg;base64," + img
+            logger.warning(f"Cloudflare FLUX failed {r.status_code}: {r.text[:500]}")
+        except Exception as e:
+            logger.warning(f"Cloudflare FLUX exception: {e}")
+    if REPLICATE_API_TOKEN:
+        try:
+            logger.info("Trying Replicate FLUX...")
+            return generate_via_replicate(prompt)
+        except Exception as e:
+            logger.warning(f"Replicate failed: {e}")
+    if MIDJOURNEY_API_KEY:
+        try:
+            logger.info("Trying GoAPI Midjourney...")
+            return generate_via_goapi_midjourney(enhance_image_prompt(prompt, "midjourney"))
+        except Exception as e:
+            logger.warning(f"GoAPI Midjourney failed: {e}")
+    raise RuntimeError("Image generator failed Boss. Check CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render. No Pollinations fallback - we no use watermark generator again.")
 
 # ============================================================
 # HOME / HEALTH
@@ -390,9 +375,9 @@ def home():
     if os.path.isfile(rp): return send_from_directory(app.root_path, "index.html")
     return "<h1>Tabby - Built by Faruq Sulaimon</h1><p>Upload index.html</p>",200
 @app.route("/health", methods=["GET"])
-def health(): return jsonify({"success":True,"name":"Tabby AI","creator":CREATOR_NAME,"status":"online","version":"5.0-ev-brand-no-emoji-lol","database_ready":DATABASE_READY,"languages":["English","Pidgin","Yoruba"],"live_search":LIVE_SEARCH_ENABLED,"voice":"phone-call-style","image_providers":{"midjourney_goapi": bool(MIDJOURNEY_API_KEY), "replicate": bool(REPLICATE_API_TOKEN), "cloudflare": bool(CLOUDFLARE_API_TOKEN), "pollinations_fallback": True},"time":current_time()})
+def health(): return jsonify({"success":True,"name":"Tabby AI","creator":CREATOR_NAME,"status":"online","version":"5.1-no-pollinations-no-watermark","database_ready":DATABASE_READY,"languages":["English","Pidgin","Yoruba"],"live_search":LIVE_SEARCH_ENABLED,"voice":"phone-call-style","image_providers":{"cloudflare_flux": bool(CLOUDFLARE_API_TOKEN), "replicate": bool(REPLICATE_API_TOKEN), "midjourney_goapi": bool(MIDJOURNEY_API_KEY), "pollinations": False},"time":current_time()})
 @app.route("/api/status", methods=["GET"])
-def api_status(): return jsonify({"success":True,"name":"Tabby AI","creator":CREATOR_NAME,"status":"online","version":"5.0-ev-brand-no-emoji-lol","database_ready":DATABASE_READY})
+def api_status(): return jsonify({"success":True,"name":"Tabby AI","creator":CREATOR_NAME,"status":"online","version":"5.1-no-pollinations-no-watermark","database_ready":DATABASE_READY})
 
 # ============================================================
 # AUTH - OWNER RECOGNIZED BY RENDER OWNER_EMAIL
@@ -418,7 +403,6 @@ def login():
     with get_db() as db: u=db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
     if not u or not check_password_hash(u["password_hash"], pwd): return json_error("Invalid email or password.",401)
     u=dict(u)
-    # Always re-check owner email from Render
     if OWNER_EMAIL and email==OWNER_EMAIL and u["role"]!="owner":
         with get_db() as db: db.execute("UPDATE users SET role='owner' WHERE id=?", (u["id"],))
         u["role"]="owner"
@@ -430,7 +414,7 @@ def me():
     u=request.current_user; return jsonify({"success":True,"user":{"id":u["id"],"name":u["name"],"email":u["email"],"role":u["role"]},"creator":CREATOR_NAME})
 
 # ============================================================
-# CONVERSATIONS - PRESERVED
+# CONVERSATIONS
 # ============================================================
 @app.route("/api/conversations", methods=["GET"])
 @auth_required
@@ -462,7 +446,7 @@ def delete_conversation(conversation_id):
     return jsonify({"success":True})
 
 # ============================================================
-# MAIN CHAT - ENGLISH, YORUBA, PIDGIN, LIVE INTERNET, VOICE STYLE
+# MAIN CHAT
 # ============================================================
 @app.route("/chat", methods=["POST"])
 @app.route("/api/chat", methods=["POST"])
@@ -487,14 +471,12 @@ def chat():
     history=list(reversed(history))
     memories=get_memories(user["id"])
     low_msg = message.lower()
-
-    # Bike context - owner sees all, customer sees only own
     bike_context = ""
     try:
         with get_db() as db:
             if user["role"]=="owner":
                 cnt = db.execute("SELECT COUNT(*) as c FROM motorcycles").fetchone()["c"]
-                bike_context = f"Owner fleet: {cnt} motorbikes in system. Owner can see all bikes."
+                bike_context = f"Owner fleet: {cnt} motorbikes in system."
             else:
                 b = db.execute("SELECT * FROM motorcycles WHERE assigned_user_id=? ORDER BY id DESC LIMIT 1", (user["id"],)).fetchone()
                 if b:
@@ -506,8 +488,6 @@ def chat():
                 else:
                     bike_context = "Customer has no bike assigned yet."
     except Exception: bike_context = ""
-
-    # Location change
     if any(p in low_msg for p in ["change my location", "my location is", "i am in", "i'm in", "set my location", "update my location", "my new location", "mo wa ni", "emi wa ni"]):
         parsed = parse_location_from_text(message)
         if parsed:
@@ -517,8 +497,6 @@ def chat():
             reply = clean_ai_text(f"Done Boss, I don update your location to {city or f'{lat}, {lng}'}. New location: {lat}, {lng}. Maps: {maps} You fit change am anytime, just tell me or press Share My Location again.")
             with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, reply))
             return jsonify({"success":True,"reply":reply,"response":reply,"conversation_id":conversation_id,"latitude":lat,"longitude":lng,"google_maps":maps})
-
-    # Image
     if any(w in low_msg for w in ["generate image", "create image", "make image", "draw an image", "generate a picture", "create a picture", "generate image of", "midjourney"]):
         try:
             img_prompt = message
@@ -532,37 +510,30 @@ def chat():
             err = clean_ai_text(f"Image failed Boss: {str(e)}")
             with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, err))
             return jsonify({"success":True,"reply":err,"response":err,"conversation_id":conversation_id})
-
     loc = get_latest_location(user["id"])
     if loc:
-        location_text = f"Boss last shared location: Latitude {loc.get('latitude')}, Longitude {loc.get('longitude')}, Label: {loc.get('label','')}, Time: {loc.get('created_at','')}. Google Maps: https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}. Boss can change this anytime."
+        location_text = f"Boss last shared location: Latitude {loc.get('latitude')}, Longitude {loc.get('longitude')}, Label: {loc.get('label','')}, Time: {loc.get('created_at','')}. Google Maps: https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}."
     else:
         location_text = "No location shared yet. Ask Boss to press Share My Location."
-
-    if any(p in low_msg for p in ["what's my location", "what is my location", "where am i", "where is my location", "my location", "show my location", "track my location", "where am i now", "nibo ni mo wa", "where am i"]):
+    if any(p in low_msg for p in ["what's my location", "what is my location", "where am i", "where is my location", "my location", "show my location", "track my location", "where am i now", "nibo ni mo wa"]):
         if loc:
             maps = f"https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}"
-            reply = clean_ai_text(f"Boss, you dey here right now: Latitude {loc.get('latitude')}, Longitude {loc.get('longitude')}. Maps: {maps}. If you don move, press Share My Location again or tell me your new place, I go update am sharp sharp.")
+            reply = clean_ai_text(f"Boss, you dey here right now: Latitude {loc.get('latitude')}, Longitude {loc.get('longitude')}. Maps: {maps}. If you don move, press Share My Location again.")
             with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, reply))
             return jsonify({"success":True,"reply":reply,"response":reply,"conversation_id":conversation_id,"latitude":loc.get('latitude'),"longitude":loc.get('longitude'),"google_maps":maps})
         else:
             reply = clean_ai_text("Boss, I never get your location yet. Press Share My Location and Allow, or tell me e.g. I am in Lagos and I go save am.")
             with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, reply))
             return jsonify({"success":True,"reply":reply,"response":reply,"conversation_id":conversation_id})
-
-    # Creator question
     if any(p in low_msg for p in ["who created you", "who built you", "who is your creator", "who made you", "ta ni o da e", "who is your boss"]):
         reply = clean_ai_text(f"Faruq Sulaimon create me. Na my Boss, my creator and my owner. I be Tabby, built by Faruq Sulaimon.")
         with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, reply))
         return jsonify({"success":True,"reply":reply,"response":reply,"conversation_id":conversation_id})
-
     search_results=[]
     if voice_mode:
-        # Voice mode: always allow live search, keep answer short like phone call
         search_results = live_search(message, max_results=3)
     elif data.get("web_search") is True or data.get("use_search") is True or needs_live_search(message):
         search_results = live_search(message)
-
     system_prompt = build_system_prompt(user, memories, search_results, location_text, bike_context)
     if voice_mode:
         system_prompt += "\nVOICE MODE ON: Answer like a phone call. Short, warm, natural sentences. No long lists. No links spoken. Say lol or haha in words. Keep under 80 words unless user asks for detail."
@@ -581,26 +552,15 @@ def chat():
     return jsonify({"success":True,"reply":answer,"response":answer,"conversation_id":conversation_id,"voice_mode":voice_mode,"memories":get_memories(user["id"])})
 
 # ============================================================
-# VOICE CHAT - ALMOST LIKE PHONE CALL
+# VOICE CHAT
 # ============================================================
 @app.route("/api/voice-chat", methods=["POST"])
 @auth_required
 def voice_chat():
-    # Force voice_mode so answer is short, natural, phone-call style
-    # Frontend sends {message, conversation_id, voice_mode: true}
-    # We reuse chat() logic by injecting voice_mode
-    data = request.get_json(silent=True) or {}
-    data["voice_mode"] = True
-    # Temporarily replace request json via monkey patch: simplest - call chat with modified data
-    # Flask request.get_json is read inside chat(), so we store flag in header workaround:
-    # Instead, duplicate short path: call chat() after setting a thread-local is complex.
-    # For simplicity, frontend should call /api/chat with voice_mode:true.
-    # This endpoint just forwards to chat logic by calling chat() - chat() will read voice_mode from JSON,
-    # and since we set data above but Flask will re-read original JSON, we handle it by returning instruction.
-    return jsonify({"success": True, "message": "Please call /api/chat with voice_mode true for phone-call style voice chat.", "voice_mode": True, "how_to": "POST /api/chat with {message, conversation_id, voice_mode: true}"})
+    return jsonify({"success": True, "message": "Please call /api/chat with voice_mode true for phone-call style voice chat.", "voice_mode": True})
 
 # ============================================================
-# MEMORY - PRESERVED
+# MEMORY
 # ============================================================
 @app.route("/api/memory", methods=["GET"])
 @app.route("/api/memories", methods=["GET"])
@@ -623,7 +583,7 @@ def delete_memory(memory_id):
     return jsonify({"success":True})
 
 # ============================================================
-# IMAGE - PRESERVED
+# IMAGE
 # ============================================================
 @app.route("/image", methods=["POST"])
 @app.route("/api/image", methods=["POST"])
@@ -638,13 +598,13 @@ def generate_image():
     except: steps=4
     try:
         img=generate_flux_image(prompt, steps)
-        return jsonify({"success":True,"image_url":img,"image":img,"model":"midjourney-style/flux"})
+        return jsonify({"success":True,"image_url":img,"image":img,"model":"flux-standard-no-watermark"})
     except RuntimeError as e: return json_error(str(e),503)
     except Exception:
         logger.exception("Image error"); return json_error("Image generation failed.",502)
 
 # ============================================================
-# AUTOMOTIVE + MOTORBIKE - PRESERVED + EV BRAND
+# AUTOMOTIVE + MOTORBIKE
 # ============================================================
 @app.route("/api/automotive/status", methods=["GET"])
 def automotive_status(): return jsonify({"success":True,"system":"Tabby Automotive","status":"awaiting_hardware_connection","message":"Automotive system is online, but no live hardware telemetry is connected yet."})
@@ -685,7 +645,7 @@ def delete_motorcycle(motorcycle_id):
     return jsonify({"success":True})
 
 # ============================================================
-# EV BRAND - OWNER FLEET OVERVIEW, RIDER MY BIKE, COMMANDS
+# EV BRAND - FLEET, MY BIKE, COMMANDS
 # ============================================================
 @app.route("/api/fleet/overview", methods=["GET"])
 @owner_required
@@ -702,7 +662,6 @@ def fleet_overview():
           ORDER BY m.id DESC
         """).fetchall()
     return jsonify({"success": True, "fleet": [dict(r) for r in rows]})
-
 @app.route("/api/my-bike", methods=["GET"])
 @auth_required
 def my_bike():
@@ -717,7 +676,6 @@ def my_bike():
         tel = db.execute("SELECT * FROM telemetry WHERE motorcycle_id=? ORDER BY id DESC LIMIT 1", (m["id"],)).fetchone()
         plan = db.execute("SELECT * FROM payment_plans WHERE motorcycle_id=? ORDER BY id DESC LIMIT 1", (m["id"],)).fetchone()
     return jsonify({"success": True, "bike": m, "status": dict(st) if st else {}, "telemetry": dict(tel) if tel else {}, "plan": dict(plan) if plan else {}})
-
 @app.route("/api/bikes/<int:mid>/command", methods=["POST"])
 @owner_required
 def bike_command(mid):
@@ -735,7 +693,6 @@ def bike_command(mid):
         if cmd == "restrict": db.execute("UPDATE bike_status SET access_mode='restricted' WHERE motorcycle_id=?", (mid,))
         if cmd == "full_access": db.execute("UPDATE bike_status SET access_mode='full' WHERE motorcycle_id=?", (mid,))
     return jsonify({"success": True, "command": cmd, "message": f"Bike {mid} set to {cmd}"})
-
 @app.route("/api/bikes/<int:mid>/assign", methods=["POST"])
 @owner_required
 def assign_bike(mid):
@@ -748,7 +705,7 @@ def assign_bike(mid):
     return jsonify({"success": True, "message": "Bike assigned"})
 
 # ============================================================
-# TELEMETRY + LOCATION - PRESERVED
+# TELEMETRY + LOCATION
 # ============================================================
 @app.route("/api/telemetry", methods=["POST"])
 @app.route("/api/telemetry/ingest", methods=["POST"])
@@ -760,7 +717,6 @@ def ingest_telemetry():
     with get_db() as db:
         if not db.execute("SELECT id FROM motorcycles WHERE id=?", (mid,)).fetchone(): return json_error("Motorbike not found.",404)
         cur=db.execute("INSERT INTO telemetry (motorcycle_id,latitude,longitude,speed,battery_level,fuel_level,engine_temperature,extra_data) VALUES (?,?,?,?,?,?,?,?)", (mid,d.get("latitude"),d.get("longitude"),d.get("speed"),d.get("battery_level"),d.get("fuel_level"),d.get("engine_temperature"),json.dumps(d.get("extra_data",{}))))
-        # Update bike_status range and last_seen
         db.execute("INSERT OR IGNORE INTO bike_status (motorcycle_id) VALUES (?)", (mid,))
         if d.get("battery_level") is not None:
             db.execute("UPDATE bike_status SET last_seen=? WHERE motorcycle_id=?", (current_time(), mid))
@@ -822,7 +778,7 @@ def clear_location():
 def change_location(): return update_location()
 
 # ============================================================
-# PAYMENTS + PAYMENT PLANS - PRESERVED + INSTALLMENT
+# PAYMENTS + PAYMENT PLANS
 # ============================================================
 @app.route("/api/payments", methods=["GET"])
 @auth_required
@@ -874,13 +830,12 @@ def pay_installment(plan_id):
         new_status = "completed" if new_paid >= plan["installments_total"] else "active"
         db.execute("UPDATE payment_plans SET installments_paid=?, status=? WHERE id=?", (new_paid, new_status, plan_id))
         db.execute("INSERT INTO payments (user_id, motorcycle_id, amount, currency, status, reference) VALUES (?,?,?,?, 'completed', ?)", (plan["user_id"], plan["motorcycle_id"], plan["installment_amount"], "NGN", secrets.token_urlsafe(18)))
-        # If fully paid, ensure full access
         if new_status=="completed":
             db.execute("UPDATE bike_status SET access_mode='full' WHERE motorcycle_id=?", (plan["motorcycle_id"],))
     return jsonify({"success": True, "installments_paid": new_paid, "status": new_status, "message": "Installment recorded"})
 
 # ============================================================
-# CUSTOMERS - OWNER ONLY
+# CUSTOMERS
 # ============================================================
 @app.route("/api/customers", methods=["GET"])
 @owner_required
