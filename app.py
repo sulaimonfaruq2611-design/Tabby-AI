@@ -7,6 +7,7 @@ import sqlite3
 import logging
 from datetime import datetime, timezone
 from functools import wraps
+from urllib.parse import quote
 
 import requests
 from flask import Flask, request, jsonify, render_template, send_from_directory
@@ -34,8 +35,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 OPENROUTER_MODEL = (os.getenv("OPENROUTER_MODEL", "openrouter/free").strip() or "openrouter/free")
 DEVICE_INGEST_KEY = os.getenv("DEVICE_INGEST_KEY", "")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "tabby_memory.db")
-CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
-CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "")
+CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
+CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
 FLUX_MODEL = "@cf/black-forest-labs/flux-1-schnell"
 AUTO_MEMORY_ENABLED = (os.getenv("AUTO_MEMORY_ENABLED", "true").lower() == "true")
 LIVE_SEARCH_ENABLED = (os.getenv("LIVE_SEARCH_ENABLED", "true").lower() == "true")
@@ -125,12 +126,11 @@ def get_memories(uid, limit=30):
         rows = db.execute("SELECT id, content, created_at FROM memories WHERE user_id=? ORDER BY id DESC LIMIT ?", (uid, limit)).fetchall()
     return [dict(r) for r in rows]
 
-# --- LOCATION HELPERS: Boss can change location anytime ---
+# --- LOCATION: Boss can change anytime ---
 def get_latest_location(user_id):
     with get_db() as db:
         row = db.execute("SELECT * FROM locations WHERE user_id=? ORDER BY id DESC LIMIT 1", (user_id,)).fetchone()
         if row: return dict(row)
-        # Fallback to old telemetry phone_location
         row2 = db.execute("SELECT * FROM telemetry WHERE extra_data LIKE '%phone_location%' ORDER BY id DESC LIMIT 1").fetchone()
         if row2:
             d = dict(row2)
@@ -140,7 +140,6 @@ def get_latest_location(user_id):
 def save_location(user_id, lat, lng, label="phone_location", accuracy=None, speed=None):
     with get_db() as db:
         cur = db.execute("INSERT INTO locations (user_id, latitude, longitude, label, accuracy, speed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (user_id, lat, lng, label, accuracy, speed, current_time()))
-        # Also mirror to telemetry for motorbike compatibility
         try:
             mid_row = db.execute("SELECT id FROM motorcycles LIMIT 1").fetchone()
             if mid_row:
@@ -149,18 +148,14 @@ def save_location(user_id, lat, lng, label="phone_location", accuracy=None, spee
         return cur.lastrowid
 
 def parse_location_from_text(text):
-    # Detect "I am in Lagos", "my location is 6.5, 3.2", "change my location to Abuja" etc
-    # Returns (lat,lng) if coords present, else city name
     m = re.search(r"(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)", text)
     if m:
         try: return (float(m.group(1)), float(m.group(2)), None)
         except: pass
-    # City names
-    cities = {"lagos": (6.5244, 3.3792), "abuja": (9.0579, 7.4951), "ibadan": (7.3775, 3.9470), "kano": (12.0022, 8.5919), "port harcourt": (4.8156, 7.0498), "benin": (6.335, 5.603), "enugu": (6.5244, 7.5107), "kaduna": (10.5227, 7.4380), "jos": (9.8965, 8.8583), "owerri": (5.4833, 7.0333), "ikeja": (6.6018, 3.3515), "lekki": (6.455, 3.537), "abuja fct": (9.0579, 7.4951)}
+    cities = {"lagos": (6.5244, 3.3792), "abuja": (9.0579, 7.4951), "ibadan": (7.3775, 3.9470), "kano": (12.0022, 8.5919), "port harcourt": (4.8156, 7.0498), "benin": (6.335, 5.603), "enugu": (6.5244, 7.5107), "kaduna": (10.5227, 7.4380), "jos": (9.8965, 8.8583), "owerri": (5.4833, 7.0333), "ikeja": (6.6018, 3.3515), "lekki": (6.455, 3.537)}
     low = text.lower()
     for name, coords in cities.items():
-        if name in low:
-            return (coords[0], coords[1], name)
+        if name in low: return (coords[0], coords[1], name)
     return None
 
 # ============================================================
@@ -209,7 +204,7 @@ LIVE SEARCH INFO:
 
 LIVE LOCATION INFO:
 {location_text}
-- If location shows coordinates, USE IT when Boss asks "Where am I?" / "What's my location?" Give lat/lng + Google Maps link. NEVER say "I don't have access to GPS" when location is provided.
+- If location shows coordinates, USE IT when Boss asks "Where am I?" Give lat/lng + Google Maps link. NEVER say "I don't have access to GPS" when location is provided.
 - If no location, ask Boss to press Share My Location or tell you his city.
 
 LIVE SEARCH RULES:
@@ -267,7 +262,7 @@ def extract_automatic_memories(user, txt):
     except Exception: logger.exception("Auto memory failed")
 
 # ============================================================
-# IMAGE - DOPE
+# IMAGE - DOPE + FALLBACK - NEVER FAIL
 # ============================================================
 def enhance_image_prompt(p):
     low=p.lower()
@@ -275,20 +270,37 @@ def enhance_image_prompt(p):
     return f"Ultra detailed, cinematic, sharp focus, professional photography, 8k, vibrant colors, highly detailed, beautiful lighting, {p}"
 
 def generate_flux_image(prompt, steps=4):
-    if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN: raise RuntimeError("Cloudflare image not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.")
-    endpoint = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/{FLUX_MODEL}"
-    headers = {"Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}", "Content-Type": "application/json"}
-    payload = {"prompt": enhance_image_prompt(prompt), "steps": max(1, min(int(steps),8)), "width":1024, "height":1024}
-    r = requests.post(endpoint, headers=headers, json=payload, timeout=180)
-    if r.status_code != 200:
-        logger.error("Cloudflare image failed: %s", r.text[:1000])
-        raise RuntimeError("Image generator could not complete. Check Cloudflare token and daily allowance.")
-    ct = r.headers.get("Content-Type","").lower()
-    if ct.startswith("image/"): return f"data:{ct};base64,{base64.b64encode(r.content).decode('utf-8')}"
-    data = r.json()
-    img = data.get("result",{}).get("image") or data.get("image")
-    if not img: raise RuntimeError("Image generator returned no image.")
-    return "data:image/jpeg;base64," + img
+    # 1. Try Cloudflare FLUX with CORRECT payload
+    if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN:
+        try:
+            endpoint = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/{FLUX_MODEL}"
+            headers = {"Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}", "Content-Type": "application/json"}
+            payload = {"prompt": enhance_image_prompt(prompt), "num_steps": max(1, min(int(steps), 8))}
+            r = requests.post(endpoint, headers=headers, json=payload, timeout=60)
+            logger.info(f"Cloudflare image status: {r.status_code}")
+            if r.status_code == 200:
+                ct = r.headers.get("Content-Type", "").lower()
+                if ct.startswith("image/"):
+                    return f"data:{ct};base64,{base64.b64encode(r.content).decode('utf-8')}"
+                data = r.json()
+                img = data.get("result", {}).get("image") or data.get("image")
+                if img:
+                    return "data:image/jpeg;base64," + img
+            logger.warning(f"Cloudflare image failed {r.status_code}: {r.text[:500]} - using backup")
+        except Exception as e:
+            logger.warning(f"Cloudflare exception: {e} - using backup")
+
+    # 2. BACKUP - Free Pollinations - always works, no key needed
+    try:
+        safe = quote(enhance_image_prompt(prompt)[:500])
+        img_url = f"https://image.pollinations.ai/prompt/{safe}?width=1024&height=1024&seed=42&nologo=true"
+        img_resp = requests.get(img_url, timeout=60)
+        if img_resp.status_code == 200 and "image" in img_resp.headers.get("Content-Type", ""):
+            return f"data:image/jpeg;base64,{base64.b64encode(img_resp.content).decode('utf-8')}"
+        return img_url
+    except Exception as e:
+        logger.exception("Backup image failed")
+        raise RuntimeError(f"Image generator could not complete. Check Cloudflare token + Workers AI permission. Backup also failed: {e}")
 
 # ============================================================
 # HOME / HEALTH
@@ -304,9 +316,9 @@ def home():
     return "<h1>Tabby - Built by Faruq Sulaimon</h1><p>Upload index.html</p>",200
 
 @app.route("/health", methods=["GET"])
-def health(): return jsonify({"success":True,"name":"Tabby AI","status":"online","version":"3.1","database_ready":DATABASE_READY,"time":current_time()})
+def health(): return jsonify({"success":True,"name":"Tabby AI","status":"online","version":"3.2","database_ready":DATABASE_READY,"time":current_time()})
 @app.route("/api/status", methods=["GET"])
-def api_status(): return jsonify({"success":True,"name":"Tabby AI","status":"online","version":"3.1","database_ready":DATABASE_READY})
+def api_status(): return jsonify({"success":True,"name":"Tabby AI","status":"online","version":"3.2","database_ready":DATABASE_READY})
 
 # ============================================================
 # AUTH
@@ -376,7 +388,7 @@ def delete_conversation(conversation_id):
     return jsonify({"success":True})
 
 # ============================================================
-# MAIN CHAT - SUPER SMART + LOCATION + IMAGE DETECT + CHANGE LOCATION
+# MAIN CHAT
 # ============================================================
 @app.route("/chat", methods=["POST"])
 @app.route("/api/chat", methods=["POST"])
@@ -399,9 +411,9 @@ def chat():
         history=db.execute("SELECT role,content FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT 20", (conversation_id,)).fetchall()
     history=list(reversed(history))
     memories=get_memories(user["id"])
-
-    # --- CHANGE LOCATION ANYTIME: If Boss says "change my location to ..." or "I am in ..." ---
     low_msg = message.lower()
+
+    # --- CHANGE LOCATION ANYTIME ---
     if any(p in low_msg for p in ["change my location", "my location is", "i am in", "i'm in", "set my location", "update my location", "my new location"]):
         parsed = parse_location_from_text(message)
         if parsed:
@@ -413,11 +425,11 @@ def chat():
                 db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, reply))
             return jsonify({"success":True,"reply":reply,"response":reply,"conversation_id":conversation_id,"latitude":lat,"longitude":lng,"google_maps":maps})
 
-    # --- IMAGE DETECT: If Boss types generate image in chat ---
-    if any(w in low_msg for w in ["generate image", "create image", "make image", "draw an image", "generate a picture", "create a picture", "dope motorbike"]):
+    # --- IMAGE DETECT in chat ---
+    if any(w in low_msg for w in ["generate image", "create image", "make image", "draw an image", "generate a picture", "create a picture", "generate image of", "chill generate"]):
         try:
             img_prompt = message
-            for w in ["generate image of","generate image","create image of","create image","make image of","make image","draw"]:
+            for w in ["chill generate image of","generate image of","generate image","create image of","create image","make image of","make image","chill generate","draw"]:
                 img_prompt = img_prompt.lower().replace(w,"").strip()
             if not img_prompt: img_prompt = message
             image_data = generate_flux_image(img_prompt, 4)
@@ -425,19 +437,18 @@ def chat():
                 db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, f"Here is your dope image Boss: [IMAGE]"))
             return jsonify({"success":True,"reply":"Here is your dope image Boss.","response":"Here is your dope image Boss.","conversation_id":conversation_id,"image":image_data,"image_url":image_data})
         except Exception as e:
-            err = f"Image failed Boss: {str(e)}. Check Cloudflare token / daily limit."
+            err = f"Image failed Boss: {str(e)}"
             with get_db() as db:
                 db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, err))
             return jsonify({"success":True,"reply":err,"response":err,"conversation_id":conversation_id})
 
-    # --- LOCATION INJECTION: Always give Tabby latest location ---
+    # --- LOCATION INJECTION ---
     loc = get_latest_location(user["id"])
     if loc:
-        location_text = f"Boss last shared location: Latitude {loc.get('latitude')}, Longitude {loc.get('longitude')}, Label: {loc.get('label','')}, Time: {loc.get('created_at','')}. Google Maps: https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}. Boss can change this anytime by pressing Share My Location or telling you a new place."
+        location_text = f"Boss last shared location: Latitude {loc.get('latitude')}, Longitude {loc.get('longitude')}, Label: {loc.get('label','')}, Time: {loc.get('created_at','')}. Google Maps: https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}. Boss can change this anytime."
     else:
         location_text = "No location shared yet. Ask Boss to press Share My Location."
 
-    # --- If Boss asks "What's my location" and we have it, answer directly without calling AI (fast + reliable) ---
     if any(p in low_msg for p in ["what's my location", "what is my location", "where am i", "where is my location", "my location", "show my location", "track my location", "where am i now"]):
         if loc:
             maps = f"https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}"
@@ -446,7 +457,7 @@ def chat():
                 db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, reply))
             return jsonify({"success":True,"reply":reply,"response":reply,"conversation_id":conversation_id,"latitude":loc.get('latitude'),"longitude":loc.get('longitude'),"google_maps":maps})
         else:
-            reply = "Boss, I never get your location yet. Press 📍 Share My Location and Allow, or tell me e.g. 'I am in Lagos' and I go save am."
+            reply = "Boss, I never get your location yet. Press Share My Location and Allow, or tell me e.g. 'I am in Lagos' and I go save am."
             with get_db() as db:
                 db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, reply))
             return jsonify({"success":True,"reply":reply,"response":reply,"conversation_id":conversation_id})
@@ -470,7 +481,7 @@ def chat():
     return jsonify({"success":True,"reply":answer,"response":answer,"conversation_id":conversation_id,"memories":get_memories(user["id"])})
 
 # ============================================================
-# VOICE CHAT - PHONE CALL STYLE
+# VOICE CHAT
 # ============================================================
 @app.route("/api/voice-chat", methods=["POST"])
 @auth_required
@@ -564,7 +575,7 @@ def delete_motorcycle(motorcycle_id):
     return jsonify({"success":True})
 
 # ============================================================
-# TELEMETRY + LOCATION - CHANGE ANYTIME
+# TELEMETRY + LOCATION
 # ============================================================
 @app.route("/api/telemetry", methods=["POST"])
 @app.route("/api/telemetry/ingest", methods=["POST"])
@@ -596,13 +607,11 @@ def get_motorcycle_telemetry(motorcycle_id):
         out.append(it)
     return jsonify({"success":True,"motorcycle_id":motorcycle_id,"motorbike_id":motorcycle_id,"latest":out[0] if out else None,"telemetry":out})
 
-# --- PHONE LOCATION: Boss can change anytime ---
 @app.route("/api/location/update", methods=["POST"])
 @auth_required
 def update_location():
     u=request.current_user; d=request.get_json(silent=True) or {}
     lat=d.get("latitude"); lng=d.get("longitude")
-    # Allow manual city name change too: {"city": "Abuja"} or {"location": "Lekki"}
     if (lat is None or lng is None) and (d.get("city") or d.get("location") or d.get("place")):
         parsed = parse_location_from_text(str(d.get("city") or d.get("location") or d.get("place")))
         if parsed: lat, lng, _ = parsed
@@ -638,7 +647,6 @@ def clear_location():
     with get_db() as db: db.execute("DELETE FROM locations WHERE user_id=?", (u["id"],))
     return jsonify({"success":True,"message":"Location cleared Boss. Share new one anytime."})
 
-# --- Change location via chat-friendly endpoint: POST /api/location/change {"city":"Abuja"} ---
 @app.route("/api/location/change", methods=["POST"])
 @auth_required
 def change_location():
