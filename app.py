@@ -47,6 +47,15 @@ AUTO_MEMORY_ENABLED = (os.getenv("AUTO_MEMORY_ENABLED", "true").lower() == "true
 LIVE_SEARCH_ENABLED = (os.getenv("LIVE_SEARCH_ENABLED", "true").lower() == "true")
 TABBY_DEVICE_KEY = os.getenv("TABBY_DEVICE_KEY", DEVICE_INGEST_KEY).strip()
 
+# ===== NEW: FALLBACK PROVIDERS - GEMINI / GROQ / CEREBRAS / POLLINATIONS (TEXT ONLY) =====
+# Gemini key from My Project 22405 - starts with AIza... or AQ... both work
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip()
+CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "llama3.1-8b").strip()
+
 serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 RETIRED_AI_MODELS = {"google/gemini-2.0-flash-001"}
@@ -199,7 +208,7 @@ def parse_location_from_text(text):
     return None
 
 # ============================================================
-# OPENROUTER + VISION
+# OPENROUTER + GEMINI + GROQ + CEREBRAS + POLLINATIONS (TEXT FALLBACK)
 # ============================================================
 def call_openrouter(messages, temperature=0.7, max_tokens=1800):
     if not OPENROUTER_API_KEY:
@@ -225,6 +234,123 @@ def call_openrouter(messages, temperature=0.7, max_tokens=1800):
             last = str(e)
     raise RuntimeError(clean_ai_text(last))
 
+def call_gemini(messages, temperature=0.7, max_tokens=1800):
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY not configured.")
+    # Convert OpenAI format to Gemini format
+    system_text = ""
+    gemini_contents = []
+    for m in messages:
+        if m["role"] == "system":
+            system_text += str(m.get("content", "")) + "\n"
+            continue
+        role = "user" if m["role"] == "user" else "model"
+        gemini_contents.append({"role": role, "parts": [{"text": str(m.get("content", ""))}]})
+    if not gemini_contents:
+        raise RuntimeError("No user message for Gemini")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    r = requests.post(url, headers={"Content-Type": "application/json"}, json={"system_instruction": {"parts": [{"text": system_text}]}, "contents": gemini_contents, "generationConfig": {"maxOutputTokens": max_tokens, "temperature": temperature}}, timeout=90)
+    if r.status_code != 200:
+        raise RuntimeError(f"Gemini failed: {r.text[:800]}")
+    data = r.json()
+    cands = data.get("candidates") or []
+    if not cands:
+        raise RuntimeError("Gemini no candidates")
+    parts = cands[0].get("content", {}).get("parts") or []
+    ans = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+    if not ans.strip():
+        raise RuntimeError("Gemini empty answer")
+    return clean_ai_text(ans.strip())
+
+def call_groq(messages, temperature=0.7, max_tokens=1800):
+    if not GROQ_API_KEY:
+        raise RuntimeError("GROQ_API_KEY not configured.")
+    r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}, json={"model": GROQ_MODEL, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}, timeout=90)
+    if r.status_code != 200:
+        raise RuntimeError(f"Groq failed: {r.text[:800]}")
+    data = r.json()
+    ch = data.get("choices") or []
+    if not ch:
+        raise RuntimeError("Groq no answer")
+    ans = (ch[0].get("message") or {}).get("content", "")
+    if isinstance(ans, list):
+        ans = "\n".join(x.get("text", "") for x in ans if isinstance(x, dict))
+    if not str(ans).strip():
+        raise RuntimeError("Groq empty")
+    return clean_ai_text(str(ans).strip())
+
+def call_cerebras(messages, temperature=0.7, max_tokens=1800):
+    if not CEREBRAS_API_KEY:
+        raise RuntimeError("CEREBRAS_API_KEY not configured.")
+    r = requests.post("https://api.cerebras.ai/v1/chat/completions", headers={"Authorization": f"Bearer {CEREBRAS_API_KEY}", "Content-Type": "application/json"}, json={"model": CEREBRAS_MODEL, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}, timeout=90)
+    if r.status_code != 200:
+        raise RuntimeError(f"Cerebras failed: {r.text[:800]}")
+    data = r.json()
+    ch = data.get("choices") or []
+    if not ch:
+        raise RuntimeError("Cerebras no answer")
+    ans = (ch[0].get("message") or {}).get("content", "")
+    if not str(ans).strip():
+        raise RuntimeError("Cerebras empty")
+    return clean_ai_text(str(ans).strip())
+
+def call_pollinations_text(messages, temperature=0.7, max_tokens=1800):
+    # TEXT ONLY - never used for image, image stays Flux/Replicate/Midjourney
+    r = requests.post("https://text.pollinations.ai/", headers={"Content-Type": "application/json"}, json={"messages": messages, "model": "openai", "temperature": temperature, "max_tokens": max_tokens}, timeout=90)
+    if r.status_code != 200:
+        raise RuntimeError(f"Pollinations failed: {r.text[:500]}")
+    try:
+        data = r.json()
+        ch = data.get("choices") or []
+        if ch:
+            ans = (ch[0].get("message") or {}).get("content", "")
+            if str(ans).strip():
+                return clean_ai_text(str(ans).strip())
+    except Exception:
+        pass
+    if r.text and r.text.strip():
+        return clean_ai_text(r.text.strip())
+    raise RuntimeError("Pollinations empty")
+
+def call_ai_with_fallback(messages, temperature=0.7, max_tokens=1800):
+    # Order: OpenRouter -> Gemini -> Groq -> Cerebras -> Pollinations(text)
+    errors = []
+    try:
+        ans = call_openrouter(messages, temperature=temperature, max_tokens=max_tokens)
+        logger.info("Used: OpenRouter")
+        return ans
+    except Exception as e:
+        errors.append(f"OpenRouter: {e}")
+        logger.warning(f"OpenRouter fallback: {e}")
+    try:
+        ans = call_gemini(messages, temperature=temperature, max_tokens=max_tokens)
+        logger.info("Used: Gemini")
+        return ans
+    except Exception as e:
+        errors.append(f"Gemini: {e}")
+        logger.warning(f"Gemini fallback: {e}")
+    try:
+        ans = call_groq(messages, temperature=temperature, max_tokens=max_tokens)
+        logger.info("Used: Groq")
+        return ans
+    except Exception as e:
+        errors.append(f"Groq: {e}")
+        logger.warning(f"Groq fallback: {e}")
+    try:
+        ans = call_cerebras(messages, temperature=temperature, max_tokens=max_tokens)
+        logger.info("Used: Cerebras")
+        return ans
+    except Exception as e:
+        errors.append(f"Cerebras: {e}")
+        logger.warning(f"Cerebras fallback: {e}")
+    try:
+        ans = call_pollinations_text(messages, temperature=temperature, max_tokens=max_tokens)
+        logger.info("Used: Pollinations")
+        return ans
+    except Exception as e:
+        errors.append(f"Pollinations: {e}")
+    raise RuntimeError(" | ".join(errors)[:1000])
+
 def call_vision(image_b64, question, user, bike_context=""):
     if not OPENROUTER_API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY not configured for Vision.")
@@ -233,18 +359,7 @@ def call_vision(image_b64, question, user, bike_context=""):
         image_b64 = f"data:image/jpeg;base64,{image_b64}"
     system = f"You are Tabby, smart assistant for Faruq Sulaimon. Boss is Faruq Sulaimon. You see through smart glasses, watch camera, phone camera. Answer like on phone call: short, clear, warm, in user's language - English, Pidgin or Yoruba. No asterisks, no emojis, say lol or haha in words. Describe what you see, what it is, if danger, if bike, if person. If user asks about bike, use this bike context: {bike_context}"
     q_text = clean_ai_text(question or "Hey Tabby, what am I looking at? Describe it for me.")
-    payload = {
-        "model": VISION_MODEL,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": [
-                {"type": "text", "text": q_text},
-                {"type": "image_url", "image_url": {"url": image_b64}}
-            ]}
-        ],
-        "max_tokens": 800,
-        "temperature": 0.5
-    }
+    payload = {"model": VISION_MODEL, "messages": [{"role": "system", "content": system}, {"role": "user", "content": [{"type": "text", "text": q_text}, {"type": "image_url", "image_url": {"url": image_b64}}]}], "max_tokens": 800, "temperature": 0.5}
     r = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=90)
     if r.status_code != 200:
         raise RuntimeError(f"Vision failed: {r.text[:800]}")
@@ -317,7 +432,7 @@ def extract_automatic_memories(user, txt):
         return
     prompt = f"Extract durable info. Only save long-term preferences, projects, goals. No passwords or keys. No asterisks. No emojis. Return ONLY JSON: {{\"memories\": [\"...\"]}}. Conversation:\n{txt[:6000]}"
     try:
-        ans = call_openrouter([{"role": "user", "content": prompt}], temperature=0.1, max_tokens=400)
+        ans = call_ai_with_fallback([{"role": "user", "content": prompt}], temperature=0.1, max_tokens=400)
         m = re.search(r"\{.*\}", ans, re.S)
         if not m:
             return
@@ -532,7 +647,7 @@ def home():
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "6.0-tabby-vision-glasses-watch-house-bike", "database_ready": DATABASE_READY, "languages": ["English", "Pidgin", "Yoruba"], "live_search": LIVE_SEARCH_ENABLED, "voice": "phone-call-style", "vision": True, "tabby": {"glasses": True, "watch": True, "house": True, "bike": True, "drone": True, "hologram_design": True}, "image_providers": {"cloudflare_flux": bool(CLOUDFLARE_API_TOKEN), "replicate": bool(REPLICATE_API_TOKEN), "midjourney_goapi": bool(MIDJOURNEY_API_KEY), "pollinations": False}, "time": current_time()})
+    return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "6.0-tabby-vision-glasses-watch-house-bike", "database_ready": DATABASE_READY, "languages": ["English", "Pidgin", "Yoruba"], "live_search": LIVE_SEARCH_ENABLED, "voice": "phone-call-style", "vision": True, "tabby": {"glasses": True, "watch": True, "house": True, "bike": True, "drone": True, "hologram_design": True}, "image_providers": {"cloudflare_flux": bool(CLOUDFLARE_API_TOKEN), "replicate": bool(REPLICATE_API_TOKEN), "midjourney_goapi": bool(MIDJOURNEY_API_KEY), "pollinations": False}, "chat_providers": {"openrouter": bool(OPENROUTER_API_KEY), "gemini": bool(GEMINI_API_KEY), "groq": bool(GROQ_API_KEY), "cerebras": bool(CEREBRAS_API_KEY), "pollinations_text_fallback": True}, "time": current_time()})
 
 @app.route("/api/status", methods=["GET"])
 def api_status():
@@ -734,9 +849,10 @@ def chat():
         system_prompt += "\nVOICE MODE ON: Answer like phone call. Short, warm, natural sentences. No long lists. No links spoken. Say lol or haha in words. Keep under 80 words unless user asks for detail."
     ai_messages = [{"role": "system", "content": system_prompt}] + [{"role": r["role"], "content": clean_ai_text(r["content"])} for r in history]
     try:
-        answer = clean_ai_text(call_openrouter(ai_messages, temperature=0.7, max_tokens=900 if voice_mode else 1800))
+        # CHANGED: now uses fallback chain OpenRouter -> Gemini -> Groq -> Cerebras -> Pollinations(text)
+        answer = clean_ai_text(call_ai_with_fallback(ai_messages, temperature=0.7, max_tokens=900 if voice_mode else 1800))
     except Exception:
-        logger.exception("Chat failed")
+        logger.exception("Chat failed - all providers failed")
         return json_error("Tabby could not reach its AI service right now. Please try again.", 502)
     with get_db() as db:
         db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (?, 'assistant', ?)", (conversation_id, answer))
@@ -747,7 +863,7 @@ def chat():
     return jsonify({"success": True, "reply": answer, "response": answer, "conversation_id": conversation_id, "voice_mode": voice_mode, "memories": get_memories(user["id"])})
 
 # ============================================================
-# VISION - GLASSES / WATCH - HEY TABBY WHAT AM I LOOKING AT?
+# VISION - GLASSES / WATCH
 # ============================================================
 @app.route("/api/vision", methods=["POST"])
 @auth_required
@@ -924,7 +1040,7 @@ def generate_image():
         return json_error("Image generation failed.", 502)
 
 # ============================================================
-# AUTOMOTIVE + MOTORBIKE - PREVIOUS BIKE STUFF PRESERVED
+# AUTOMOTIVE + MOTORBIKE
 # ============================================================
 @app.route("/api/automotive/status", methods=["GET"])
 def automotive_status():
@@ -1096,53 +1212,30 @@ def update_location():
     d = request.get_json(silent=True) or {}
     lat = d.get("latitude")
     lng = d.get("longitude")
-    if (lat is None or lng is None) and (d.get("city") or d.get("location") or d.get("place")):
-        parsed = parse_location_from_text(str(d.get("city") or d.get("location") or d.get("place")))
-        if parsed:
-            lat, lng, _ = parsed
     if lat is None or lng is None:
-        return json_error("Latitude and longitude required. Or send {city: 'Lagos'}")
+        if d.get("city") or d.get("location") or d.get("text"):
+            parsed = parse_location_from_text(str(d.get("city") or d.get("location") or d.get("text") or ""))
+            if parsed:
+                lat, lng, city = parsed
+                save_location(u["id"], lat, lng, label=city or "manual")
+                return jsonify({"success": True, "latitude": lat, "longitude": lng, "google_maps": f"https://www.google.com/maps?q={lat},{lng}"})
+        return json_error("latitude and longitude required.")
     try:
-        lat = float(lat)
-        lng = float(lng)
+        lat = float(lat); lng = float(lng)
     except Exception:
         return json_error("Invalid coordinates.")
-    label = d.get("label") or d.get("city") or "phone_location"
+    label = str(d.get("label") or d.get("city") or "phone_location")
     save_location(u["id"], lat, lng, label=label, accuracy=d.get("accuracy"), speed=d.get("speed"))
-    maps = f"https://www.google.com/maps?q={lat},{lng}"
-    return jsonify({"success": True, "message": clean_ai_text(f"Location updated Boss to {lat}, {lng}. You can change it anytime."), "latitude": lat, "longitude": lng, "google_maps": maps})
+    return jsonify({"success": True, "latitude": lat, "longitude": lng, "google_maps": f"https://www.google.com/maps?q={lat},{lng}"})
 
 @app.route("/api/location/latest", methods=["GET"])
 @auth_required
 def latest_location():
     loc = get_latest_location(request.current_user["id"])
     if not loc:
-        return jsonify({"success": True, "location": None, "message": "No location yet. Press Share My Location."})
+        return jsonify({"success": True, "location": None})
     loc["google_maps"] = f"https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}"
     return jsonify({"success": True, "location": loc})
-
-@app.route("/api/location/track", methods=["GET"])
-@auth_required
-def track_location():
-    lat = request.args.get("lat")
-    lng = request.args.get("lng")
-    if lat and lng:
-        return jsonify({"success": True, "latitude": lat, "longitude": lng, "google_maps": f"https://www.google.com/maps?q={lat},{lng}"})
-    return latest_location()
-
-@app.route("/api/location/clear", methods=["POST"])
-@app.route("/api/location/delete", methods=["POST"])
-@auth_required
-def clear_location():
-    u = request.current_user
-    with get_db() as db:
-        db.execute("DELETE FROM locations WHERE user_id=?", (u["id"],))
-    return jsonify({"success": True, "message": "Location cleared Boss. Share new one anytime."})
-
-@app.route("/api/location/change", methods=["POST"])
-@auth_required
-def change_location():
-    return update_location()
 
 @app.route("/api/payments", methods=["GET"])
 @auth_required
@@ -1150,33 +1243,30 @@ def list_payments():
     u = request.current_user
     with get_db() as db:
         if u["role"] == "owner":
-            rows = db.execute("SELECT * FROM payments ORDER BY id DESC").fetchall()
+            rows = db.execute("SELECT * FROM payments ORDER BY id DESC LIMIT 100").fetchall()
         else:
-            rows = db.execute("SELECT * FROM payments WHERE user_id=? ORDER BY id DESC", (u["id"],)).fetchall()
+            rows = db.execute("SELECT * FROM payments WHERE user_id=? ORDER BY id DESC LIMIT 100", (u["id"],)).fetchall()
     return jsonify({"success": True, "payments": [dict(r) for r in rows]})
 
 @app.route("/api/payments", methods=["POST"])
 @auth_required
-def create_payment_record():
+def create_payment():
     u = request.current_user
     d = request.get_json(silent=True) or {}
     try:
-        amount = float(d.get("amount"))
+        amount = float(d.get("amount", 0))
     except Exception:
-        return json_error("Valid amount required.")
+        return json_error("Invalid amount.")
     if amount <= 0:
-        return json_error("Amount must be greater than 0.")
-    mid = d.get("motorcycle_id") or d.get("motorbike_id")
-    if mid and not user_can_access_motorcycle(u, mid):
-        return json_error("Motorbike access denied.", 403)
-    ref = secrets.token_urlsafe(18)
+        return json_error("Amount must be > 0.")
+    ref = f"TABBY-{secrets.token_hex(6).upper()}"
     with get_db() as db:
-        cur = db.execute("INSERT INTO payments (user_id,motorcycle_id,amount,currency,status,reference) VALUES (?,?,?,?, 'pending', ?)", (u["id"], mid, amount, str(d.get("currency", "NGN")).upper(), ref))
-    return jsonify({"success": True, "payment_id": cur.lastrowid, "reference": ref, "status": "pending", "message": "Payment record created. No payment processed."}), 201
+        cur = db.execute("INSERT INTO payments (user_id, motorcycle_id, amount, currency, status, reference) VALUES (?,?,?,?,?,?)", (u["id"], d.get("motorcycle_id"), amount, str(d.get("currency", "NGN")), "pending", ref))
+    return jsonify({"success": True, "payment_id": cur.lastrowid, "reference": ref}), 201
 
 @app.route("/api/payment-plans", methods=["GET"])
 @auth_required
-def list_payment_plans():
+def list_plans():
     u = request.current_user
     with get_db() as db:
         if u["role"] == "owner":
@@ -1190,64 +1280,19 @@ def list_payment_plans():
 def create_plan():
     d = request.get_json(silent=True) or {}
     try:
-        total = float(d.get("total_amount"))
-        inst = float(d.get("installment_amount"))
-        tot = int(d.get("installments_total"))
+        total = float(d.get("total_amount", 0)); inst_amt = float(d.get("installment_amount", 0)); inst_total = int(d.get("installments_total", 1))
     except Exception:
-        return json_error("Valid total, installment amount and total installments required.")
+        return json_error("Invalid plan numbers.")
     with get_db() as db:
-        cur = db.execute("INSERT INTO payment_plans (user_id, motorcycle_id, total_amount, deposit, installment_amount, installments_total, next_due_date) VALUES (?,?,?,?,?,?,?)", (d.get("user_id"), d.get("motorcycle_id"), total, float(d.get("deposit", 0)), inst, tot, d.get("next_due_date")))
+        cur = db.execute("INSERT INTO payment_plans (user_id, motorcycle_id, total_amount, deposit, installment_amount, installments_total, next_due_date) VALUES (?,?,?,?,?,?,?)", (d.get("user_id"), d.get("motorcycle_id"), total, float(d.get("deposit", 0)), inst_amt, inst_total, d.get("next_due_date")))
     return jsonify({"success": True, "plan_id": cur.lastrowid}), 201
 
-@app.route("/api/payment-plans/<int:plan_id>/pay", methods=["POST"])
-@auth_required
-def pay_installment(plan_id):
-    u = request.current_user
-    with get_db() as db:
-        plan = db.execute("SELECT * FROM payment_plans WHERE id=?", (plan_id,)).fetchone()
-        if not plan:
-            return json_error("Plan not found", 404)
-        if u["role"] != "owner" and plan["user_id"] != u["id"]:
-            return json_error("Access denied", 403)
-        new_paid = plan["installments_paid"] + 1
-        new_status = "completed" if new_paid >= plan["installments_total"] else "active"
-        db.execute("UPDATE payment_plans SET installments_paid=?, status=? WHERE id=?", (new_paid, new_status, plan_id))
-        db.execute("INSERT INTO payments (user_id, motorcycle_id, amount, currency, status, reference) VALUES (?,?,?,?, 'completed', ?)", (plan["user_id"], plan["motorcycle_id"], plan["installment_amount"], "NGN", secrets.token_urlsafe(18)))
-        if new_status == "completed":
-            db.execute("UPDATE bike_status SET access_mode='full' WHERE motorcycle_id=?", (plan["motorcycle_id"],))
-    return jsonify({"success": True, "installments_paid": new_paid, "status": new_status, "message": "Installment recorded"})
-
-@app.route("/api/customers", methods=["GET"])
-@owner_required
-def list_customers():
-    with get_db() as db:
-        rows = db.execute("SELECT id,name,email,role,created_at FROM users ORDER BY id DESC").fetchall()
-    return jsonify({"success": True, "customers": [dict(r) for r in rows]})
-
-@app.route("/api/customers/<int:user_id>/role", methods=["PATCH"])
-@owner_required
-def update_customer_role(user_id):
-    d = request.get_json(silent=True) or {}
-    role = str(d.get("role", "")).strip().lower()
-    if role not in ("owner", "customer"):
-        return json_error("Role must be owner or customer.")
-    if user_id == request.current_user["id"] and role != "owner":
-        return json_error("You cannot remove your own owner access.")
-    with get_db() as db:
-        cur = db.execute("UPDATE users SET role=? WHERE id=?", (role, user_id))
-    if cur.rowcount == 0:
-        return json_error("User not found.", 404)
-    return jsonify({"success": True, "role": role})
-
-@app.errorhandler(404)
-def not_found(e):
-    return jsonify({"success": False, "error": "Endpoint not found."}), 404
-
-@app.errorhandler(500)
-def server_error(e):
-    logger.exception("Server error")
-    return jsonify({"success": False, "error": "Unexpected server error."}), 500
+@app.route("/api/webhook", methods=["POST", "GET"])
+def webhook():
+    if request.method == "GET":
+        return jsonify({"success": True, "message": "Tabby webhook alive"})
+    return jsonify({"success": True, "message": "Webhook received"})
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5000"))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
