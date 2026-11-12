@@ -35,9 +35,12 @@ main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);
 .owner-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
 .owner-box h3{display:flex;justify-content:space-between;font-size:13px;gap:8px}
 .owner-badge-green{background:#14532d;color:#86efac;padding:3px 8px;border-radius:999px;font-size:9px;white-space:nowrap}
+.owner-badge-red{background:#7f1d1d;color:#fecaca;padding:3px 8px;border-radius:999px;font-size:9px;white-space:nowrap}
+.owner-badge-yellow{background:#713f12;color:#fde68a;padding:3px 8px;border-radius:999px;font-size:9px;white-space:nowrap}
 .owner-box p{font-size:12.5px;color:var(--muted);margin:8px 0 12px;line-height:1.5}
 .btn-blue{background:var(--blue);color:white;border:0;padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
 .btn-dark{background:#1e293b;color:white;border:1px solid var(--border);padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
+.btn-red{background:#991b1b;color:white;border:0;padding:9px 13px;border-radius:9px;font-size:12.5px;cursor:pointer}
 .chat-grid{display:flex;gap:14px;flex:1;min-height:0}
 .convo-list{width:230px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
 .convo-list h3{font-size:13px;display:flex;justify-content:space-between;align-items:center}
@@ -74,6 +77,9 @@ main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);
 .bike-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
 .bike-card b{font-size:15px}
 .bike-card p{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;word-break:break-word}
+.bike-big{font-size:28px;font-weight:800;margin:6px 0}
+.bike-sub{font-size:11px;color:var(--muted)}
+.fleet-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
 footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
 #authWrap{display:none;width:100%;min-height:100vh;align-items:center;justify-content:center;padding:20px;background:var(--bg)}
 .auth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:420px}
@@ -90,7 +96,6 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
 .error-box{display:none;background:#7f1d1d;border:1px solid #ef4444;color:#fecaca;padding:10px;border-radius:10px;font-size:13px;margin-bottom:10px}
 .success-box{display:none;background:#14532d;border:1px solid #22c55e;color:#bbf7d0;padding:10px;border-radius:10px;font-size:13px;margin-bottom:10px}
 #sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40}
-/* MOBILE FIRST - THIS IS THE FIX */
 @media(max-width:820px){
   .hamburger{display:flex;align-items:center;justify-content:center}
   aside{position:fixed;left:-280px;top:0;bottom:0;transition:left .25s ease;box-shadow:20px 0 40px rgba(0,0,0,.5)}
@@ -116,7 +121,7 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
   <div class="auth-card">
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="logo-icon">✦</div><div><b style="letter-spacing:1px">TABBY</b><span style="display:block;font-size:9px;color:var(--muted);letter-spacing:.7px">AI & AUTOMOTIVE INTELLIGENCE</span></div></div>
     <h2>Welcome to Tabby</h2>
-    <p>Your private AI workspace. Chat in English, Pidgin or Yoruba.</p>
+    <p>Your private AI workspace. Chat in English, Pidgin or Yoruba. Built by Faruq Sulaimon.</p>
     <div id="authError" class="error-box"></div>
     <div id="authSuccess" class="success-box"></div>
     <div class="tabs"><button class="tab active" id="loginTab" onclick="switchTab('login')">Login</button><button class="tab" id="registerTab" onclick="switchTab('register')">Register</button></div>
@@ -125,6 +130,7 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
     <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="At least 8 characters"></div>
     <button class="btn-primary" id="authBtn" onclick="doAuth()">Login</button>
     <button class="btn-ghost" onclick="fillDemo()">Use my Boss account</button>
+    <p style="font-size:11px;text-align:center;margin-top:12px">Tabby - Built by Faruq Sulaimon</p>
   </div>
 </div>
 <div id="app">
@@ -132,20 +138,23 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
     <div class="logo"><div class="logo-icon">✦</div><div><b>TABBY</b><span>AI & AUTOMOTIVE<br>INTELLIGENCE</span></div></div>
     <div>
       <div class="side-label">WORKSPACE</div>
-      <button class="nav-btn" id="navOverview" onclick="showSection('overview');toggleSidebar(false)">⌂ Overview</button>
-      <button class="nav-btn active" id="navTabby" onclick="showSection('tabby');toggleSidebar(false)">✦ Tabby AI</button>
-      <button class="nav-btn" id="navAuto" onclick="showSection('auto');toggleSidebar(false)">◇ Automotive Dashboard</button>
-      <button class="nav-btn" id="navRide" onclick="showSection('ride');toggleSidebar(false)">~ Tabby Ride</button>
+      <button class="nav-btn" id="navOverview" onclick="showSection('overview');toggleSidebar(false)">Overview</button>
+      <button class="nav-btn active" id="navTabby" onclick="showSection('tabby');toggleSidebar(false)">Tabby AI</button>
+      <button class="nav-btn" id="navAuto" onclick="showSection('auto');toggleSidebar(false)">Automotive Dashboard</button>
+      <button class="nav-btn" id="navRide" onclick="showSection('ride');toggleSidebar(false)">Tabby Ride</button>
+      <button class="nav-btn" id="navFleet" onclick="showSection('fleet');toggleSidebar(false)" style="display:none">Fleet - ALL Bikes</button>
+      <button class="nav-btn" id="navCustomers" onclick="showSection('customers');toggleSidebar(false)" style="display:none">Customers + Payments</button>
+      <button class="nav-btn" id="navMyBike" onclick="showSection('mybike');toggleSidebar(false)" style="display:none">My Bike</button>
     </div>
     <div>
       <div class="side-label">PERSONAL</div>
-      <button class="nav-btn" id="navAccount" onclick="showSection('account');toggleSidebar(false)">◐ Account & Login</button>
-      <button class="nav-btn" id="navMemories" onclick="showSection('memories');toggleSidebar(false)">▭ Saved Memories</button>
-      <button class="nav-btn" id="navSettings" onclick="showSection('settings');toggleSidebar(false)">○ Settings</button>
+      <button class="nav-btn" id="navAccount" onclick="showSection('account');toggleSidebar(false)">Account & Login</button>
+      <button class="nav-btn" id="navMemories" onclick="showSection('memories');toggleSidebar(false)">Saved Memories</button>
+      <button class="nav-btn" id="navSettings" onclick="showSection('settings');toggleSidebar(false)">Settings</button>
     </div>
     <div style="margin-top:auto">
       <button class="nav-btn" onclick="logout()" style="color:#fca5a5">Logout</button>
-      <div style="font-size:10px;color:var(--muted);padding:8px 10px">Tabby • AI & Automotive Intelligence<br>Built by Boss Faruq Sulaimon</div>
+      <div style="font-size:10px;color:var(--muted);padding:8px 10px">Tabby - AI & Automotive Intelligence<br>Built by Boss Faruq Sulaimon</div>
     </div>
   </aside>
   <main>
@@ -153,32 +162,38 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
     <div class="content">
       <div id="sectionOverview" style="display:none">
         <h1 id="overviewWelcome">Welcome, Faruq Sulaimon</h1>
-        <p class="sub">Your personal AI and automotive intelligence platform.</p>
+        <p class="sub">Your personal AI and automotive intelligence platform. Built by Faruq Sulaimon.</p>
         <div class="stats">
           <div class="stat"><small>Motorcycles in system</small><b id="statBikes">0</b><span>Registered fleet</span></div>
           <div class="stat"><small>Registered accounts</small><b id="statAccounts">1</b><span>Owner and customer accounts</span></div>
           <div class="stat"><small>Automotive connection</small><b id="statAuto">awaiting connection</b><span>Hardware integration status</span></div>
         </div>
-        <div class="owner-box">
+        <div class="owner-box" id="ownerOverviewBox">
           <h3>Owner workspace <span class="owner-badge-green">OWNER ACCESS</span></h3>
           <p>Manage Tabby AI, motorcycle records, customer assignments and fleet information.</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="showSection('tabby')">Open Tabby AI</button><button class="btn-dark" onclick="showSection('auto')">Manage fleet</button><button class="btn-dark" onclick="showSection('memories')">Manage memories</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="showSection('tabby')">Open Tabby AI</button><button class="btn-dark" onclick="showSection('fleet')">Manage fleet</button><button class="btn-dark" onclick="showSection('customers')">Customers + Payments</button><button class="btn-dark" onclick="showSection('memories')">Manage memories</button></div>
+        </div>
+        <div class="owner-box" id="customerOverviewBox" style="display:none;margin-top:12px">
+          <h3>My Bike <span class="owner-badge-green">RIDER ACCESS</span></h3>
+          <p>See your own bike only. Battery, range, trip, payment. No other rider bike go show here.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="showSection('mybike')">Open My Bike</button><button class="btn-dark" onclick="showSection('tabby')">Ask Tabby</button></div>
         </div>
       </div>
+
       <div id="sectionTabby">
         <h1>Tabby AI</h1>
-        <p class="sub">Your private AI workspace. Conversations are stored in your account.</p>
-        <div id="voiceBanner"><span>Voice conversation ON — Talking like phone call...</span><button onclick="stopVoiceConversation()">End voice conversation</button></div>
+        <p class="sub">Your private AI workspace. English, Pidgin, Yoruba. Live internet, news, information. No emojis, only lol or haha. Built by Faruq Sulaimon.</p>
+        <div id="voiceBanner"><span>Voice conversation ON - Talking like phone call...</span><button onclick="stopVoiceConversation()">End voice conversation</button></div>
         <div class="chat-grid">
           <div class="convo-list"><h3>Conversations <button onclick="newChat()">+</button></h3><div id="convoList"></div><div class="convo-item" onclick="newChat()">New Chat</div></div>
           <div class="chat-panel">
             <div id="chatBox"></div>
             <div id="typing" class="typing">Tabby dey type...</div>
             <div class="composer">
-              <div class="input-row"><input id="msgInput" placeholder="Message Tabby..." autocomplete="off" onkeydown="if(event.key==='Enter') sendMessage()"><button id="sendBtn" onclick="sendMessage()">➤</button></div>
+              <div class="input-row"><input id="msgInput" placeholder="Message Tabby... English, Pidgin or Yoruba" autocomplete="off" onkeydown="if(event.key==='Enter') sendMessage()"><button id="sendBtn" onclick="sendMessage()">Send</button></div>
               <div class="chips">
-                <button class="chip" id="voiceInputBtn" onclick="toggleVoiceInput()">🎤 Voice input</button>
-                <button class="chip" id="voiceReplyBtn" onclick="toggleVoiceReplies()">🔊 Voice replies: Off</button>
+                <button class="chip" id="voiceInputBtn" onclick="toggleVoiceInput()">Voice input</button>
+                <button class="chip" id="voiceReplyBtn" onclick="toggleVoiceReplies()">Voice replies: Off</button>
                 <button class="chip" onclick="promptGenerateImage()">Generate Image</button>
                 <button class="chip" id="webSearchBtn" onclick="toggleWebSearch()">Web search: Auto</button>
                 <button class="chip" id="voiceConvBtn" onclick="toggleVoiceConversation()">Start voice conversation</button>
@@ -190,28 +205,58 @@ footer{text-align:center;padding:10px;font-size:11px;color:var(--muted)}
           </div>
         </div>
       </div>
+
       <div id="sectionAuto" style="display:none">
         <h1>Automotive Dashboard</h1>
         <p class="sub">Your bike dashboard. Motorbike status, telemetry, battery, GPS, fuel.</p>
         <div class="bike-grid">
-          <div class="bike-card"><b>Motorbike Fleet</b><p id="fleetBox">Loading fleet...</p><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="loadFleet()">Refresh fleet</button><button class="btn-dark" onclick="addBikePrompt()">Add motorbike</button></div></div>
-          <div class="bike-card"><b>Live Telemetry</b><p id="telemetryBox">Awaiting connection — Hardware integration status: awaiting connection. When your bike device connect, speed, battery, fuel, GPS go show here live.</p></div>
+          <div class="bike-card"><b>Motorbike Fleet</b><p id="fleetBox">Loading fleet...</p><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="loadFleet()">Refresh fleet</button><button class="btn-dark" id="addBikeBtn" onclick="addBikePrompt()">Add motorbike</button></div></div>
+          <div class="bike-card"><b>Live Telemetry</b><p id="telemetryBox">Awaiting connection - Hardware integration status: awaiting connection. When your bike device connect, speed, battery, fuel, GPS go show here live.</p></div>
           <div class="bike-card"><b>GPS & Location</b><p id="gpsBox">No live GPS yet. Press Share My Location for phone GPS, or connect bike tracker.</p><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="shareLocation()">Share My Location</button><button class="btn-dark" onclick="trackLocation()">Track Location</button></div></div>
-          <div class="bike-card"><b>Battery & Fuel</b><p>Battery: --%<br>Fuel: --%<br>Engine temp: --°C<br><span style="color:var(--muted)">Connect hardware to see live values.</span></p></div>
+          <div class="bike-card"><b>Battery & Fuel</b><p id="batteryBox">Battery: --%<br>Fuel: --%<br>Engine temp: --C<br><span style="color:var(--muted)">Connect hardware to see live values.</span></p></div>
         </div>
         <div class="owner-box" style="margin-top:14px"><h3>Automotive Status</h3><p id="autoStatusBox">Checking server connection...</p></div>
       </div>
+
+      <div id="sectionFleet" style="display:none">
+        <h1>Fleet - ALL Bikes - Owner Only</h1>
+        <p class="sub">Only Faruq Sulaimon fit see this page. All registered vehicles, riders, payments, battery, lock status.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn-blue" onclick="loadFleetOwner()">Refresh fleet</button><button class="btn-dark" onclick="addBikePrompt()">Add motorbike</button></div>
+        <div id="fleetOwnerList"><p style="color:var(--muted);font-size:12.5px">Loading fleet...</p></div>
+      </div>
+
+      <div id="sectionCustomers" style="display:none">
+        <h1>Customers + Payments - Owner Only</h1>
+        <p class="sub">All customers, their bikes, installment plans, who don pay, who overdue.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn-blue" onclick="loadCustomers()">Refresh customers</button><button class="btn-dark" onclick="loadPlans()">Refresh plans</button><button class="btn-dark" onclick="createPlanPrompt()">Create installment plan</button></div>
+        <div id="customersList"></div>
+        <h3 style="font-size:14px;margin:14px 0 8px">Installment Plans</h3>
+        <div id="plansList"></div>
+      </div>
+
+      <div id="sectionMyBike" style="display:none">
+        <h1>My Bike</h1>
+        <p class="sub">Rider view - like ALVA app. Only your own bike go show here. Built by Faruq Sulaimon.</p>
+        <div class="bike-grid">
+          <div class="bike-card"><b id="myBikeName">My Bike</b><div class="bike-big" id="myBikeBattery">--%</div><div class="bike-sub">Battery Level</div><p id="myBikeInfo">Loading your bike...</p><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="loadMyBike()">Refresh</button><button class="btn-dark" onclick="shareLocation()">Share Location</button></div></div>
+          <div class="bike-card"><b>Daily Trip Report</b><p id="myBikeTrip">Total Trip: --<br>Total Distance: -- km<br>CO2 Saved: -- kg<br>Range: -- km</p></div>
+          <div class="bike-card"><b>Payment Plan</b><p id="myBikePlan">No plan yet. Contact Tabby support.</p></div>
+          <div class="bike-card"><b>Security</b><p id="myBikeSecurity">Lock: --<br>Access: --<br>GPS: --</p><div style="margin-top:10px"><button class="btn-blue" onclick="showSection('tabby')">Ask Tabby about my bike</button></div></div>
+        </div>
+        <div class="owner-box" style="margin-top:14px"><h3>Emergency / Trip</h3><p>If you get emergency, press Share Location, Tabby go send your location. For trip, ask Tabby: Where is my bike, How far my battery go reach.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-blue" onclick="trackLocation()">Track My Location</button><button class="btn-dark" onclick="showSection('tabby')">Chat with Tabby</button></div></div>
+      </div>
+
       <div id="sectionRide" style="display:none"><h1>Tabby Ride</h1><p class="sub">Customer-facing ride service.</p><div class="owner-box"><h3>Tabby Ride</h3><p>Book a ride, track motorbike, pay. Customer view go be simple, no owner controls.</p><button class="btn-blue" onclick="showSection('tabby')">Ask Tabby to book a ride</button></div></div>
-      <div id="sectionAccount" style="display:none"><h1>Account & Login</h1><p class="sub">Your account details.</p><div class="owner-box"><h3 id="accountName">Faruq Sulaimon</h3><p id="accountEmail">Email: -<br>Role: OWNER</p><button class="btn-dark" onclick="logout()">Logout</button></div></div>
+      <div id="sectionAccount" style="display:none"><h1>Account & Login</h1><p class="sub">Your account details.</p><div class="owner-box"><h3 id="accountName">Faruq Sulaimon</h3><p id="accountEmail">Email: -<br>Role: OWNER<br>Creator: Faruq Sulaimon</p><button class="btn-dark" onclick="logout()">Logout</button></div></div>
       <div id="sectionMemories" style="display:none"><h1>Saved Memories</h1><p class="sub">Tabby go remember wetin you tell am.</p><div class="owner-box"><h3>Memories</h3><p id="memoriesBox">Loading memories...</p><div style="margin-top:10px"><button class="btn-blue" onclick="loadMemoriesBox()">Refresh</button></div></div></div>
       <div id="sectionSettings" style="display:none">
         <h1>Settings</h1><p class="sub">Manage your Tabby interface preferences.</p>
-        <div class="settings-card"><h3>Voice preferences</h3><small>Speech voice</small><select id="voiceSelect"><option>Assamese India (as_IN)</option><option>English Nigeria (en_NG)</option><option>English US (en_US)</option><option>English UK (en_GB)</option><option>Yoruba (yo_NG)</option></select><div class="settings-row"><button class="btn-dark" onclick="testVoice()">Test voice</button><button class="btn-dark" id="settingsVoiceBtn" onclick="toggleVoiceReplies()">Toggle voice replies</button></div></div>
-        <div class="settings-card"><h3>System Information</h3><small>Tabby web interface - Flask API, Owner/customer access control.</small><div class="settings-row"><button class="btn-dark" onclick="checkServer()">Check server connection</button></div><p id="serverStatus" style="font-size:11px;color:var(--muted);margin-top:10px;word-break:break-all">Press Check server connection to see status.</p></div>
-        <div class="settings-card"><h3>Language & Style</h3><small>English, Pidgin and Yoruba. No asterisks in messages. Say lol or haha in words, not laughing emoji.</small><div class="settings-row"><button class="btn-dark" onclick="alert('Language: Tabby go answer in the language you use - English, Pidgin or Yoruba.')">Language: Auto</button></div></div>
+        <div class="settings-card"><h3>Voice preferences</h3><small>Speech voice - Voice chat like phone call</small><select id="voiceSelect"><option>English Nigeria (en_NG)</option><option>English US (en_US)</option><option>English UK (en_GB)</option><option>Yoruba (yo_NG)</option></select><div class="settings-row"><button class="btn-dark" onclick="testVoice()">Test voice</button><button class="btn-dark" id="settingsVoiceBtn" onclick="toggleVoiceReplies()">Toggle voice replies</button></div></div>
+        <div class="settings-card"><h3>System Information</h3><small>Tabby web interface - Flask API, Owner and customer access control. Creator: Faruq Sulaimon.</small><div class="settings-row"><button class="btn-dark" onclick="checkServer()">Check server connection</button></div><p id="serverStatus" style="font-size:11px;color:var(--muted);margin-top:10px;word-break:break-all">Press Check server connection to see status.</p></div>
+        <div class="settings-card"><h3>Language & Style</h3><small>English, Pidgin and Yoruba. No asterisks, no emojis. Say lol or haha in words.</small><div class="settings-row"><button class="btn-dark" onclick="alert('Language: Tabby go answer in the language you use - English, Pidgin or Yoruba.')">Language: Auto</button></div></div>
       </div>
     </div>
-    <footer>Tabby • AI & Automotive Intelligence</footer>
+    <footer>Tabby - AI & Automotive Intelligence - Built by Faruq Sulaimon</footer>
   </main>
 </div>
 <script>
@@ -227,7 +272,7 @@ let recognition = null;
 let synth = window.speechSynthesis;
 let lastImagePrompt = '';
 function toggleSidebar(force){ const s=document.getElementById('sidebar'); const o=document.getElementById('sidebarOverlay'); const open = force!==undefined ? force : !s.classList.contains('open'); s.classList.toggle('open', open); o.classList.toggle('show', open); }
-function cleanText(t){ if(!t) return ''; return String(t).replace(/\*\*/g,'').replace(/\*/g,'').replace(/__/g,'').trim(); }
+function cleanText(t){ if(!t) return ''; let s=String(t).replace(/\*\*/g,'').replace(/\*/g,'').replace(/__/g,'').trim(); s=s.replace(/😂|🤣/g,' lol ').replace(/😆|😅/g,' haha '); return s; }
 function showError(msg){ const el=document.getElementById('authError'); el.style.display='block'; el.textContent=cleanText(msg); setTimeout(()=>el.style.display='none',6000); }
 function showSuccess(msg){ const el=document.getElementById('authSuccess'); el.style.display='block'; el.textContent=cleanText(msg); setTimeout(()=>el.style.display='none',5000); }
 function switchTab(mode){ currentMode=mode; document.getElementById('loginTab').classList.toggle('active', mode==='login'); document.getElementById('registerTab').classList.toggle('active', mode==='register'); document.getElementById('registerFields').style.display = mode==='register' ? 'block' : 'none'; document.getElementById('authBtn').textContent = mode==='login' ? 'Login' : 'Create Account'; }
@@ -259,10 +304,25 @@ async function checkAuth(){
     else{ localStorage.removeItem('tabby_token'); token=''; document.getElementById('authWrap').style.display='flex'; document.getElementById('app').style.display='none'; }
   }catch(e){ document.getElementById('authWrap').style.display='flex'; document.getElementById('app').style.display='none'; }
 }
+function isOwner(){ return user && user.role==='owner'; }
+function applyRoleUI(){
+  if(!user) return;
+  const owner = isOwner();
+  document.getElementById('topUserRole').textContent=(user.role||'customer').toUpperCase();
+  document.getElementById('navFleet').style.display = owner ? 'flex' : 'none';
+  document.getElementById('navCustomers').style.display = owner ? 'flex' : 'none';
+  document.getElementById('navMyBike').style.display = !owner ? 'flex' : 'none';
+  document.getElementById('navOverview').style.display = 'flex';
+  document.getElementById('ownerOverviewBox').style.display = owner ? 'block' : 'none';
+  document.getElementById('customerOverviewBox').style.display = !owner ? 'block' : 'none';
+  document.getElementById('addBikeBtn').style.display = owner ? 'inline-block' : 'none';
+  document.getElementById('navAuto').textContent = owner ? 'Automotive Dashboard' : 'My Bike Dashboard';
+  if(!owner){ document.getElementById('navRide').textContent='Tabby Ride'; }
+}
 function showChat(){
   document.getElementById('authWrap').style.display='none';
   document.getElementById('app').style.display='flex';
-  if(user){ document.getElementById('topUserName').textContent=user.name; document.getElementById('topUserRole').textContent=(user.role||'customer').toUpperCase(); document.getElementById('overviewWelcome').textContent='Welcome, '+user.name; document.getElementById('accountName').textContent=user.name; document.getElementById('accountEmail').textContent='Email: '+user.email+'\nRole: '+(user.role||'').toUpperCase(); }
+  if(user){ document.getElementById('topUserName').textContent=user.name; document.getElementById('overviewWelcome').textContent='Welcome, '+user.name; document.getElementById('accountName').textContent=user.name; document.getElementById('accountEmail').textContent='Email: '+user.email+'\nRole: '+(user.role||'').toUpperCase()+'\nCreator: Faruq Sulaimon'; applyRoleUI(); }
   if(conversationId) loadConversation(conversationId);
   loadConvoList(); loadOverviewStats();
 }
@@ -292,17 +352,20 @@ async function loadConversation(id){
   }catch(e){}
 }
 function showSection(name){
-  const map={overview:'sectionOverview',tabby:'sectionTabby',auto:'sectionAuto',ride:'sectionRide',account:'sectionAccount',memories:'sectionMemories',settings:'sectionSettings'};
+  const map={overview:'sectionOverview',tabby:'sectionTabby',auto:'sectionAuto',ride:'sectionRide',fleet:'sectionFleet',customers:'sectionCustomers',mybike:'sectionMyBike',account:'sectionAccount',memories:'sectionMemories',settings:'sectionSettings'};
   Object.values(map).forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  const titles={overview:'Overview',tabby:'Tabby AI',auto:'Automotive Dashboard',ride:'Tabby Ride',account:'Account & Login',memories:'Saved Memories',settings:'Settings'};
+  const titles={overview:'Overview',tabby:'Tabby AI',auto:'Automotive Dashboard',ride:'Tabby Ride',fleet:'Fleet - ALL Bikes',customers:'Customers + Payments',mybike:'My Bike',account:'Account & Login',memories:'Saved Memories',settings:'Settings'};
   document.getElementById(map[name]).style.display='block';
   document.getElementById('topTitle').textContent=titles[name]||'Tabby AI';
-  const navMap={overview:'navOverview',tabby:'navTabby',auto:'navAuto',ride:'navRide',account:'navAccount',memories:'navMemories',settings:'navSettings'};
+  const navMap={overview:'navOverview',tabby:'navTabby',auto:'navAuto',ride:'navRide',fleet:'navFleet',customers:'navCustomers',mybike:'navMyBike',account:'navAccount',memories:'navMemories',settings:'navSettings'};
   const nav=document.getElementById(navMap[name]); if(nav) nav.classList.add('active');
-  if(name==='auto'){ loadFleet(); checkAutoStatus(); }
+  if(name==='auto'){ loadFleet(); checkAutoStatus(); if(!isOwner()) loadMyBike(); }
   if(name==='memories'){ loadMemoriesBox(); }
   if(name==='overview'){ loadOverviewStats(); }
+  if(name==='fleet'){ loadFleetOwner(); }
+  if(name==='customers'){ loadCustomers(); loadPlans(); }
+  if(name==='mybike'){ loadMyBike(); }
 }
 async function loadOverviewStats(){
   try{ const r1=await fetch('/api/motorcycles',{headers:{'Authorization':'Bearer '+token}}); const d1=await r1.json(); const bikes=(d1.motorcycles||d1.motorbikes||[]); document.getElementById('statBikes').textContent=bikes.length; }catch(e){}
@@ -316,13 +379,78 @@ async function loadFleet(){
     else { document.getElementById('fleetBox').innerHTML = bikes.map(b=> cleanText(b.name)+' - '+cleanText(b.model||'')+' - '+cleanText(b.registration_number||'') ).join('<br>'); }
   }catch(e){ document.getElementById('fleetBox').textContent='Fleet load failed - check server connection.'; }
 }
+async function loadFleetOwner(){
+  if(!isOwner()){ document.getElementById('fleetOwnerList').textContent='Owner only.'; return; }
+  try{
+    const res=await fetch('/api/fleet/overview',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json(); const fleet=data.fleet||[];
+    if(!fleet.length){ document.getElementById('fleetOwnerList').innerHTML='<p style="color:var(--muted)">No bike yet. Add one.</p>'; return; }
+    document.getElementById('fleetOwnerList').innerHTML = fleet.map(b=>{
+      const badge = b.access_mode==='restricted' ? '<span class="owner-badge-red">RESTRICTED</span>' : '<span class="owner-badge-green">FULL ACCESS</span>';
+      return `<div class="fleet-card"><b>${cleanText(b.name)} - ${cleanText(b.model||'')}</b> ${badge}<p style="font-size:12px;color:var(--muted);margin-top:6px">Rider: ${cleanText(b.rider_name||'No rider')} - ${cleanText(b.rider_email||'')}<br>Reg: ${cleanText(b.registration_number||'-')}<br>Battery Health: ${b.battery_health ?? '--'}% - Range: ${b.range_km ?? '--'} km - Lock: ${cleanText(b.lock_status||'-')}<br>Payment: ${b.installments_paid ?? 0}/${b.installments_total ?? 0} paid - Next due: ${cleanText(b.next_due_date||'-')} - Plan: ${cleanText(b.plan_status||'-')}</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn-blue" onclick="sendBikeCommand(${b.id},'unlock')">Unlock</button><button class="btn-dark" onclick="sendBikeCommand(${b.id},'lock')">Lock</button><button class="btn-red" onclick="sendBikeCommand(${b.id},'restrict')">Restrict - Overdue</button><button class="btn-dark" onclick="sendBikeCommand(${b.id},'full_access')">Full Access</button></div></div>`;
+    }).join('');
+  }catch(e){ document.getElementById('fleetOwnerList').textContent='Fleet load failed.'; }
+}
+async function sendBikeCommand(id, cmd){
+  try{
+    const res=await fetch(`/api/bikes/${id}/command`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({command:cmd})});
+    const data=await res.json(); alert(cleanText(data.message||('Command sent: '+cmd))); loadFleetOwner();
+  }catch(e){ alert('Command failed'); }
+}
+async function loadMyBike(){
+  try{
+    const res=await fetch('/api/my-bike',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    if(!data.bike){ document.getElementById('myBikeInfo').textContent='No bike assigned yet. Contact Tabby support.'; document.getElementById('fleetBox').textContent='No bike assigned yet.'; return; }
+    const b=data.bike, st=data.status||{}, tel=data.telemetry||{}, plan=data.plan||{};
+    document.getElementById('myBikeName').textContent = cleanText(b.name)+' - '+cleanText(b.model||'');
+    document.getElementById('myBikeBattery').textContent = (tel.battery_level ?? st.battery_health ?? '--') + '%';
+    document.getElementById('myBikeInfo').textContent = `Reg: ${b.registration_number||'-'} - Status: ${b.status||'active'} - Speed: ${tel.speed ?? '--'} km/h - Engine: ${tel.engine_temperature ?? '--'}C`;
+    document.getElementById('myBikeTrip').innerHTML = `Total Trip: ${st.total_trip ?? '--'}<br>Total Distance: ${st.total_distance ?? '--'} km<br>CO2 Saved: ${st.co2_saved ?? '--'} kg<br>Range: ${st.range_km ?? '--'} km<br>Battery Health: ${st.battery_health ?? '--'}%`;
+    document.getElementById('myBikePlan').innerHTML = plan.id ? `Total: ${plan.total_amount} NGN<br>Deposit: ${plan.deposit} NGN<br>Installment: ${plan.installment_amount} NGN<br>Paid: ${plan.installments_paid}/${plan.installments_total}<br>Next due: ${plan.next_due_date||'-'}<br>Status: ${plan.status}` : 'No plan yet. Contact Tabby support.';
+    document.getElementById('myBikeSecurity').innerHTML = `Lock: ${st.lock_status||'--'}<br>Access: ${st.access_mode||'--'}<br>GPS: ${tel.latitude ? tel.latitude+','+tel.longitude : '--'}`;
+    document.getElementById('fleetBox').textContent = cleanText(b.name)+' - Battery '+(tel.battery_level ?? '--')+'% - Range '+(st.range_km ?? '--')+' km';
+    document.getElementById('batteryBox').innerHTML = `Battery: ${tel.battery_level ?? '--'}%<br>Fuel: ${tel.fuel_level ?? '--'}%<br>Engine temp: ${tel.engine_temperature ?? '--'}C`;
+    document.getElementById('telemetryBox').textContent = tel.id ? `Speed: ${tel.speed} - Battery: ${tel.battery_level}% - GPS: ${tel.latitude}, ${tel.longitude}` : 'Awaiting connection - Connect bike device.';
+    document.getElementById('gpsBox').textContent = tel.latitude ? `GPS: ${tel.latitude}, ${tel.longitude}` : 'No live GPS yet.';
+  }catch(e){ document.getElementById('myBikeInfo').textContent='Load failed.'; }
+}
+async function loadCustomers(){
+  if(!isOwner()) return;
+  try{
+    const res=await fetch('/api/customers',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    document.getElementById('customersList').innerHTML = (data.customers||[]).map(c=> `<div class="fleet-card"><b>${cleanText(c.name)}</b> - ${cleanText(c.email)} - <span class="owner-badge">${cleanText(c.role)}</span><br><span style="font-size:11px;color:var(--muted)">Joined: ${cleanText(c.created_at||'')}</span></div>`).join('') || 'No customers yet.';
+  }catch(e){}
+}
+async function loadPlans(){
+  try{
+    const res=await fetch('/api/payment-plans',{headers:{'Authorization':'Bearer '+token}});
+    const data=await res.json();
+    document.getElementById('plansList').innerHTML = (data.plans||[]).map(p=> `<div class="fleet-card"><b>Plan ${p.id}</b> - Bike ${p.motorcycle_id} - User ${p.user_id}<br><span style="font-size:12px;color:var(--muted)">Total: ${p.total_amount} - Paid: ${p.installments_paid}/${p.installments_total} - Next: ${p.next_due_date||'-'} - Status: ${p.status}</span><div style="margin-top:8px"><button class="btn-blue" onclick="payPlan(${p.id})">Mark installment paid</button></div></div>`).join('') || 'No plans yet.';
+  }catch(e){}
+}
+async function payPlan(id){ await fetch(`/api/payment-plans/${id}/pay`,{method:'POST',headers:{'Authorization':'Bearer '+token}}); alert('Installment recorded'); loadPlans(); loadFleetOwner(); }
+async function createPlanPrompt(){
+  const userId=window.prompt('Customer user ID?'); if(!userId) return;
+  const bikeId=window.prompt('Bike ID?'); if(!bikeId) return;
+  const total=window.prompt('Total amount NGN? e.g. 1500000'); if(!total) return;
+  const deposit=window.prompt('Deposit NGN? e.g. 300000')||'0';
+  const inst=window.prompt('Installment amount NGN? e.g. 100000'); if(!inst) return;
+  const count=window.prompt('How many installments? e.g. 12'); if(!count) return;
+  const due=window.prompt('Next due date? e.g. 2026-12-01')||'';
+  const res=await fetch('/api/payment-plans',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({user_id:parseInt(userId),motorcycle_id:parseInt(bikeId),total_amount:parseFloat(total),deposit:parseFloat(deposit),installment_amount:parseFloat(inst),installments_total:parseInt(count),next_due_date:due})});
+  const data=await res.json(); if(data.success){ alert('Plan created'); loadPlans(); } else { alert(cleanText(data.error||'Failed')); }
+}
 async function addBikePrompt(){
+  if(!isOwner()){ alert('Owner only'); return; }
   const name=window.prompt('Motorbike name Boss? e.g. Tabby Bike 1'); if(!name) return;
   const model=window.prompt('Model? e.g. 2025')||'';
   const reg=window.prompt('Registration number?')||'';
+  const assign=window.prompt('Assign to customer user ID? Leave empty for no rider')||'';
   try{
-    const res=await fetch('/api/motorcycles',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({name,model,registration_number:reg})});
-    const data=await res.json(); if(data.success){ alert('Motorbike added Boss'); loadFleet(); loadOverviewStats(); } else { alert(cleanText(data.error||'Failed')); }
+    const res=await fetch('/api/motorcycles',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({name,model,registration_number:reg,assigned_user_id:assign?parseInt(assign):null})});
+    const data=await res.json(); if(data.success){ alert('Motorbike added Boss'); loadFleet(); loadOverviewStats(); loadFleetOwner(); } else { alert(cleanText(data.error||'Failed')); }
   }catch(e){ alert('Network error'); }
 }
 async function checkAutoStatus(){
@@ -345,7 +473,7 @@ function addMessage(role, text){
 function addImageMessage(imageUrl, prompt){
   const box=document.getElementById('chatBox');
   const div=document.createElement('div'); div.className='msg assistant';
-  const label=document.createElement('div'); label.textContent=cleanText(`Here is your dope image Boss\n${prompt||''}`); div.appendChild(label);
+  const label=document.createElement('div'); label.textContent=cleanText(`Here is your dope image Boss - ${prompt||''}`); div.appendChild(label);
   const img=document.createElement('img'); img.className='chat-img'; img.src=imageUrl; img.alt=prompt||'Generated image'; img.onerror=()=>{ label.textContent='Image failed to load Boss. Try again.'; }; div.appendChild(img);
   const actions=document.createElement('div'); actions.className='img-actions';
   const dl=document.createElement('a'); dl.className='img-btn'; dl.href=imageUrl; dl.download='tabby-image.jpg'; dl.target='_blank'; dl.textContent='Download';
@@ -363,7 +491,7 @@ async function sendMessage(){
   addMessage('user', message); input.value='';
   const btn=document.getElementById('sendBtn'); btn.disabled=true; showTyping(true);
   try{
-    const payload={message, conversation_id: conversationId ? parseInt(conversationId) : null};
+    const payload={message, conversation_id: conversationId ? parseInt(conversationId) : null, voice_mode: voiceConversation};
     if(webSearchMode==='on') payload.web_search=true;
     if(webSearchMode==='off') payload.web_search=false;
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
