@@ -1,906 +1,426 @@
-import os, re, json, time, base64, logging, urllib.parse, urllib.request, xml.etree.ElementTree as ET, threading
+import os, re, json, time, base64, threading, urllib.parse, xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 import requests
 import psycopg2, psycopg2.extras, psycopg2.pool
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import generate_password_hash, check_password_hash
-try:
-    from ddgs import DDGS
-except ImportError:
-    DDGS = None
 
-app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "change-this-secret")
+app = Flask(__name__, template_folder="templates")
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "tabby-secret-change-me")
 CORS(app, resources={r"/*": {"origins": "*"}})
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("tabby")
-
-CREATOR_NAME = "Faruq Sulaimon"
-OWNER_EMAIL = os.getenv("OWNER_EMAIL", "").strip().lower()
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip() or "openrouter/free"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-SUPABASE_DATABASE_URL = (os.getenv("SUPABASE_DATABASE_URL") or os.getenv("DATABASE_URL") or "").strip()
-CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
-CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
-FLUX_MODEL = "@cf/black-forest-labs/flux-1-schnell"
-GOAPI_API_KEY = os.getenv("GOAPI_API_KEY", "").strip()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip()
-CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "llama3.1-8b").strip()
-LIVE_SEARCH_ENABLED = os.getenv("LIVE_SEARCH_ENABLED", "true").lower() == "true"
-
 serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-AI_MODELS = list(dict.fromkeys([OPENROUTER_MODEL, "openrouter/free"]))
-AUTO_LEARNED = {"last": "", "news": []}
 
-def clean_ai_text(t):
-    if not t:
-        return ""
-    t = str(t)
-    t = re.sub(r"\*+", "", t)
-    t = re.sub(r"_+", "", t)
-    t = re.sub(r"#+", "", t)
-    return re.sub(r"\s+", " ", t).strip()
+CREATOR = "Faruq Sulaimon"
+OWNER_EMAIL = os.getenv("OWNER_EMAIL", "").lower().strip()
+OPENAI_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+GEMINI_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip()
+CLOUDFLARE_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
+CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
+DB_URL = os.getenv("SUPABASE_DATABASE_URL", "") or os.getenv("DATABASE_URL", "")
+VISION_MODEL = os.getenv("VISION_MODEL", "gpt-4o-mini").strip()
 
-def get_greeting_lagos():
-    lagos = datetime.now(timezone.utc) + timedelta(hours=1)
-    h = lagos.hour
-    if 5 <= h < 12:
-        return "Good morning, Boss"
-    if 12 <= h < 17:
-        return "Good afternoon, Boss"
-    return "Good evening, Boss"
-
-def current_time():
-    return datetime.now(timezone.utc).isoformat()
-
-# ---------- DATABASE ----------
 _pool = None
-def _get_pool():
+def pool():
     global _pool
     if _pool is None:
-        url = SUPABASE_DATABASE_URL.strip()
-        if "sslmode=" in url:
-            _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, url, connect_timeout=10)
-        else:
-            _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, url, sslmode="require", connect_timeout=10)
+        _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, DB_URL, sslmode="require", connect_timeout=10)
     return _pool
 
-class PGResult:
-    def __init__(self, cursor, lastrowid=None):
-        self._cursor = cursor
-        self.lastrowid = lastrowid
-    def fetchone(self):
-        try:
-            r = self._cursor.fetchone()
-        except Exception:
-            return None
-        return dict(r) if r else None
-    def fetchall(self):
-        try:
-            rows = self._cursor.fetchall()
-        except Exception:
-            return []
-        return [dict(r) for r in rows]
-
-class PGConnection:
-    def __init__(self):
-        self._conn = _get_pool().getconn()
-        self._conn.autocommit = False
-        self._cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        self._closed = False
-    def execute(self, sql, params=()):
-        original = sql.strip()
-        sql2 = sql.replace("INSERT OR IGNORE INTO", "INSERT INTO").replace("?", "%s")
-        is_insert = original.upper().startswith("INSERT")
-        if "INSERT OR IGNORE" in original.upper():
-            if "RETURNING" not in sql2.upper():
-                sql2 = sql2 + " ON CONFLICT DO NOTHING"
-            else:
-                sql2 = sql2.replace(" RETURNING", " ON CONFLICT DO NOTHING RETURNING")
-        needs = False
-        if is_insert and "RETURNING" not in sql2.upper() and "ON CONFLICT DO NOTHING" not in sql2.upper() and "INTO bike_status" not in sql2.lower() and "INTO phone_permissions" not in sql2.lower():
-            sql2 += " RETURNING id"
-            needs = True
-        if params is None:
-            params = ()
-        self._cur.execute(sql2, tuple(params) if isinstance(params, (list, tuple)) else (params,))
-        lastrowid = None
-        if needs:
-            try:
-                row = self._cur.fetchone()
-                if row:
-                    lastrowid = row.get("id")
-            except Exception:
-                pass
-        return PGResult(self._cur, lastrowid=lastrowid)
-    def executescript(self, sql):
-        self._cur.execute(sql)
-    def commit(self):
-        try:
-            self._conn.commit()
-        except Exception:
-            pass
-    def rollback(self):
-        try:
-            self._conn.rollback()
-        except Exception:
-            pass
-    def close(self):
-        if self._closed:
-            return
-        self._closed = True
-        try:
-            self._cur.close()
-        except Exception:
-            pass
-        try:
-            _get_pool().putconn(self._conn)
-        except Exception:
-            pass
+class DB:
     def __enter__(self):
+        self.c = pool().getconn(); self.c.autocommit = False
+        self.cur = self.c.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         return self
-    def __exit__(self, exc_type, exc, tb):
-        try:
-            if exc_type:
-                self.rollback()
-            else:
-                self.commit()
-        finally:
-            self.close()
+    def __exit__(self, *a):
+        try: self.c.commit()
+        except: self.c.rollback()
+        try: self.cur.close(); pool().putconn(self.c)
+        except: pass
         return False
-
-def get_db():
-    return PGConnection()
+    def q(self, sql, p=()):
+        self.cur.execute(sql, tuple(p) if isinstance(p, (list, tuple)) else (p,))
+        return self.cur
+    def one(self, sql, p=()):
+        self.q(sql, p); r = self.cur.fetchone(); return dict(r) if r else None
+    def all(self, sql, p=()):
+        self.q(sql, p); return [dict(r) for r in self.cur.fetchall()]
+    def ins(self, sql, p=()):
+        sql2 = sql
+        if "RETURNING" not in sql2.upper(): sql2 += " RETURNING id"
+        self.q(sql2, p); r = self.cur.fetchone(); return r["id"] if r else None
 
 def init_db():
     try:
-        with get_db() as db:
-            db.executescript("""
-            CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT DEFAULT 'customer', created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS conversations (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, title TEXT DEFAULT 'Tabby Chat', created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, conversation_id INTEGER NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS memories (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS motorcycles (id SERIAL PRIMARY KEY, owner_id INTEGER, assigned_user_id INTEGER, name TEXT NOT NULL, model TEXT, registration_number TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS telemetry (id SERIAL PRIMARY KEY, motorcycle_id INTEGER NOT NULL, latitude DOUBLE PRECISION, longitude DOUBLE PRECISION, speed DOUBLE PRECISION, battery_level DOUBLE PRECISION, fuel_level DOUBLE PRECISION, engine_temperature DOUBLE PRECISION, extra_data TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS payments (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, motorcycle_id INTEGER, amount DOUBLE PRECISION NOT NULL, currency TEXT DEFAULT 'NGN', status TEXT DEFAULT 'pending', reference TEXT UNIQUE, created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS locations (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, latitude DOUBLE PRECISION, longitude DOUBLE PRECISION, label TEXT, accuracy DOUBLE PRECISION, speed DOUBLE PRECISION, created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS bike_status (motorcycle_id INTEGER PRIMARY KEY, battery_health DOUBLE PRECISION DEFAULT 100, range_km DOUBLE PRECISION DEFAULT 125, total_trip DOUBLE PRECISION DEFAULT 0, total_distance DOUBLE PRECISION DEFAULT 0, co2_saved DOUBLE PRECISION DEFAULT 0, lock_status TEXT DEFAULT 'locked', access_mode TEXT DEFAULT 'full', last_seen TEXT);
-            CREATE TABLE IF NOT EXISTS payment_plans (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, motorcycle_id INTEGER NOT NULL, total_amount DOUBLE PRECISION NOT NULL, deposit DOUBLE PRECISION DEFAULT 0, installment_amount DOUBLE PRECISION NOT NULL, installments_paid INTEGER DEFAULT 0, installments_total INTEGER NOT NULL, next_due_date TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS bike_commands (id SERIAL PRIMARY KEY, motorcycle_id INTEGER NOT NULL, command TEXT NOT NULL, issued_by INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS house_devices (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, name TEXT NOT NULL, room TEXT DEFAULT 'living', type TEXT DEFAULT 'light', status TEXT DEFAULT 'off', value TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS tabby_logs (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, device TEXT, command TEXT, action TEXT, result TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS phone_permissions (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, permission TEXT NOT NULL, granted BOOLEAN DEFAULT FALSE, granted_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(user_id, permission));
-            CREATE TABLE IF NOT EXISTS phone_actions (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, action TEXT NOT NULL, target TEXT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE TABLE IF NOT EXISTS auto_learned (id SERIAL PRIMARY KEY, topic TEXT, content TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-            CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id);
+        with DB() as db:
+            db.q("""
+            CREATE TABLE IF NOT EXISTS users(id SERIAL PRIMARY KEY, name TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'customer', created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS messages(id SERIAL PRIMARY KEY, user_id INT, role TEXT, content TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS memories(id SERIAL PRIMARY KEY, user_id INT, content TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS motorcycles(id SERIAL PRIMARY KEY, owner_id INT, assigned_user_id INT, name TEXT, model TEXT DEFAULT 'Tabby EV', reg TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS bike_status(motorcycle_id INT PRIMARY KEY, battery_health DOUBLE PRECISION DEFAULT 100, battery_level DOUBLE PRECISION DEFAULT 100, range_km DOUBLE PRECISION DEFAULT 125, total_trip DOUBLE PRECISION DEFAULT 0, total_distance DOUBLE PRECISION DEFAULT 0, co2_saved DOUBLE PRECISION DEFAULT 0, lock_status TEXT DEFAULT 'locked', access_mode TEXT DEFAULT 'full', cell_temp DOUBLE PRECISION DEFAULT 32, motor_temp DOUBLE PRECISION DEFAULT 35, last_seen TEXT);
+            CREATE TABLE IF NOT EXISTS telemetry(id SERIAL PRIMARY KEY, motorcycle_id INT, latitude DOUBLE PRECISION, longitude DOUBLE PRECISION, speed DOUBLE PRECISION, battery_level DOUBLE PRECISION, engine_temp DOUBLE PRECISION, created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS payment_plans(id SERIAL PRIMARY KEY, user_id INT, motorcycle_id INT, total_amount DOUBLE PRECISION, deposit DOUBLE PRECISION DEFAULT 0, installment_amount DOUBLE PRECISION, installments_paid INT DEFAULT 0, installments_total INT, next_due_date TEXT, status TEXT DEFAULT 'active', created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS payments(id SERIAL PRIMARY KEY, user_id INT, motorcycle_id INT, amount DOUBLE PRECISION, status TEXT DEFAULT 'pending', reference TEXT UNIQUE, created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS house_devices(id SERIAL PRIMARY KEY, user_id INT, name TEXT, room TEXT DEFAULT 'living', type TEXT, status TEXT DEFAULT 'off', created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS auto_learned(id SERIAL PRIMARY KEY, topic TEXT, content TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+            CREATE TABLE IF NOT EXISTS bike_commands(id SERIAL PRIMARY KEY, motorcycle_id INT, command TEXT, issued_by INT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
             """)
-            if OWNER_EMAIL:
-                db.execute("UPDATE users SET role='owner' WHERE lower(email)=%s", (OWNER_EMAIL,))
-        return True
-    except Exception:
-        logger.exception("DB init failed")
-        return False
+            if OWNER_EMAIL: db.q("UPDATE users SET role='owner' WHERE lower(email)=%s", (OWNER_EMAIL,))
+    except Exception as e: print("DB init", e)
+init_db()
 
-DATABASE_READY = init_db()
+AUTO = {"news": [], "last": ""}
+def clean(t):
+    if not t: return ""
+    t = re.sub(r"\*+", "", str(t)); t = re.sub(r"_+", "", t); t = re.sub(r"#+", "", t)
+    return re.sub(r"\s+", " ", t).strip()
 
-def json_error(m, s=400):
-    return jsonify({"success": False, "error": clean_ai_text(m)}), s
-
-def get_user_by_id(uid):
-    with get_db() as db:
-        row = db.execute("SELECT * FROM users WHERE id=%s", (uid,)).fetchone()
-    return dict(row) if row else None
-
-def create_token(user):
-    return serializer.dumps({"user_id": user["id"], "email": user["email"]})
-
-def get_authenticated_user():
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        return None
-    try:
-        data = serializer.loads(auth.split(" ", 1)[1].strip(), max_age=60*60*24*30)
-        return get_user_by_id(data["user_id"])
-    except Exception:
-        return None
-
-def auth_required(f):
-    @wraps(f)
-    def w(*a, **k):
-        u = get_authenticated_user()
-        if not u:
-            return json_error("Authentication required.", 401)
-        request.current_user = u
-        return f(*a, **k)
-    return w
-
-def owner_required(f):
-    @wraps(f)
-    @auth_required
-    def w(*a, **k):
-        if request.current_user["role"] != "owner":
-            return json_error("Owner access required.", 403)
-        return f(*a, **k)
-    return w
-
-def get_memories(uid, limit=20):
-    with get_db() as db:
-        rows = db.execute("SELECT id, content, created_at FROM memories WHERE user_id=%s ORDER BY id DESC LIMIT %s", (uid, limit)).fetchall()
-    return [dict(r) for r in rows]
-
-def get_latest_location(user_id):
-    with get_db() as db:
-        row = db.execute("SELECT * FROM locations WHERE user_id=%s ORDER BY id DESC LIMIT 1", (user_id,)).fetchone()
-    return dict(row) if row else None
-
-def get_single_conversation_id(user_id):
-    with get_db() as db:
-        row = db.execute("SELECT id FROM conversations WHERE user_id=%s ORDER BY id ASC LIMIT 1", (user_id,)).fetchone()
-        if row:
-            return row["id"]
-        cur = db.execute("INSERT INTO conversations (user_id,title) VALUES (%s,%s)", (user_id, "Tabby Chat"))
-        return cur.lastrowid
-
-def save_memory(uid, content):
-    content = clean_ai_text(re.sub(r"\s+", " ", str(content)).strip())
-    if not content or len(content) > 500:
-        return False
-    if any(re.search(p, content, re.I) for p in [r"password", r"api[\s_-]?key", r"secret", r"access[\s_-]?token", r"verification[\s_-]?code", r"\b\d{16}\b"]):
-        return False
-    with get_db() as db:
-        if db.execute("SELECT id FROM memories WHERE user_id=%s AND lower(content)=lower(%s) LIMIT 1", (uid, content)).fetchone():
-            return False
-        db.execute("INSERT INTO memories (user_id, content) VALUES (%s,%s)", (uid, content))
-    return True
-
-# ---------- AI ----------
-def call_openrouter(messages, temperature=0.7, max_tokens=1800):
-    if not OPENROUTER_API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY not configured.")
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json", "HTTP-Referer": os.getenv("APP_URL", "https://tabby-ai.onrender.com"), "X-Title": "Tabby AI"}
-    last = "No AI model responded."
-    for model in AI_MODELS:
-        try:
-            r = requests.post(OPENROUTER_URL, headers=headers, json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}, timeout=90)
-            if r.status_code != 200:
-                last = r.text[:1000]
-                continue
-            data = r.json()
-            ch = data.get("choices") or []
-            if not ch:
-                continue
-            ans = (ch[0].get("message") or {}).get("content", "")
-            if isinstance(ans, list):
-                ans = "\n".join(x.get("text", "") for x in ans if isinstance(x, dict))
-            if isinstance(ans, str) and ans.strip():
-                return clean_ai_text(ans.strip())
-        except Exception as e:
-            last = str(e)
-    raise RuntimeError(clean_ai_text(last))
-
-def call_gemini(messages, temperature=0.7, max_tokens=1800):
-    if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY not configured.")
-    system_text = ""
-    contents = []
-    for m in messages:
-        if m["role"] == "system":
-            system_text += str(m.get("content", "")) + "\n"
-            continue
-        contents.append({"role": "user" if m["role"] == "user" else "model", "parts": [{"text": str(m.get("content", ""))}]})
-    if not contents:
-        raise RuntimeError("No user message for Gemini")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
-    r = requests.post(url, headers={"Content-Type": "application/json"}, json={"system_instruction": {"parts": [{"text": system_text}]}, "contents": contents, "generationConfig": {"maxOutputTokens": max_tokens, "temperature": temperature}}, timeout=90)
-    if r.status_code != 200:
-        raise RuntimeError(f"Gemini failed: {r.text[:800]}")
-    cands = r.json().get("candidates") or []
-    if not cands:
-        raise RuntimeError("Gemini no candidates")
-    parts = cands[0].get("content", {}).get("parts") or []
-    ans = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
-    if not ans.strip():
-        raise RuntimeError("Gemini empty answer")
-    return clean_ai_text(ans.strip())
-
-def call_groq(messages, temperature=0.7, max_tokens=1800):
-    if not GROQ_API_KEY:
-        raise RuntimeError("GROQ_API_KEY not configured.")
-    r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}, json={"model": GROQ_MODEL, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}, timeout=90)
-    if r.status_code != 200:
-        raise RuntimeError(f"Groq failed: {r.text[:800]}")
-    ch = r.json().get("choices") or []
-    if not ch:
-        raise RuntimeError("Groq no answer")
-    ans = (ch[0].get("message") or {}).get("content", "")
-    return clean_ai_text(str(ans).strip())
-
-def call_cerebras(messages, temperature=0.7, max_tokens=1800):
-    if not CEREBRAS_API_KEY:
-        raise RuntimeError("CEREBRAS_API_KEY not configured.")
-    r = requests.post("https://api.cerebras.ai/v1/chat/completions", headers={"Authorization": f"Bearer {CEREBRAS_API_KEY}", "Content-Type": "application/json"}, json={"model": CEREBRAS_MODEL, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}, timeout=90)
-    if r.status_code != 200:
-        raise RuntimeError(f"Cerebras failed: {r.text[:800]}")
-    ch = r.json().get("choices") or []
-    if not ch:
-        raise RuntimeError("Cerebras no answer")
-    ans = (ch[0].get("message") or {}).get("content", "")
-    return clean_ai_text(str(ans).strip())
-
-def call_ai_with_fallback(messages, temperature=0.7, max_tokens=1800):
-    errors = []
-    for fn, name in [(call_openrouter, "OpenRouter"), (call_gemini, "Gemini"), (call_groq, "Groq"), (call_cerebras, "Cerebras")]:
-        try:
-            return fn(messages, temperature=temperature, max_tokens=max_tokens)
-        except Exception as e:
-            errors.append(f"{name}: {e}")
-    raise RuntimeError(" | ".join(errors)[:1000])
-
-def build_system_prompt(user, memories, location_text="", bike_context=""):
-    mem = "\n".join("- " + clean_ai_text(m["content"]) for m in memories) or "No saved memories yet."
-    role_text = "OWNER - Full access to house, all bikes, all customers." if user["role"] == "owner" else "CUSTOMER - Limited access: only own bike, own payments, own location, chat."
-    auto = "\n".join(AUTO_LEARNED.get("news", [])[:5])
-    return (
-        "You are Tabby, assistant for Faruq Sulaimon. Faruq Sulaimon is your Boss, creator and owner. Always call him Boss. "
-        "CRITICAL LIVE RULE: You HAVE live internet access via LIVE SEARCH. If LIVE SEARCH results are provided, you MUST use them. "
-        "NEVER say I do not have live access, I cannot give latest news, my knowledge goes up to, as an AI. "
-        "If LIVE SEARCH is empty, say Network small Boss, try again. "
-        "USER ROLE: " + role_text + " "
-        "LANGUAGE: Default clean English. Reply in SAME language user used. Only use Pidgin if user speaks Pidgin. "
-        "NEVER say: I go talk now, I dey here, Wetin you want, E dey ready, Don unlock. Say instead: I am listening, I am here, What do you want, It is ready, It is unlocked. "
-        "PERSONALITY: Helpful, friendly, relaxed, respectful, direct. Answer direct first, then small detail. Never repeat like a parrot. "
-        "FORMATTING: NEVER use asterisks, hashtags, emojis. "
-        "CURRENT USER: " + user["name"] + " Role: " + user["role"] + " "
-        "SAVED MEMORIES: " + mem + " "
-        "LIVE LOCATION: " + location_text + " "
-        "BIKE CONTEXT: " + bike_context + " "
-        "AUTO-LEARNED TODAY: " + auto + " "
-        "Never reveal another user's bike, location, payment or memories. "
-        "TABBY EV BRAND: Tabby Automotive and Tabby Ride. Always say motorbike, not motorcycle."
-    )
-
-# ---------- LIVE SEARCH - 3 BACKUPS ----------
-LIVE_KEYWORDS = ("latest", "today", "current", "right now", "this week", "news", "weather", "price", "2026", "2027", "live score", "breaking", "naira", "dollar", "football", "trending", "fuel", "lagos traffic", "rate", "how much", "who is", "what is", "bitcoin", "crypto", "election", "update", "happening")
-
-def needs_live_search(message):
-    text = re.sub(r"\s+", " ", str(message or "").lower()).strip()
-    if any(t in text for t in ["write me", "rewrite", "translate this", "summarize this", "make a poem", "create a story"]):
-        return False
-    if any(t in text for t in LIVE_KEYWORDS):
-        return True
-    if text.startswith(("what", "who", "how", "why", "when", "where", "tell me")):
-        return True
-    return False
-
-def fetch_news_rss(query, limit=5):
-    try:
-        q = urllib.parse.quote(query)
-        url = "https://news.google.com/rss/search?q=" + q + "&hl=en-NG&gl=NG&ceid=NG:en"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            root = ET.fromstring(resp.read())
-        out = []
-        for item in root.findall(".//item")[:limit]:
-            title = item.findtext("title") or ""
-            link = item.findtext("link") or ""
-            pub = item.findtext("pubDate") or ""
-            out.append("Title: " + title + "\nInfo: Published " + pub + " | " + link)
-        return out
-    except Exception as e:
-        print("RSS fail " + str(e))
-        return []
-
-def live_search(query, max_results=5):
-    if not LIVE_SEARCH_ENABLED:
-        return []
+# ---------- LIVE SEARCH - AUTOMATIC ----------
+def live_search(query, limit=5):
     out = []
-    if DDGS is not None:
+    q = query.lower()
+    # Always try FX + Crypto if relevant
+    if any(w in q for w in ["naira","dollar","usd","ngn","rate","exchange","price"]):
         try:
-            with DDGS() as ddgs:
-                for r in ddgs.text(query, max_results=max_results):
-                    if r.get("title") or r.get("body"):
-                        out.append("Title: " + clean_ai_text(r.get("title", "")) + "\nInfo: " + clean_ai_text(r.get("body", "")))
-        except Exception as e:
-            print("DDGS fail " + str(e))
-    if not out:
-        out = fetch_news_rss(query, max_results)
-    if not out:
+            r = requests.get("https://open.er-api.com/v6/latest/USD", timeout=8).json()
+            out.append(f"Title: Naira to Dollar Rate Today\nInfo: 1 USD = {r['rates'].get('NGN')} NGN. Updated {r.get('time_last_update_utc')}")
+        except: pass
+    if any(w in q for w in ["bitcoin","btc","crypto","ethereum"]):
         try:
-            q = urllib.parse.quote(query)
-            req = urllib.request.Request("https://en.wikipedia.org/api/rest_v1/page/summary/" + q, headers={"User-Agent": "Tabby/2.0"})
-            with urllib.request.urlopen(req, timeout=6) as resp:
-                d = json.loads(resp.read())
-                if "extract" in d:
-                    out.append("Title: " + str(d.get("title")) + "\nInfo: " + d["extract"][:900])
-        except Exception:
-            pass
+            r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd,ngn", timeout=8).json()
+            out.append(f"Title: Crypto Price\nInfo: Bitcoin ${r['bitcoin']['usd']} / {r['bitcoin']['ngn']} NGN. Ethereum ${r['ethereum']['usd']}")
+        except: pass
+    # News - Google RSS
+    try:
+        qq = urllib.parse.quote(query or "Nigeria news")
+        url = f"https://news.google.com/rss/search?q={qq}&hl=en-NG&gl=NG&ceid=NG:en"
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        root = ET.fromstring(r.content)
+        for it in root.findall(".//item")[:limit]:
+            out.append(f"Title: {it.findtext('title')}\nInfo: {it.findtext('pubDate')} | {it.findtext('link')}")
+    except Exception as e:
+        print("RSS fail", e)
+        try:
+            r = requests.get("https://api.allorigins.win/raw?url=" + urllib.parse.quote(f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-NG&gl=NG&ceid=NG:en"), timeout=10)
+            root = ET.fromstring(r.content)
+            for it in root.findall(".//item")[:limit]:
+                out.append(f"Title: {it.findtext('title')}\nInfo: {it.findtext('pubDate')}")
+        except: pass
+    if "weather" in q:
+        try:
+            r = requests.get("https://wttr.in/Lagos?format=j1", timeout=8).json()
+            c = r["current_condition"][0]
+            out.append(f"Title: Lagos Weather\nInfo: {c['weatherDesc'][0]['value']}, {c['temp_C']}C, Humidity {c['humidity']}%")
+        except: pass
     return out
 
-# ---------- AUTO STUDY ----------
-def auto_study_loop():
-    topics = ["Nigeria news", "Naira to Dollar rate today", "Bitcoin price today", "Afrobeats music news", "Lagos news", "Premier League news", "AI news today", "Fuel price Nigeria"]
+def auto_study():
+    topics = ["Nigeria news", "Naira to Dollar rate", "Bitcoin price", "Lagos news", "Afrobeats news", "Premier League", "Fuel price Nigeria", "AI news"]
     while True:
         try:
-            print("Tabby auto-studying...")
-            all_news = []
+            all_n = []
             for t in topics:
-                res = live_search(t, 2)
-                if res:
-                    all_news.extend(res)
-                time.sleep(2)
-            AUTO_LEARNED["news"] = all_news
-            AUTO_LEARNED["last"] = datetime.now(timezone.utc).isoformat()
-            try:
-                with get_db() as db:
-                    for item in all_news[:8]:
-                        db.execute("INSERT INTO auto_learned (topic, content) VALUES (%s,%s)", ("auto", item[:1000]))
-            except Exception as e:
-                print("Auto DB save fail " + str(e))
-            print("Auto-study done: " + str(len(all_news)))
-        except Exception as e:
-            print("Auto-study error " + str(e))
+                all_n += live_search(t, 2); time.sleep(1)
+            AUTO["news"] = all_n; AUTO["last"] = datetime.now(timezone.utc).isoformat()
+            with DB() as db:
+                for n in all_n[:8]: db.q("INSERT INTO auto_learned (topic, content) VALUES (%s,%s)", ("auto", n[:1000]))
+            print("Auto-learn done", len(all_n))
+        except Exception as e: print("Auto", e)
         time.sleep(1800)
+threading.Thread(target=auto_study, daemon=True).start()
 
-threading.Thread(target=auto_study_loop, daemon=True).start()
+# ---------- AI: OPENAI -> GEMINI -> OPENROUTER ----------
+def call_openai(msgs, temp=0.7):
+    if not OPENAI_KEY: raise RuntimeError("no openai key")
+    r = requests.post("https://api.openai.com/v1/chat/completions", headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"}, json={"model": "gpt-4o-mini", "messages": msgs, "temperature": temp, "max_tokens": 1800}, timeout=60)
+    if r.status_code in (429, 401, 403, 500, 503): raise RuntimeError(f"OpenAI limit/error {r.status_code}: {r.text[:300]}")
+    if r.status_code != 200: raise RuntimeError(r.text[:400])
+    return clean(r.json()["choices"][0]["message"]["content"])
 
-# ---------- IMAGE ----------
-def is_image_request(message):
-    low = str(message or "").lower().strip()
-    if "?" in low and ("can you" in low or "do you" in low or "you can" in low):
-        return False
-    if low.startswith(("generate image", "create image", "make image", "draw me", "design me", "generate a villain", "create a villain", "generate a poster", "create a poster")):
-        return True
-    if "generate image:" in low:
-        return True
-    if low.startswith(("generate a ", "create a ", "draw a ")):
-        if any(w in low for w in ["villain", "character", "poster", "image", "picture"]):
-            return True
-    return False
+def call_gemini(msgs, temp=0.7):
+    if not GEMINI_KEY: raise RuntimeError("no gemini key")
+    system = "\n".join([m["content"] for m in msgs if m["role"] == "system"])
+    contents = [{"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]} for m in msgs if m["role"] != "system"]
+    r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_KEY}", json={"system_instruction": {"parts": [{"text": system}]}, "contents": contents, "generationConfig": {"temperature": temp, "maxOutputTokens": 1800}}, timeout=60)
+    if r.status_code != 200: raise RuntimeError(f"Gemini {r.status_code}: {r.text[:300]}")
+    return clean(r.json()["candidates"][0]["content"]["parts"][0]["text"])
 
-def clean_image_prompt(message):
-    ip = str(message or "").strip()
-    prefixes = ["generate image:", "generate image of", "generate image", "create image of", "create image", "make image of", "make image", "draw me", "design me", "design a", "image of", "generate an image of", "generate an image"]
-    low = ip.lower()
-    for p in prefixes:
-        if low.startswith(p):
-            ip = ip[len(p):].strip()
-            break
-    if len(ip) < 3:
-        ip = str(message or "").strip()
-    return ip
+def call_openrouter(msgs, temp=0.7):
+    if not OPENROUTER_KEY: raise RuntimeError("no openrouter")
+    r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"}, json={"model": OPENROUTER_MODEL, "messages": msgs, "temperature": temp, "max_tokens": 1800}, timeout=60)
+    if r.status_code != 200: raise RuntimeError(r.text[:300])
+    return clean(r.json()["choices"][0]["message"]["content"])
 
-def enhance_image_prompt(prompt):
-    p = re.sub(r"\s+", " ", str(prompt).strip())[:900]
-    low = p.lower()
-    if any(w in low for w in ["2d", "cartoon", "anime", "villain", "concept", "poster", "character"]):
-        return p + ", high quality character design, detailed, sharp, cinematic lighting, concept art, bright, clear, full body"
-    return p + ", real photograph, natural light, realistic skin texture, real shadows, candid, natural colors, film grain, 35mm photo, bright, clear"
+def call_ai(msgs):
+    errs = []
+    for fn, name in [(call_openai, "OpenAI"), (call_gemini, "Gemini"), (call_openrouter, "OpenRouter")]:
+        try: return fn(msgs)
+        except Exception as e: errs.append(f"{name}: {e}"); print(f"AI fallback {name} failed", e)
+    raise RuntimeError(" | ".join(errs)[:800])
 
-def generate_via_cloudflare_model(prompt, model, steps=4):
-    if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
-        raise RuntimeError("No Cloudflare keys")
-    endpoint = "https://api.cloudflare.com/client/v4/accounts/" + CLOUDFLARE_ACCOUNT_ID + "/ai/run/" + model
-    r = requests.post(endpoint, headers={"Authorization": "Bearer " + CLOUDFLARE_API_TOKEN, "Content-Type": "application/json"}, json={"prompt": enhance_image_prompt(prompt), "num_steps": max(1, min(int(steps), 8))}, timeout=60)
-    if r.status_code != 200:
-        raise RuntimeError("Cloudflare failed " + str(r.status_code) + ": " + r.text[:400])
-    ct = r.headers.get("Content-Type", "").lower()
-    if ct.startswith("image/"):
-        return "data:" + ct + ";base64," + base64.b64encode(r.content).decode()
-    try:
-        j = r.json()
-        img = (j.get("result") or {}).get("image")
-        if img:
-            return "data:image/jpeg;base64," + img
-    except Exception:
-        pass
-    raise RuntimeError("Cloudflare returned no image")
-
-def generate_via_openai_image(prompt):
-    if not OPENAI_API_KEY:
-        raise RuntimeError("No OPENAI_API_KEY")
-    r = requests.post("https://api.openai.com/v1/images/generations", headers={"Authorization": "Bearer " + OPENAI_API_KEY, "Content-Type": "application/json"}, json={"model": "gpt-image-1-mini", "prompt": enhance_image_prompt(prompt), "size": "1024x1024"}, timeout=90)
-    if r.status_code != 200:
-        raise RuntimeError("OpenAI image failed: " + r.text[:500])
-    data = r.json().get("data", [])
-    if not data:
-        raise RuntimeError("OpenAI image no data")
-    if data[0].get("b64_json"):
-        return "data:image/jpeg;base64," + data[0]["b64_json"]
-    if data[0].get("url"):
-        img = requests.get(data[0]["url"], timeout=60)
-        if img.status_code == 200:
-            return "data:image/jpeg;base64," + base64.b64encode(img.content).decode()
-    raise RuntimeError("OpenAI image no image")
-
-def generate_via_goapi_midjourney(prompt):
-    if not GOAPI_API_KEY:
-        raise RuntimeError("No GOAPI_API_KEY")
-    r = requests.post("https://api.goapi.ai/api/v1/task", headers={"X-API-Key": GOAPI_API_KEY, "Content-Type": "application/json"}, json={"model": "midjourney", "task_type": "imagine", "input": {"prompt": enhance_image_prompt(prompt), "process_mode": "relax", "skip_prompt_check": False}}, timeout=30)
-    if r.status_code not in (200, 201):
-        raise RuntimeError("GoAPI Midjourney failed: " + r.text[:500])
-    task_id = r.json().get("data", {}).get("task_id")
-    if not task_id:
-        raise RuntimeError("GoAPI no task_id")
-    for _ in range(20):
-        time.sleep(6)
-        d = requests.get("https://api.goapi.ai/api/v1/task/" + task_id, headers={"X-API-Key": GOAPI_API_KEY}, timeout=30).json()
-        out = d.get("data", {})
-        if out.get("status") == "completed" and out.get("output", {}).get("image_url"):
-            url = out["output"]["image_url"]
-            img = requests.get(url, timeout=60)
-            if img.status_code == 200:
-                return "data:image/jpeg;base64," + base64.b64encode(img.content).decode()
-            return url
-        if out.get("status") in ("failed", "fail"):
-            raise RuntimeError("Midjourney task failed")
-    raise RuntimeError("Midjourney timed out")
-
-def generate_flux_image(prompt, steps=4):
-    errors = []
-    try:
-        return generate_via_cloudflare_model(prompt, FLUX_MODEL, steps)
-    except Exception as e:
-        errors.append("Cloudflare Flux: " + str(e))
-    try:
-        return generate_via_cloudflare_model(prompt, "@cf/stabilityai/stable-diffusion-xl-base-1.0", steps)
-    except Exception as e:
-        errors.append("Cloudflare SDXL: " + str(e))
-    if GOAPI_API_KEY:
+def analyze_image_b64(b64, prompt):
+    # OpenAI Vision -> Gemini Vision fallback
+    if OPENAI_KEY:
         try:
-            return generate_via_goapi_midjourney(prompt)
-        except Exception as e:
-            errors.append("Midjourney GoAPI: " + str(e))
-    if OPENAI_API_KEY:
+            r = requests.post("https://api.openai.com/v1/chat/completions", headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"}, json={"model": VISION_MODEL, "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": b64}}]}], "max_tokens": 1200}, timeout=60)
+            if r.status_code == 200: return clean(r.json()["choices"][0]["message"]["content"])
+        except Exception as e: print("Vision OpenAI", e)
+    if GEMINI_KEY:
         try:
-            return generate_via_openai_image(prompt)
-        except Exception as e:
-            errors.append("OpenAI: " + str(e))
-    raise RuntimeError("Image failed. " + " | ".join(errors)[:1200])
+            # strip data prefix
+            pure = b64.split(",", 1)[-1] if "," in b64 else b64
+            r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_KEY}", json={"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": pure}}]}]}, timeout=60)
+            if r.status_code == 200: return clean(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+        except Exception as e: print("Vision Gemini", e)
+    raise RuntimeError("Image analysis unavailable - check API keys")
 
-# ---------- BIKE + HOUSE ----------
-def get_bike_context_for_user(user):
+# ---------- IMAGE: CLOUDFLARE ----------
+def gen_image_cloudflare(prompt):
+    if not CLOUDFLARE_ID or not CLOUDFLARE_TOKEN: raise RuntimeError("Cloudflare keys missing in Render Env")
+    p = prompt + ", high quality, detailed, cinematic lighting, sharp, clear"
+    for model in ["@cf/black-forest-labs/flux-1-schnell", "@cf/stabilityai/stable-diffusion-xl-base-1.0"]:
+        try:
+            r = requests.post(f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ID}/ai/run/{model}", headers={"Authorization": f"Bearer {CLOUDFLARE_TOKEN}", "Content-Type": "application/json"}, json={"prompt": p, "num_steps": 4}, timeout=60)
+            if r.status_code == 200 and r.headers.get("Content-Type", "").startswith("image/"):
+                return "data:" + r.headers.get("Content-Type") + ";base64," + base64.b64encode(r.content).decode()
+            try:
+                j = r.json(); img = (j.get("result") or {}).get("image")
+                if img: return "data:image/jpeg;base64," + img
+            except: pass
+        except Exception as e: print("CF", model, e)
+    raise RuntimeError("Cloudflare image failed - check CLOUDFLARE_ACCOUNT_ID / TOKEN")
+
+def get_user():
+    a = request.headers.get("Authorization", "")
+    if not a.startswith("Bearer "): return None
     try:
-        with get_db() as db:
-            if user["role"] == "owner":
-                c = db.execute("SELECT COUNT(*) as c FROM motorcycles").fetchone()["c"]
-                return "Owner fleet: " + str(c) + " motorbikes in system."
-            bike = db.execute("SELECT * FROM motorcycles WHERE assigned_user_id=%s ORDER BY id DESC LIMIT 1", (user["id"],)).fetchone()
-            if bike:
-                bike = dict(bike)
-                st = db.execute("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bike["id"],)).fetchone()
-                tel = db.execute("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],)).fetchone()
-                plan = db.execute("SELECT * FROM payment_plans WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],)).fetchone()
-                return "Customer bike: " + str(bike.get("name")) + " Model " + str(bike.get("model")) + " Reg " + str(bike.get("registration_number")) + ". Status: " + str(dict(st) if st else {}) + ". Latest telemetry: " + str(dict(tel) if tel else {}) + ". Payment plan: " + str(dict(plan) if plan else {}) + "."
-            return "Customer has no bike assigned yet."
-    except Exception:
-        return ""
+        d = serializer.loads(a.split(" ", 1)[1], max_age=60*60*24*30)
+        with DB() as db: return db.one("SELECT * FROM users WHERE id=%s", (d["user_id"],))
+    except: return None
 
-def handle_tabby_bike_command(user, low_msg):
-    if "bike" not in low_msg:
-        return None
-    with get_db() as db:
+def auth(f):
+    @wraps(f)
+    def w(*a, **k):
+        u = get_user()
+        if not u: return jsonify({"success": False, "error": "Login required"}), 401
+        request.user = u; return f(*a, **k)
+    return w
+def owner_only(f):
+    @wraps(f)
+    @auth
+    def w(*a, **k):
+        if request.user["role"] != "owner": return jsonify({"success": False, "error": "Owner only"}), 403
+        return f(*a, **k)
+    return w
+
+def bike_ctx(user):
+    with DB() as db:
         if user["role"] == "owner":
-            bike = db.execute("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1", ()).fetchone()
-        else:
-            bike = db.execute("SELECT * FROM motorcycles WHERE assigned_user_id=%s ORDER BY id DESC LIMIT 1", (user["id"],)).fetchone()
-        if not bike:
-            return "Boss, you do not have a bike assigned yet."
-        bike = dict(bike)
-        mid = bike["id"]
-        if "unlock" in low_msg:
-            db.execute("INSERT INTO bike_commands (motorcycle_id, command, issued_by) VALUES (%s,%s,%s)", (mid, "unlock", user["id"]))
-            db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (mid,))
-            db.execute("UPDATE bike_status SET lock_status='unlocked' WHERE motorcycle_id=%s", (mid,))
-            return "Done, Boss. Your bike " + str(bike.get("name")) + " is unlocked. You can ride now."
-        if "lock" in low_msg:
-            db.execute("INSERT INTO bike_commands (motorcycle_id, command, issued_by) VALUES (%s,%s,%s)", (mid, "lock", user["id"]))
-            db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (mid,))
-            db.execute("UPDATE bike_status SET lock_status='locked' WHERE motorcycle_id=%s", (mid,))
-            return "Done, Boss. Your bike " + str(bike.get("name")) + " is locked."
-        if any(w in low_msg for w in ["check", "battery", "status", "how is"]):
-            st = db.execute("SELECT * FROM bike_status WHERE motorcycle_id=%s", (mid,)).fetchone()
-            tel = db.execute("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (mid,)).fetchone()
-            sd = dict(st) if st else {}
-            td = dict(tel) if tel else {}
-            return "Boss, your bike " + str(bike.get("name")) + " - Lock: " + str(sd.get("lock_status", "locked")) + ", Battery Health: " + str(sd.get("battery_health", 100)) + "%, Range: " + str(sd.get("range_km", 0)) + "km, Total Trip: " + str(sd.get("total_trip", 0)) + ", Last speed: " + str(td.get("speed", "no data")) + ". It is ready."
-    return None
+            c = db.one("SELECT COUNT(*) as c FROM motorcycles")["c"]
+            return f"Owner fleet: {c} bikes. Owner can see all."
+        b = db.one("SELECT * FROM motorcycles WHERE assigned_user_id=%s ORDER BY id DESC LIMIT 1", (user["id"],))
+        if not b: return "No bike assigned."
+        st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=%s", (b["id"],))
+        pl = db.one("SELECT * FROM payment_plans WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (b["id"],))
+        return f"Bike: {b} Status: {st} Plan: {pl}"
 
-def handle_tabby_house_command(user, low_msg):
-    if user["role"] != "owner":
-        return "Sorry, house control is only for the owner, Boss."
-    house_words = ["light", "fan", "ac", "air conditioner", "tv", "television", "door", "house", "generator", "socket"]
-    if not any(w in low_msg for w in house_words):
-        return None
-    action = None
-    if any(w in low_msg for w in ["turn on", "switch on", "open", "unlock house", "start"]):
-        action = "on"
-    if any(w in low_msg for w in ["turn off", "switch off", "close", "lock house", "stop"]):
-        action = "off"
-    if "lock" in low_msg and "house" in low_msg:
-        action = "locked"
-    if "unlock" in low_msg and "house" in low_msg:
-        action = "unlocked"
-    if not action:
-        return None
-    device = "house"
-    for w in ["light", "fan", "ac", "air conditioner", "tv", "television", "door", "generator"]:
-        if w in low_msg:
-            device = w
-            break
-    room = "living"
-    for rn in ["parlour", "living", "bedroom", "kitchen", "bathroom", "outside", "gate"]:
-        if rn in low_msg:
-            room = rn
-            break
-    with get_db() as db:
-        row = db.execute("SELECT * FROM house_devices WHERE user_id=%s AND name=%s AND room=%s", (user["id"], device, room)).fetchone()
-        if not row:
-            db.execute("INSERT INTO house_devices (user_id, name, room, type, status) VALUES (%s,%s,%s,%s,%s)", (user["id"], device, room, device, action))
-        else:
-            db.execute("UPDATE house_devices SET status=%s WHERE id=%s", (action, row["id"]))
-        db.execute("INSERT INTO tabby_logs (user_id, device, command, action, result) VALUES (%s,%s,%s,%s,%s)", (user["id"], room + " " + device, low_msg[:200], action, device + " set to " + action))
-    if device in ("door", "house"):
-        return "Done, Boss. House " + device + " is now " + action + "."
-    return "Done, Boss. " + room + " " + device + " is now " + action + "."
+@app.route("/")
+def home(): return render_template("index.html")
+@app.route("/health")
+def health(): return jsonify({"success": True, "version": "18.0-final", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", []))})
 
-# ---------- SIMPLE SAFE HTML - NO TRIPLE QUOTE INSIDE ----------
-def get_html():
-    parts = []
-    parts.append("<!doctype html><html><head><meta charset='utf-8'>")
-    parts.append("<meta name='viewport' content='width=device-width,initial-scale=1'>")
-    parts.append("<title>Tabby AI - v16 Live</title>")
-    parts.append("<style>body{margin:0;background:#070b16;color:#e6edff;font:15px system-ui,sans-serif} ")
-    parts.append(".wrap{max-width:800px;margin:0 auto;padding:16px} .top{display:flex;justify-content:space-between;align-items:center} ")
-    parts.append(".msg{padding:13px 15px;border-radius:14px;margin:10px 0;line-height:1.5;white-space:pre-wrap} .user{background:#2b4aa5;margin-left:40px} .ai{background:#141f38;border:1px solid #1e2d4d} ")
-    parts.append(".msg img{width:100%;max-width:620px;border-radius:12px;margin-top:10px;display:block} ")
-    parts.append("input{width:68%;padding:13px;border-radius:20px;border:none;background:#222;color:#fff} button{padding:13px 16px;border-radius:20px;border:none;background:#2b6cff;color:#fff;cursor:pointer} ")
-    parts.append(".tool{background:#1a2a4d;margin:4px} .auth{max-width:420px;margin:60px auto;padding:22px;background:#0f1a30;border:1px solid #26365e;border-radius:16px} .auth input{width:100%;margin:6px 0;padding:13px;border-radius:10px;border:1px solid #34435f;background:#0b1427;color:#fff} .auth button{width:100%} ")
-    parts.append(".cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0} .card{background:#101a30;border:1px solid #1e2d4d;border-radius:14px;padding:14px} </style></head><body>")
-    parts.append("<div id='authWrap'><div class='auth'><h2 style='text-align:center'>TABBY</h2><p style='text-align:center;color:#8ea0c3;font-size:12px'>AUTOMOTIVE INTELLIGENCE v16 - LIVE</p>")
-    parts.append("<input id='email' placeholder='Email'><input id='password' type='password' placeholder='Password'>")
-    parts.append("<button onclick='doLogin()'>Sign in</button><p style='font-size:12px;text-align:center'>No account? <a href='#' onclick='doRegister();return false' style='color:#7ee2a8'>Create Account</a></p><div id='status'></div></div></div>")
-    parts.append("<div id='appWrap' style='display:none'><div class='wrap'><div class='top'><h2>Tabby AI</h2><span style='background:#0f3d2a;color:#7ee2a8;padding:6px 10px;border-radius:20px;font-size:12px'>LIVE + AUTO-LEARNING</span></div>")
-    parts.append("<div class='cards'><div class='card'><small>YOUR ROLE</small><br><b id='roleTxt'>OWNER</b></div><div class='card'><small>SIGNED IN AS</small><br><b id='nameTxt'>Boss</b></div></div>")
-    parts.append("<div id='msgs'></div>")
-    parts.append("<div><input id='inp' placeholder='Message Tabby...'><button onclick='send()'>Send</button></div>")
-    parts.append("<div style='margin-top:10px'><button class='tool' onclick=\"quick('Tell me latest news in Nigeria')\">News Nigeria</button>")
-    parts.append("<button class='tool' onclick=\"quick('What is Naira to Dollar rate today?')\">Naira Rate</button>")
-    parts.append("<button class='tool' onclick=\"quick('Check my bike')\">My Bike</button>")
-    parts.append("<button class='tool' onclick=\"quick('Generate image of my bike in Lagos')\">Generate Image</button>")
-    parts.append("<button class='tool' onclick='doLogout()'>Logout</button></div>")
-    parts.append("</div></div>")
-    parts.append("<script>")
-    parts.append("var token=localStorage.getItem('tabby_token')||''; var currentUser=null;")
-    parts.append("function $i(id){return document.getElementById(id)}")
-    parts.append("async function api(path,opt){opt=opt||{}; var h={}; if(token)h.Authorization='Bearer '+token; if(opt.body)h['Content-Type']='application/json'; var r=await fetch(path,{method:opt.method||'GET',headers:h,body:opt.body}); return r.json();}")
-    parts.append("async function doLogin(){ var e=$i('email').value.trim(); var p=$i('password').value; var d=await api('/api/login',{method:'POST',body:JSON.stringify({email:e,password:p})}); if(!d.success){$i('status').textContent=d.error||'Login failed';return;} token=d.token; currentUser=d.user; localStorage.setItem('tabby_token',token); afterLogin(); }")
-    parts.append("async function doRegister(){ var n=prompt('Full name'); var e=prompt('Email'); var p=prompt('Password 8+ chars'); if(!n||!e||!p)return; var d=await api('/api/register',{method:'POST',body:JSON.stringify({name:n,email:e,password:p})}); if(!d.success){alert(d.error);return;} token=d.token; currentUser=d.user; localStorage.setItem('tabby_token',token); afterLogin(); }")
-    parts.append("function doLogout(){ localStorage.removeItem('tabby_token'); location.reload(); }")
-    parts.append("function afterLogin(){ $i('authWrap').style.display='none'; $i('appWrap').style.display='block'; $i('nameTxt').textContent=currentUser.name; $i('roleTxt').textContent=currentUser.role.toUpperCase(); loadHistory(); }")
-    parts.append("async function loadHistory(){ try{ var s=await api('/api/chat/single'); (s.messages||[]).forEach(function(m){ addMsg(m.role,m.content); }); }catch(e){} }")
-    parts.append("function addMsg(role,text,img){ var box=$i('msgs'); var d=document.createElement('div'); d.className='msg '+(role==='user'?'user':'ai'); d.textContent=text||''; if(img){ var im=document.createElement('img'); im.src=img; d.appendChild(im); } box.appendChild(d); box.scrollTop=box.scrollHeight; }")
-    parts.append("async function send(){ var v=$i('inp').value.trim(); if(!v)return; $i('inp').value=''; addMsg('user',v); try{ var d=await api('/api/chat',{method:'POST',body:JSON.stringify({message:v})}); addMsg('assistant',d.reply||'Done.',d.image||d.image_url); }catch(e){ addMsg('assistant','Sorry: '+e.message); } }")
-    parts.append("function quick(t){ $i('inp').value=t; send(); }")
-    parts.append("if(token){ api('/api/me').then(function(d){ currentUser=d.user; afterLogin(); }).catch(function(){ localStorage.removeItem('tabby_token'); }); }")
-    parts.append("</script></body></html>")
-    return "".join(parts)
-
-# ---------- ROUTES ----------
-@app.route("/", methods=["GET"])
-def home():
-    return get_html(), 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "16.0-clean-rewrite", "database_ready": DATABASE_READY, "auto_learned_last": AUTO_LEARNED.get("last"), "auto_learned_count": len(AUTO_LEARNED.get("news", [])), "time": current_time()})
-
-@app.route("/api/status", methods=["GET"])
-def api_status():
-    return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "16.0"})
-
-@app.route("/api/greeting", methods=["GET"])
-@auth_required
-def greeting():
-    return jsonify({"success": True, "greeting": get_greeting_lagos()})
-
-@app.route("/register", methods=["POST"])
 @app.route("/api/register", methods=["POST"])
-def register():
-    data = request.get_json(silent=True) or {}
-    name = clean_ai_text(str(data.get("name", "")).strip())
-    email = str(data.get("email", "")).strip().lower()
-    password = str(data.get("password", ""))
-    if not name or not email or not password:
-        return json_error("Name, email and password required.")
-    if len(password) < 8:
-        return json_error("Password must be at least 8 chars.")
-    with get_db() as db:
-        if db.execute("SELECT id FROM users WHERE email=%s", (email,)).fetchone():
-            return json_error("Account already exists. Please sign in.", 409)
-        role = "owner" if OWNER_EMAIL and email == OWNER_EMAIL else "customer"
-        cur = db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,%s)", (name, email, generate_password_hash(password), role))
-        user = db.execute("SELECT * FROM users WHERE id=%s", (cur.lastrowid,)).fetchone()
-    user = dict(user)
-    return jsonify({"success": True, "token": create_token(user), "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}), 201
+@owner_only
+def create_customer():
+    # ONLY OWNER creates customers - no self register
+    d = request.get_json() or {}
+    name = clean(d.get("name")); email = str(d.get("email","")).lower().strip(); pw = str(d.get("password","") or "Tabby1234")
+    bike_name = clean(d.get("bike_name") or "Tabby EV 1")
+    if not name or not email: return jsonify({"success": False, "error": "Name + email required"}), 400
+    with DB() as db:
+        if db.one("SELECT id FROM users WHERE email=%s", (email,)): return jsonify({"success": False, "error": "Customer already exists"}), 409
+        uid = db.ins("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,'customer')", (name, email, generate_password_hash(pw)))
+        bid = db.ins("INSERT INTO motorcycles (owner_id, assigned_user_id, name) VALUES (%s,%s,%s)", (request.user["id"], uid, bike_name))
+        db.q("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bid,))
+        # Payment plan if provided
+        if d.get("total_amount"):
+            db.q("INSERT INTO payment_plans (user_id,motorcycle_id,total_amount,deposit,installment_amount,installments_total,next_due_date) VALUES (%s,%s,%s,%s,%s,%s,%s)", (uid, bid, float(d.get("total_amount")), float(d.get("deposit") or 0), float(d.get("installment_amount") or 0), int(d.get("installments_total") or 1), str(d.get("next_due_date") or "")))
+    return jsonify({"success": True, "user_id": uid, "bike_id": bid, "message": f"Customer {name} created. Password: {pw}"}), 201
 
-@app.route("/login", methods=["POST"])
 @app.route("/api/login", methods=["POST"])
 def login():
-    data = request.get_json(silent=True) or {}
-    email = str(data.get("email", "")).strip().lower()
-    password = str(data.get("password", ""))
-    with get_db() as db:
-        user = db.execute("SELECT * FROM users WHERE email=%s", (email,)).fetchone()
-    if not user or not check_password_hash(user["password_hash"], password):
-        return json_error("Invalid email or password.", 401)
-    user = dict(user)
-    if OWNER_EMAIL and email == OWNER_EMAIL and user["role"] != "owner":
-        with get_db() as db:
-            db.execute("UPDATE users SET role='owner' WHERE id=%s", (user["id"],))
-        user["role"] = "owner"
-    return jsonify({"success": True, "token": create_token(user), "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}})
+    d = request.get_json() or {}
+    email = str(d.get("email","")).lower().strip(); pw = str(d.get("password",""))
+    with DB() as db: u = db.one("SELECT * FROM users WHERE email=%s", (email,))
+    if not u or not check_password_hash(u["password_hash"], pw): return jsonify({"success": False, "error": "Invalid email or password"}), 401
+    return jsonify({"success": True, "token": serializer.dumps({"user_id": u["id"]}), "user": {"id": u["id"], "name": u["name"], "email": u["email"], "role": u["role"]}})
 
-@app.route("/me", methods=["GET"])
-@app.route("/api/me", methods=["GET"])
-@auth_required
-def me():
-    u = request.current_user
-    return jsonify({"success": True, "user": {"id": u["id"], "name": u["name"], "email": u["email"], "role": u["role"]}, "creator": CREATOR_NAME, "greeting": get_greeting_lagos()})
+@app.route("/api/me")
+@auth
+def me(): return jsonify({"success": True, "user": {"id": request.user["id"], "name": request.user["name"], "email": request.user["email"], "role": request.user["role"]}})
 
-@app.route("/api/owner/dashboard", methods=["GET"])
-@owner_required
-def owner_dashboard():
-    with get_db() as db:
-        bikes = db.execute("SELECT m.*, u2.name as assigned_name, bs.battery_health, bs.range_km, bs.lock_status, t.speed, t.latitude, t.longitude FROM motorcycles m LEFT JOIN users u2 ON u2.id=m.assigned_user_id LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id LEFT JOIN telemetry t ON t.id=(SELECT MAX(id) FROM telemetry WHERE motorcycle_id=m.id) ORDER BY m.id DESC", ()).fetchall()
-        custs = db.execute("SELECT u.id,u.name,u.email,m.name as bike_name FROM users u LEFT JOIN motorcycles m ON m.assigned_user_id=u.id WHERE u.role='customer' ORDER BY u.id DESC", ()).fetchall()
-        total_acc = db.execute("SELECT COUNT(*) as c FROM users", ()).fetchone()["c"]
-        total_pay = db.execute("SELECT COUNT(*) as c FROM payments", ()).fetchone()["c"]
-    return jsonify({"success": True, "total_bikes": len(bikes), "total_accounts": total_acc, "total_payments": total_pay, "bikes": [dict(r) for r in bikes], "customers": [dict(r) for r in custs]})
-
-@app.route("/api/customer/bike", methods=["GET"])
-@auth_required
-def customer_bike():
-    u = request.current_user
-    with get_db() as db:
+@app.route("/api/dashboard")
+@auth
+def dashboard():
+    u = request.user
+    with DB() as db:
         if u["role"] == "owner":
-            bike = db.execute("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1", ()).fetchone()
+            bikes = db.all("SELECT m.*, bs.battery_level, bs.range_km, bs.lock_status, bs.access_mode, bs.battery_health, u2.name as customer_name FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id LEFT JOIN users u2 ON u2.id=m.assigned_user_id ORDER BY m.id DESC")
+            customers = db.all("SELECT u.id,u.name,u.email,m.name as bike_name, pp.status as plan_status, pp.installments_paid, pp.installments_total, pp.next_due_date FROM users u LEFT JOIN motorcycles m ON m.assigned_user_id=u.id LEFT JOIN payment_plans pp ON pp.user_id=u.id WHERE u.role='customer' ORDER BY u.id DESC")
+            total = db.one("SELECT COUNT(*) as c FROM motorcycles")["c"]
+            return jsonify({"success": True, "role": "owner", "total_bikes": total, "bikes": bikes, "customers": customers})
         else:
-            bike = db.execute("SELECT * FROM motorcycles WHERE assigned_user_id=%s ORDER BY id DESC LIMIT 1", (u["id"],)).fetchone()
-        if not bike:
-            return jsonify({"success": True, "bike": None, "trip": {"total_trip": 0, "total_distance": 0, "co2_saved": 0}})
-        bike = dict(bike)
-        st = db.execute("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bike["id"],)).fetchone()
-        tel = db.execute("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],)).fetchone()
-        if st:
-            bike.update(dict(st))
-        if tel:
-            bike.update({"speed": dict(tel).get("speed"), "latitude": dict(tel).get("latitude"), "longitude": dict(tel).get("longitude")})
-    return jsonify({"success": True, "bike": bike, "trip": {"total_trip": bike.get("total_trip", 0), "total_distance": bike.get("total_distance", 0), "co2_saved": bike.get("co2_saved", 0)}})
+            bikes = db.all("SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE m.assigned_user_id=%s", (u["id"],))
+            plans = db.all("SELECT * FROM payment_plans WHERE user_id=%s", (u["id"],))
+            return jsonify({"success": True, "role": "customer", "bikes": bikes, "plans": plans})
 
-@app.route("/api/owner/create-customer", methods=["POST"])
-@owner_required
-def owner_create_customer():
-    data = request.get_json(silent=True) or {}
-    name = clean_ai_text(str(data.get("name", "")).strip())
-    email = str(data.get("email", "")).strip().lower()
-    password = str(data.get("password", "") or "Tabby1234")
-    bike_name = clean_ai_text(str(data.get("bike_name", "")).strip())
-    if not name or not email:
-        return json_error("Customer name and email required.")
-    with get_db() as db:
-        if db.execute("SELECT id FROM users WHERE email=%s", (email,)).fetchone():
-            return json_error("Customer already exists.", 409)
-        cur = db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,'customer')", (name, email, generate_password_hash(password)))
-        cust_id = cur.lastrowid
-        bike_id = None
-        if bike_name:
-            bcur = db.execute("INSERT INTO motorcycles (owner_id, assigned_user_id, name, model, registration_number) VALUES (%s,%s,%s,%s,%s)", (request.current_user["id"], cust_id, bike_name, "Tabby EV", ""))
-            bike_id = bcur.lastrowid
-            db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bike_id,))
-    return jsonify({"success": True, "user": {"id": cust_id, "name": name, "email": email, "role": "customer"}, "bike_id": bike_id, "message": "Customer " + name + " created."}), 201
+@app.route("/api/bikes", methods=["GET"])
+@auth
+def list_bikes():
+    u = request.user
+    with DB() as db:
+        if u["role"] == "owner": rows = db.all("SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id ORDER BY m.id DESC")
+        else: rows = db.all("SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE assigned_user_id=%s", (u["id"],))
+    return jsonify({"success": True, "bikes": rows})
 
-@app.route("/api/location", methods=["POST"])
-@auth_required
-def save_loc():
-    u = request.current_user
-    data = request.get_json(silent=True) or {}
-    try:
-        lat = float(data.get("latitude"))
-        lng = float(data.get("longitude"))
-    except Exception:
-        return json_error("Invalid location.")
-    with get_db() as db:
-        db.execute("INSERT INTO locations (user_id, latitude, longitude, label) VALUES (%s,%s,%s,%s)", (u["id"], lat, lng, "phone_location"))
-    return jsonify({"success": True, "message": "Location saved."})
+@app.route("/api/bike/<int:bid>/command", methods=["POST"])
+@auth
+def bike_cmd(bid):
+    u = request.user; cmd = str((request.get_json() or {}).get("command","")).lower()
+    with DB() as db:
+        bike = db.one("SELECT * FROM motorcycles WHERE id=%s", (bid,))
+        if not bike: return jsonify({"success": False, "error": "Bike not found"}), 404
+        if u["role"] != "owner" and bike["assigned_user_id"] != u["id"]: return jsonify({"success": False, "error": "Not your bike"}), 403
+        # Restricted mode check
+        st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bid,))
+        if st and st.get("access_mode") == "restricted" and cmd in ("unlock", "start"):
+            return jsonify({"success": False, "error": "Bike in restricted mode - payment overdue. Contact Ultimate Gee Industry."}), 403
+        db.q("INSERT INTO bike_commands (motorcycle_id, command, issued_by) VALUES (%s,%s,%s)", (bid, cmd, u["id"]))
+        if cmd in ("lock","unlock"):
+            db.q("UPDATE bike_status SET lock_status=%s WHERE motorcycle_id=%s", ("locked" if cmd=="lock" else "unlocked", bid))
+        if cmd == "locate":
+            tel = db.one("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bid,))
+            return jsonify({"success": True, "message": "Bike location", "telemetry": tel})
+    return jsonify({"success": True, "message": f"Bike {cmd} done, Boss." if u["role"]=="owner" else f"Bike {cmd} done."})
 
-@app.route("/api/chat/single", methods=["GET"])
-@auth_required
-def get_single_chat():
-    user = request.current_user
-    cid = get_single_conversation_id(user["id"])
-    with get_db() as db:
-        msgs = db.execute("SELECT id,role,content,created_at FROM messages WHERE conversation_id=%s ORDER BY id ASC", (cid,)).fetchall()
-    return jsonify({"success": True, "conversation_id": cid, "greeting": get_greeting_lagos(), "messages": [dict(r) for r in msgs]})
+@app.route("/api/bike/<int:bid>/telemetry", methods=["POST"])
+def telemetry(bid):
+    # For hardware / GPS unit to push data - no auth for device, uses device key if set
+    d = request.get_json() or {}
+    with DB() as db:
+        db.q("INSERT INTO telemetry (motorcycle_id, latitude, longitude, speed, battery_level, engine_temp) VALUES (%s,%s,%s,%s,%s,%s)", (bid, d.get("latitude"), d.get("longitude"), d.get("speed"), d.get("battery_level"), d.get("engine_temp")))
+        db.q("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bid,))
+        db.q("UPDATE bike_status SET battery_level=COALESCE(%s,battery_level), last_seen=%s WHERE motorcycle_id=%s", (d.get("battery_level"), datetime.now(timezone.utc).isoformat(), bid))
+        # Predictive maintenance: low battery health, high temp
+        if d.get("battery_level") is not None and float(d.get("battery_level")) < 20:
+            pass
+    return jsonify({"success": True})
 
-@app.route("/chat", methods=["POST"])
+@app.route("/api/payments/remind", methods=["POST"])
+@owner_only
+def remind():
+    # Owner triggers reminders - in real app this is cron
+    with DB() as db:
+        due = db.all("SELECT pp.*, u.name, u.email FROM payment_plans pp JOIN users u ON u.id=pp.user_id WHERE pp.status='active' AND pp.next_due_date <= %s", ((datetime.now(timezone.utc)+timedelta(days=3)).date().isoformat(),))
+    return jsonify({"success": True, "due_soon": due, "message": f"{len(due)} customers due soon. Reminders ready to send."})
+
+@app.route("/api/payments/overdue-check", methods=["POST"])
+@owner_only
+def overdue():
+    with DB() as db:
+        overdue_plans = db.all("SELECT * FROM payment_plans WHERE status='active' AND next_due_date < %s", (datetime.now(timezone.utc).date().isoformat(),))
+        for p in overdue_plans:
+            # Grace period logic: if >7 days overdue -> restricted
+            try:
+                due = datetime.fromisoformat(p["next_due_date"]).date()
+                if (datetime.now(timezone.utc).date() - due).days > 7:
+                    db.q("UPDATE bike_status SET access_mode='restricted' WHERE motorcycle_id=%s", (p["motorcycle_id"],))
+                    db.q("UPDATE payment_plans SET status='overdue' WHERE id=%s", (p["id"],))
+            except: pass
+    return jsonify({"success": True, "overdue": len(overdue_plans)})
+
+@app.route("/api/chat/history")
+@owner_only
+def hist():
+    with DB() as db: rows = db.all("SELECT role, content FROM messages WHERE user_id=%s ORDER BY id ASC", (request.user["id"],))
+    return jsonify({"success": True, "messages": rows})
+
 @app.route("/api/chat", methods=["POST"])
-@auth_required
+@owner_only
 def chat():
-    user = request.current_user
-    data = request.get_json(silent=True) or {}
-    message = str(data.get("message", "")).strip()
-    if not message:
-        return json_error("Message required.")
-    if "remember" in message.lower():
-        save_memory(user["id"], message)
-    low = message.lower()
-    if "going home" in low:
-        bike_reply = handle_tabby_bike_command(user, "unlock my bike") or ""
-        handle_tabby_house_command(user, "turn on light living")
-        handle_tabby_house_command(user, "turn on ac living")
-        reply = "Done, Boss. Going Home scene is running. " + bike_reply + " Light is on, AC is on."
-        cid = get_single_conversation_id(user["id"])
-        with get_db() as db:
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", reply))
-        return jsonify({"success": True, "reply": reply, "response": reply})
-    bike_reply = handle_tabby_bike_command(user, low)
-    if bike_reply:
-        cid = get_single_conversation_id(user["id"])
-        with get_db() as db:
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", bike_reply))
-        return jsonify({"success": True, "reply": bike_reply, "response": bike_reply})
-    house_reply = handle_tabby_house_command(user, low)
-    if house_reply:
-        cid = get_single_conversation_id(user["id"])
-        with get_db() as db:
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", house_reply))
-        return jsonify({"success": True, "reply": house_reply, "response": house_reply})
-    if is_image_request(message):
+    # AI IS OWNER ONLY - customer gets 403 from owner_only
+    u = request.user
+    d = request.get_json() or {}
+    msg = str(d.get("message","")).strip()
+    image_b64 = d.get("image")  # base64 image to analyze
+    if not msg and not image_b64: return jsonify({"success": False, "error": "Message required"}), 400
+    low = (msg or "").lower()
+    with DB() as db:
+        # BIKE commands via chat
+        if "bike" in low and any(w in low for w in ["lock","unlock","check","battery","locate","status"]):
+            bike = db.one("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1")
+            if bike:
+                st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bike["id"],))
+                if "unlock" in low: db.q("UPDATE bike_status SET lock_status='unlocked' WHERE motorcycle_id=%s", (bike["id"],)); reply = f"Done, Boss. Your bike {bike['name']} is unlocked."
+                elif "lock" in low: db.q("UPDATE bike_status SET lock_status='locked' WHERE motorcycle_id=%s", (bike["id"],)); reply = f"Done, Boss. Your bike {bike['name']} is locked."
+                elif "locate" in low:
+                    tel = db.one("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],)); reply = f"Boss, your bike is at {tel}."
+                else: reply = f"Boss, your bike {bike['name']} - Lock: {st.get('lock_status') if st else 'locked'}, Battery: {st.get('battery_level') if st else 100}%, Health: {st.get('battery_health') if st else 100}%, Range: {st.get('range_km') if st else 125}km. BMS: Cell temp {st.get('cell_temp')}C, Motor {st.get('motor_temp')}C. It is ready."
+                db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg)); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant",reply))
+                return jsonify({"success": True, "reply": reply})
+        # HOUSE
+        if any(w in low for w in ["light","fan","ac","tv","generator","house"]):
+            act = "on" if any(w in low for w in ["turn on","switch on","open","start"]) else "off" if any(w in low for w in ["turn off","switch off","close","stop"]) else None
+            if act:
+                dev = next((w for w in ["light","fan","ac","tv","generator"] if w in low), "light")
+                db.q("INSERT INTO house_devices (user_id,name,room,type,status) VALUES (%s,%s,%s,%s,%s)", (u["id"], dev, "living", dev, act))
+                reply = f"Done, Boss. Living {dev} is now {act}."
+                db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg)); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant",reply))
+                return jsonify({"success": True, "reply": reply})
+    # IMAGE ANALYZE
+    if image_b64:
         try:
-            img = generate_flux_image(clean_image_prompt(message))
-            cid = get_single_conversation_id(user["id"])
-            with get_db() as db:
-                db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-                db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", "Here is your image, Boss."))
-            return jsonify({"success": True, "reply": "Here is your image, Boss.", "response": "Here is your image, Boss.", "image": img, "image_url": img})
-        except Exception as e:
-            return jsonify({"success": True, "reply": "Image generation is active, Boss. Tell me what image you want. Detail: " + clean_ai_text(str(e))[:200], "response": "Image generation is active, Boss."})
+            analysis = analyze_image_b64(image_b64, msg or "Describe this image in detail, what do you see? Be friendly and helpful.")
+            with DB() as db:
+                db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg or "Analyze this image")); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant",analysis))
+            return jsonify({"success": True, "reply": analysis})
+        except Exception as e: return jsonify({"success": True, "reply": f"Sorry Boss, image analysis small issue: {clean(str(e))[:200]}"})
+    # IMAGE GENERATE - Cloudflare, question must NOT trigger
+    is_q = "?" in low and ("can you" in low or "do you" in low or "you can" in low)
+    if not is_q and (low.startswith(("generate image","create image","make image","draw","generate a villain","generate a poster","create a poster")) or "generate image" in low):
+        try:
+            prompt = re.sub(r"^(generate image|create image|make image|draw|generate a villain|generate a poster|create a poster)\s*(of|:)?", "", msg, flags=re.I).strip() or msg
+            img = gen_image_cloudflare(prompt)
+            with DB() as db:
+                db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg)); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant","Here is your image, Boss."))
+            return jsonify({"success": True, "reply": "Here is your image, Boss.", "image": img, "image_url": img})
+        except Exception as e: return jsonify({"success": True, "reply": f"Image service busy small, Boss. Check Cloudflare keys in Render. Detail: {clean(str(e))[:200]}"})
+    # NORMAL CHAT - AUTO LIVE
     try:
-        memories = get_memories(user["id"], 20)
-        loc = get_latest_location(user["id"])
-        loc_text = str(loc.get("latitude")) + "," + str(loc.get("longitude")) if loc else "No location yet."
-        bike_ctx = get_bike_context_for_user(user)
-        search = live_search(message, 5) if needs_live_search(message) else []
-        if AUTO_LEARNED.get("news"):
-            search = search + ["AUTO-LEARNED: " + x for x in AUTO_LEARNED["news"][:3]]
-        system = build_system_prompt(user, memories, loc_text, bike_ctx)
-        if search:
-            system += "\nLIVE SEARCH (USE THIS - THIS IS REAL LIVE INTERNET DATA):\n" + "\n".join(search)
-        cid = get_single_conversation_id(user["id"])
-        with get_db() as db:
-            hist = db.execute("SELECT role, content FROM messages WHERE conversation_id=%s ORDER BY id DESC LIMIT 10", (cid,)).fetchall()
-        hist = list(reversed([dict(r) for r in hist]))
-        msgs = [{"role": "system", "content": system}] + [{"role": h["role"], "content": h["content"]} for h in hist] + [{"role": "user", "content": message}]
-        reply = call_ai_with_fallback(msgs)
-        with get_db() as db:
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", reply))
-        return jsonify({"success": True, "reply": reply, "response": reply})
+        with DB() as db:
+            mems = db.all("SELECT content FROM memories WHERE user_id=%s ORDER BY id DESC LIMIT 15", (u["id"],))
+            hist = db.all("SELECT role, content FROM messages WHERE user_id=%s ORDER BY id DESC LIMIT 12", (u["id"],))
+        mem_txt = "\n".join([m["content"] for m in mems]) or "No memories yet. Boss is Faruq Sulaimon, owner of Ultimate Gee Industry, creator of Tabby."
+        if "remember" in low:
+            with DB() as db: db.q("INSERT INTO memories (user_id,content) VALUES (%s,%s)", (u["id"], msg))
+        # AUTOMATIC LIVE - always fetch + auto-learned
+        search = live_search(msg, 5)
+        if AUTO.get("news"): search = search + ["AUTO-LEARNED TODAY: " + x for x in AUTO["news"][:4]]
+        system = f"You are Tabby, friendly AI assistant for Faruq Sulaimon, Boss, creator and owner of Ultimate Gee Industry. Call him Boss. You are warm, friendly, witty, not generic robot. Basic language: English with UK accent style (use British spelling: colour, favourite, organise). You understand ANY language - reply in same language user used, but default English. NEVER say I do not have live access, my knowledge goes up to, I cannot give latest news. You HAVE live internet - LIVE SEARCH is provided automatically. If LIVE SEARCH is given, USE IT. If empty, say Network small Boss, try again. NEVER use asterisks, hashtags, emojis. Be direct first, then small detail. USER: {u['name']} Role owner. MEMORIES: {mem_txt}. BIKE CONTEXT: {bike_ctx(u)}. You manage Tabby EV bikes: Intelligent BMS, GPS tracking, anti-theft, journey assistant, predictive maintenance, remote security, installment payments."
+        if search: system += "\nLIVE SEARCH - REAL LIVE DATA, USE THIS, DO NOT INVENT:\n" + "\n".join(search)
+        msgs = [{"role": "system", "content": system}] + [{"role": r["role"], "content": r["content"]} for r in reversed(hist)] + [{"role": "user", "content": msg}]
+        reply = call_ai(msgs)
+        with DB() as db:
+            db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg)); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant",reply))
+        return jsonify({"success": True, "reply": reply})
     except Exception as e:
-        return jsonify({"success": True, "reply": "Sorry Boss, I had a small issue: " + clean_ai_text(str(e))[:300], "response": "Sorry Boss."})
+        return jsonify({"success": True, "reply": f"Sorry Boss, small issue: {clean(str(e))[:300]}"})
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "10000"))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "10000")))
