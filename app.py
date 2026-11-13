@@ -1,4 +1,4 @@
-import os, re, json, time, base64, logging, urllib.parse
+import os, re, json, time, base64, logging, urllib.parse, urllib.request, xml.etree.ElementTree as ET, threading
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 import requests
@@ -46,6 +46,9 @@ AI_MODELS = list(dict.fromkeys([OPENROUTER_MODEL, "openrouter/free"]))
 PHONE_PERMISSIONS = ["send_sms", "send_email", "make_call", "read_contacts", "read_photos", "open_mail", "open_maps", "share_location"]
 SENSITIVE_KEYWORDS = {"send_sms": ["send a message", "send message", "text ", "send sms", "whatsapp"],"send_email": ["send an email", "send email", "send mail", "open my mail", "check my mail", "check my email"],"make_call": ["call ", "phone ", "make a call"],"read_contacts": ["my contacts", "find contact", "contact of"],"read_photos": ["my photos", "my gallery", "open my photos"],"open_mail": ["open gmail", "open mail"],"open_maps": ["open maps", "navigate"]}
 IMAGE_TRIGGERS = ["generate image", "create image", "make image", "draw an image", "generate a picture", "create a picture", "midjourney", "design me", "design a", "generate an image", "image of", "generate image:", "generate a villain", "generate a character", "create a character", "draw me", "make me a", "generate a", "create a villain", "draw a villain", "2d", "3d character", "concept art", "character design", "generate villain", "make a villain", "generate a poster", "create a poster", "draw a poster"]
+
+# ===== UPGRADE: AUTO-STUDY STORE =====
+AUTO_LEARNED = {"last": "", "news": [], "facts": []}
 
 def clean_ai_text(t):
     if not t: return t
@@ -146,6 +149,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS tabby_logs (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, device TEXT, command TEXT, action TEXT, result TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), FOREIGN KEY(user_id) REFERENCES users(id));
             CREATE TABLE IF NOT EXISTS phone_permissions (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, permission TEXT NOT NULL, granted BOOLEAN DEFAULT FALSE, granted_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(user_id, permission), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
             CREATE TABLE IF NOT EXISTS phone_actions (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, action TEXT NOT NULL, target TEXT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW(), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
+            CREATE TABLE IF NOT EXISTS auto_learned (id SERIAL PRIMARY KEY, topic TEXT, content TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
             CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id);
             """)
             if OWNER_EMAIL:
@@ -238,6 +242,8 @@ def clean_image_prompt(message):
     ip = _strip_fillers(ip)
     if len(ip) < 3: ip = _strip_fillers(message)
     return ip
+
+# ===== AI CALLS =====
 def call_openrouter(messages, temperature=0.7, max_tokens=1800):
     if not OPENROUTER_API_KEY: raise RuntimeError("OPENROUTER_API_KEY not configured.")
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json", "HTTP-Referer": os.getenv("APP_URL", "https://tabby-ai.onrender.com"), "X-Title": "Tabby AI"}
@@ -291,25 +297,79 @@ def call_ai_with_fallback(messages, temperature=0.7, max_tokens=1800):
         try: return fn(messages, temperature=temperature, max_tokens=max_tokens)
         except Exception as e: errors.append(f"{name}: {e}")
     raise RuntimeError(" | ".join(errors)[:1000])
+
 def build_system_prompt(user, memories, location_text="", bike_context="", phone_perms=None):
     mem = "\n".join(f"- {clean_ai_text(m['content'])}" for m in memories) or "No saved memories yet."
     perms_text = ", ".join(phone_perms or []) or "No phone permissions granted yet."
     role_text = "OWNER - Full access to house, all bikes, all customers." if user["role"]=="owner" else "CUSTOMER - Limited access: only own bike, own payments, own location, chat. Cannot see house, other bikes, other customers."
-    return f"You are Tabby, assistant for Faruq Sulaimon. Faruq Sulaimon is your Boss, creator and owner. Always call him Boss. If anyone asks who created you, say Faruq Sulaimon is my creator, owner and Boss. USER ROLE: {role_text} LANGUAGE: Default clean English. Reply in SAME language user used. Only use Pidgin if user asks or speaks Pidgin. NEVER say: I go talk now, I dey here, Wetin you want, E dey ready, Don unlock. Say instead: I am listening, I am here, What do you want, It is ready, It is unlocked. PHONE: Only access phone when user explicitly orders AND approves. Granted: {perms_text} IMAGE RULES: NEVER say image generator is down or cannot generate images. System handles it. PERSONALITY: Helpful, friendly, relaxed, respectful. FORMATTING: NEVER use **, __, #, emojis. CURRENT USER: {user['name']} Role: {user['role']} SAVED MEMORIES: {mem} LIVE LOCATION: {location_text} BIKE CONTEXT: {bike_context} Never reveal another user's bike, location, payment or memories. Owner sees all bikes, customer sees only own. TABBY EV BRAND: Tabby Automotive and Tabby Ride. Always say motorbike, not motorcycle."
-LIVE_KEYWORDS = ("latest","today","current","currently","right now","this week","news","weather","price","2026","2027","live score","breaking","naira","dollar","football","trending","fuel","lagos traffic")
+    auto = "\n".join(AUTO_LEARNED.get("news", [])[:5])
+    return f"""You are Tabby, assistant for Faruq Sulaimon. Faruq Sulaimon is your Boss, creator and owner. Always call him Boss. If anyone asks who created you, say Faruq Sulaimon is my creator, owner and Boss.
+CRITICAL LIVE RULE: You HAVE live internet access via LIVE SEARCH. If LIVE SEARCH results are provided, you MUST use them. NEVER say "I don't have live access", "I cannot give latest news", "my knowledge goes up to...", "as an AI". If LIVE SEARCH is empty, say "Network small Boss, try again" - NEVER give the AI disclaimer.
+USER ROLE: {role_text}
+LANGUAGE: Default clean English. Reply in SAME language user used. Only use Pidgin if user asks or speaks Pidgin.
+NEVER say: I go talk now, I dey here, Wetin you want, E dey ready, Don unlock. Say instead: I am listening, I am here, What do you want, It is ready, It is unlocked.
+PHONE: Only access phone when user explicitly orders AND approves. Granted: {perms_text}
+IMAGE RULES: NEVER say image generator is down or cannot generate images. System handles it.
+PERSONALITY: Helpful, friendly, relaxed, respectful, direct. Answer direct first, then small detail. Never repeat like a parrot. Never give long explanation unless Boss asks.
+FORMATTING: NEVER use **, __, #, emojis.
+CURRENT USER: {user['name']} Role: {user['role']}
+SAVED MEMORIES: {mem}
+LIVE LOCATION: {location_text}
+BIKE CONTEXT: {bike_context}
+AUTO-LEARNED TODAY: {auto}
+Never reveal another user's bike, location, payment or memories. Owner sees all bikes, customer sees only own.
+TABBY EV BRAND: Tabby Automotive and Tabby Ride. Always say motorbike, not motorcycle."""
+
+# ===== UPGRADED LIVE SEARCH - 3 BACKUPS =====
+LIVE_KEYWORDS = ("latest","today","current","currently","right now","this week","news","weather","price","2026","2027","live score","breaking","naira","dollar","football","trending","fuel","lagos traffic","rate","how much","who is","what is","bitcoin","crypto","election","update","happening")
 def needs_live_search(message):
     text = re.sub(r"\s+", " ", str(message or "").lower()).strip()
-    if any(t in text for t in ["write me","rewrite","translate","summarize this","make a poem","create a story"]): return False
-    return any(t in text for t in LIVE_KEYWORDS)
-def live_search(query, max_results=5):
-    if not LIVE_SEARCH_ENABLED or DDGS is None: return []
+    if any(t in text for t in ["write me","rewrite","translate this","summarize this","make a poem","create a story"]): return False
+    if any(t in text for t in LIVE_KEYWORDS): return True
+    if text.startswith(("what","who","how","why","when","where","tell me")): return True
+    return False
+
+def fetch_news_rss(query, limit=5):
     try:
+        q = urllib.parse.quote(query)
+        url = f"https://news.google.com/rss/search?q={q}&hl=en-NG&gl=NG&ceid=NG:en"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            root = ET.fromstring(resp.read())
         out = []
-        with DDGS() as ddgs:
-            for r in ddgs.text(query, max_results=max_results):
-                if r.get("title") or r.get("body"): out.append(f"Title: {clean_ai_text(r.get('title',''))}\nInfo: {clean_ai_text(r.get('body',''))}")
+        for item in root.findall(".//item")[:limit]:
+            title = item.findtext("title") or ""
+            link = item.findtext("link") or ""
+            pub = item.findtext("pubDate") or ""
+            out.append(f"Title: {title}\nInfo: Published {pub} | {link}")
         return out
-    except Exception: return []
+    except Exception as e:
+        print(f"RSS fail {e}"); return []
+
+def live_search(query, max_results=5):
+    if not LIVE_SEARCH_ENABLED: return []
+    out = []
+    # 1. DDGS
+    if DDGS is not None:
+        try:
+            with DDGS() as ddgs:
+                for r in ddgs.text(query, max_results=max_results):
+                    if r.get("title") or r.get("body"): out.append(f"Title: {clean_ai_text(r.get('title',''))}\nInfo: {clean_ai_text(r.get('body',''))}")
+        except Exception as e: print(f"DDGS fail {e}")
+    # 2. RSS Backup - always works on Render
+    if not out:
+        out = fetch_news_rss(query, max_results)
+    # 3. Wikipedia Backup
+    if not out:
+        try:
+            q = urllib.parse.quote(query)
+            req = urllib.request.Request(f"https://en.wikipedia.org/api/rest_v1/page/summary/{q}", headers={"User-Agent": "Tabby/2.0"})
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                d = json.loads(resp.read())
+                if "extract" in d: out.append(f"Title: {d.get('title')}\nInfo: {d['extract'][:900]}")
+        except: pass
+    return out
+
 def save_memory(uid, content):
     content = clean_ai_text(re.sub(r"\s+", " ", str(content)).strip())
     if not content or len(content) > 500: return False
@@ -318,6 +378,31 @@ def save_memory(uid, content):
         if db.execute("SELECT id FROM memories WHERE user_id=%s AND lower(content)=lower(%s) LIMIT 1", (uid, content)).fetchone(): return False
         db.execute("INSERT INTO memories (user_id, content) VALUES (%s,%s)", (uid, content))
     return True
+
+# ===== AUTO STUDY THREAD =====
+def auto_study_loop():
+    topics = ["Nigeria news", "Naira to Dollar rate today", "Bitcoin price today", "Afrobeats music news", "Lagos news", "Premier League news", "AI news today", "Fuel price Nigeria"]
+    while True:
+        try:
+            print("Tabby auto-studying...")
+            all_news = []
+            for t in topics:
+                res = live_search(t, 2)
+                if res: all_news.extend(res)
+                time.sleep(2)
+            AUTO_LEARNED["news"] = all_news
+            AUTO_LEARNED["last"] = datetime.now(timezone.utc).isoformat()
+            # Save to DB too
+            try:
+                with get_db() as db:
+                    for item in all_news[:8]:
+                        db.execute("INSERT INTO auto_learned (topic, content) VALUES (%s,%s)", ("auto", item[:1000]))
+            except Exception as e: print(f"Auto DB save fail {e}")
+            print(f"Auto-study done: {len(all_news)} facts")
+        except Exception as e: print(f"Auto-study error {e}")
+        time.sleep(1800)
+threading.Thread(target=auto_study_loop, daemon=True).start()
+
 def enhance_image_prompt(prompt):
     p = re.sub(r"\s+", " ", str(prompt).strip())[:900]
     low = p.lower()
@@ -348,7 +433,6 @@ def generate_via_openai_image(prompt):
         if img.status_code == 200: return f"data:image/jpeg;base64,{base64.b64encode(img.content).decode()}"
     raise RuntimeError("OpenAI image no image")
 def generate_via_goapi_midjourney(prompt):
-    # Midjourney $10 Basic via GoAPI - polling
     if not GOAPI_API_KEY: raise RuntimeError("No GOAPI_API_KEY")
     r = requests.post("https://api.goapi.ai/api/v1/task", headers={"X-API-Key": GOAPI_API_KEY, "Content-Type": "application/json"}, json={"model": "midjourney", "task_type": "imagine", "input": {"prompt": enhance_image_prompt(prompt), "process_mode": "relax", "skip_prompt_check": False}}, timeout=30)
     if r.status_code not in (200,201): raise RuntimeError(f"GoAPI Midjourney failed: {r.text[:500]}")
@@ -439,18 +523,18 @@ def handle_tabby_house_command(user, low_msg):
     if device in ("door","house"): return f"Done, Boss. House {device} is now {action}."
     return f"Done, Boss. {room} {device} is now {action}."
 
-# ===== WORKSPACE UI - OWNER + CUSTOMER ALVA =====
+# ===== WORKSPACE UI - SAME AS BEFORE, WITH LIVE BUTTONS =====
 WORKSPACE_HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tabby AI - Automotive Intelligence</title><style>*{box-sizing:border-box}body{margin:0;background:#070b16;color:#e6edff;font:15px system-ui,sans-serif}button,input,textarea{font:inherit}.layout{display:flex;min-height:100vh}.side{width:260px;background:#0a1122;border-right:1px solid #1b2742;padding:18px;display:flex;flex-direction:column;gap:18px;flex-shrink:0}.logo{display:flex;gap:10px;align-items:center}.logo-mark{width:38px;height:38px;border-radius:10px;background:#2b6cff;display:grid;place-items:center;font-weight:900}.nav{display:grid;gap:6px}.nav button{text-align:left;background:transparent;border:0;color:#aab8d6;padding:11px 12px;border-radius:10px;cursor:pointer}.nav button.active{background:#1a2a4d;color:#fff}.main{flex:1;display:flex;flex-direction:column;min-width:0}.top{padding:16px 22px;border-bottom:1px solid #1b2742;display:flex;justify-content:space-between;align-items:center}.chat{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px;max-width:900px;width:100%;margin:0 auto}.msg{max-width:92%;padding:13px 15px;border-radius:14px;line-height:1.55;white-space:pre-wrap}.msg.user{align-self:flex-end;background:#2b4aa5}.msg.assistant{align-self:flex-start;background:#141f38;border:1px solid #1e2d4d}.msg img{width:100%;max-width:620px;border-radius:12px;margin-top:10px;display:block}.composer{padding:14px 20px 10px;max-width:900px;width:100%;margin:0 auto}.composer-box{display:flex;gap:10px;background:#0f1a30;border:1px solid #26365e;border-radius:14px;padding:8px}.composer-box textarea{flex:1;background:transparent;border:0;color:#fff;resize:none;min-height:44px;padding:10px;outline:none}.composer-box button{background:#2b6cff;color:#fff;border:0;border-radius:10px;padding:0 16px;cursor:pointer}.tools{display:flex;gap:8px;flex-wrap:wrap;padding:8px 2px 14px}.tools button{background:#1a2a4d;color:#cbd6ec;border:1px solid #26365e;border-radius:20px;padding:7px 11px;font-size:12px;cursor:pointer}.auth{max-width:420px;margin:60px auto;padding:24px;background:#0f1a30;border:1px solid #26365e;border-radius:16px;display:grid;gap:12px;width:92%}.auth input{padding:13px;border-radius:10px;border:1px solid #34435f;background:#0b1427;color:#fff}.auth button{background:#2b6cff;color:#fff;border:0;padding:13px;border-radius:10px;cursor:pointer;font-weight:700}.tabs{display:flex;gap:8px}.tabs button{flex:1;background:#1c2942}.tabs button.active{background:#2b6cff}.pill{font-size:11px;padding:5px 9px;border-radius:20px;background:#1a2a4d}.pill.owner{background:#e11d48}.pill.online{background:#0f3d2a;color:#7ee2a8}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px}.card{background:#101a30;border:1px solid #1e2d4d;border-radius:14px;padding:16px}.card small{color:#8ea0c3;letter-spacing:.5px}.card b{font-size:28px;display:block;margin-top:8px}
 #customerWrap{display:none;background:#000;min-height:100vh}.alva{max-width:430px;margin:0 auto;background:#0a0f0a;min-height:100vh;padding-bottom:80px}.alva-top{padding:18px;display:flex;justify-content:space-between;align-items:center}.alva-bike{background:linear-gradient(180deg,#101a12,#050705);border:1px solid #1e3a22;border-radius:18px;margin:0 14px;padding:16px;text-align:center}.alva-bike img{width:100%;border-radius:12px;max-height:220px;object-fit:cover}.alva-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}.alva-stat{background:#111a12;border:1px solid #1e3a22;border-radius:14px;padding:14px}.alva-stat b{font-size:22px;color:#2ee86b}.alva-btns{display:flex;gap:10px;justify-content:center;padding:6px}.alva-btns button{width:64px;height:64px;border-radius:50%;border:0;cursor:pointer;font-size:20px}.alva-map{margin:14px;border-radius:16px;overflow:hidden;border:1px solid #1e3a22}.alva-map iframe{width:100%;height:320px;border:0}.trip-card{margin:14px;background:#0e1a10;border:1px solid #1e3a22;border-radius:16px;padding:16px}.trip-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.trip-grid div{background:#0a120b;padding:10px;border-radius:10px}.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#0b120b;border-top:1px solid #1e3a22;display:flex;justify-content:space-around;padding:10px}.bottom-nav button{background:none;border:0;color:#8aa294;cursor:pointer;padding:8px}.bottom-nav button.active{color:#2ee86b}.green-btn{background:#2ee86b;color:#000;border:0;padding:13px;border-radius:10px;width:100%;font-weight:800;cursor:pointer}
 @media(max-width:760px){.side{display:none}.cards{grid-template-columns:1fr 1fr}}
 </style></head><body>
-<div id="authWrap"><div class="auth"><div style="text-align:center"><div style="font-size:28px;font-weight:900">TABBY</div><div style="color:#8ea0c3;font-size:12px">AUTOMOTIVE INTELLIGENCE</div></div><div class="tabs"><button id="tabSignin" class="active" type="button">Sign In</button><button id="tabSignup" type="button">Create Account</button></div><div id="signinForm" style="display:grid;gap:12px"><input id="email" type="email" placeholder="Email address"><input id="password" type="password" placeholder="Password"><button id="login" type="button">Sign in</button></div><div id="signupForm" style="display:none;gap:12px"><input id="regName" placeholder="Full name"><input id="regEmail" type="email" placeholder="Email address"><input id="regPassword" type="password" placeholder="Password (8+ chars)"><button id="registerBtn" type="button">Create Account</button></div><div id="status"></div></div></div>
+<div id="authWrap"><div class="auth"><div style="text-align:center"><div style="font-size:28px;font-weight:900">TABBY</div><div style="color:#8ea0c3;font-size:12px">AUTOMOTIVE INTELLIGENCE v16 - LIVE</div></div><div class="tabs"><button id="tabSignin" class="active" type="button">Sign In</button><button id="tabSignup" type="button">Create Account</button></div><div id="signinForm" style="display:grid;gap:12px"><input id="email" type="email" placeholder="Email address"><input id="password" type="password" placeholder="Password"><button id="login" type="button">Sign in</button></div><div id="signupForm" style="display:none;gap:12px"><input id="regName" placeholder="Full name"><input id="regEmail" type="email" placeholder="Email address"><input id="regPassword" type="password" placeholder="Password (8+ chars)"><button id="registerBtn" type="button">Create Account</button></div><div id="status"></div></div></div>
 <div id="appWrap" hidden><div class="layout"><aside class="side"><div class="logo"><div class="logo-mark">T</div><div><b>TABBY</b><small style="color:#8ea0c3">AI & AUTOMOTIVE INTELLIGENCE</small></div></div><div><small style="color:#6f7f9e">MAIN MENU</small><div class="nav"><button data-view="overview" class="active" type="button">Overview</button><button data-view="chat" type="button">✦ Tabby AI</button><button data-view="auto" type="button">🚗 Automotive Dashboard</button><button data-view="ride" type="button">⚡ Tabby Ride</button></div></div><div><small style="color:#6f7f9e">ACCOUNT</small><div class="nav"><button type="button">👤 Account & Login</button><button type="button">🧠 Saved Memories</button><button type="button">⚙️ Settings</button></div></div><div style="margin-top:auto;color:#6f7f9e;font-size:11px">⚡ ULTIMATE GEE INDUSTRY<br>Signed in as <span id="userLine"></span></div><button id="btnLogout" style="background:#1a2a4d;color:#fff;border:0;padding:10px;border-radius:10px;cursor:pointer" type="button">Log Out</button></aside>
-<main class="main"><div class="top"><div><h2 id="viewTitle" style="margin:0">Overview</h2><p id="viewSub" style="color:#8ea0c3">Your personal AI and automotive intelligence platform.</p></div><div style="display:flex;gap:8px"><span class="pill" id="namePill"></span><span class="pill online">● SYSTEM ONLINE</span></div></div>
+<main class="main"><div class="top"><div><h2 id="viewTitle" style="margin:0">Overview</h2><p id="viewSub" style="color:#8ea0c3">Your personal AI and automotive intelligence platform.</p></div><div style="display:flex;gap:8px"><span class="pill" id="namePill"></span><span class="pill online">● LIVE + AUTO-LEARNING</span></div></div>
 <div id="overviewView"><div class="cards"><div class="card"><small>MOTORCYCLES IN SYSTEM</small><b id="statBikes">0</b><span style="color:#8ea0c3;font-size:12px">Registered fleet</span></div><div class="card"><small>REGISTERED ACCOUNTS</small><b id="statAccounts">1</b><span style="color:#8ea0c3;font-size:12px">Owner and customer accounts</span></div><div class="card"><small>AUTOMOTIVE CONNECTION</small><b id="statConn" style="font-size:16px">awaiting connection</b><span style="color:#8ea0c3;font-size:12px">Hardware integration status</span></div><div class="card"><small>YOUR ROLE</small><b id="statRole" style="font-size:16px">OWNER</b><span style="color:#8ea0c3;font-size:12px">Full access</span></div></div><div style="padding:0 18px"><div class="card"><small>OWNER WORKSPACE</small><p style="color:#8ea0c3">Manage Tabby AI, motorcycle records, customer assignments and fleet information.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="showView('chat')" style="background:#2b6cff;color:#fff;border:0;padding:10px 14px;border-radius:20px;cursor:pointer">Open Tabby AI</button><button onclick="showView('auto')" style="background:#1a2a4d;color:#fff;border:0;padding:10px 14px;border-radius:20px;cursor:pointer">Manage fleet</button><button onclick="showView('ride')" style="background:#1a2a4d;color:#fff;border:0;padding:10px 14px;border-radius:20px;cursor:pointer">Manage memories</button></div></div></div></div>
 <div id="autoView" style="display:none"><div class="cards"><div class="card"><small>REGISTERED MOTORCYCLES</small><b id="autoBikes">0</b><span style="color:#8ea0c3;font-size:12px">Vehicles on your account</span></div><div class="card"><small>SELECTED MOTORCYCLE</small><b id="autoSelected" style="font-size:16px">None</b><span style="color:#8ea0c3;font-size:12px">Currently selected</span></div><div class="card"><small>LATEST BATTERY READING</small><b id="autoBatt">--</b><span style="color:#8ea0c3;font-size:12px">Requires connected telemetry</span></div><div class="card"><small>SYSTEM CONNECTION</small><b style="font-size:16px">API Ready</b><span style="color:#8ea0c3;font-size:12px">Hardware connection not yet assumed</span></div></div><div style="padding:0 18px 18px"><h3>Your Motorcycles</h3><div id="ownerBikeList" class="card">Loading your motorcycles...</div><h3 style="margin-top:18px">Motorcycle Dashboard</h3><div class="card"><p style="color:#8ea0c3">Select a motorcycle to view its readings.</p><div class="cards" style="padding:0"><div class="card"><small>🔋 BATTERY</small><b id="dashBatt">--</b></div><div class="card"><small>📍 ESTIMATED RANGE</small><b id="dashRange">--</b></div><div class="card"><small>⚡ SPEED</small><b id="dashSpeed">--</b></div><div class="card"><small>🔧 DIAGNOSTICS</small><b id="dashDiag">--</b></div></div></div></div></div>
 <div id="rideView" style="display:none"><div class="cards"><div class="card"><small>MY ACCOUNT</small><b id="rideName">Owner</b><span style="color:#8ea0c3;font-size:12px">Owner account - sees all</span></div><div class="card"><small>MY MOTORCYCLES</small><b id="rideBikes">0</b><span style="color:#8ea0c3;font-size:12px">Registered to your account</span></div><div class="card"><small>PAYMENT RECORDS</small><b id="ridePayments">0</b><span style="color:#8ea0c3;font-size:12px">Records available</span></div><div class="card"><small>SECURITY</small><b style="font-size:16px">Account</b><span style="color:#8ea0c3;font-size:12px">Sign-in protected</span></div></div><div style="padding:0 18px 18px"><div class="card"><b>Owner - Customer Motorcycle Access</b><p style="color:#8ea0c3">As owner you see ALL customers and ALL bikes.</p><div id="ownerCustomerList">Loading customers...</div></div></div></div>
-<div id="chatView" style="display:none;flex-direction:column;flex:1"><div id="messages" class="chat"><div style="color:#8ea0c3;text-align:center">You are connected. Send Tabby a message to begin.</div></div><div id="voiceStatus" style="text-align:center;color:#7ee2a8"></div><div class="composer"><form id="composerForm" class="composer-box"><textarea id="message" placeholder="Message Tabby..."></textarea><button id="send" type="submit">➤</button></form><div class="tools"><button id="btnVoiceNote" type="button">🎤 Voice Input</button><button id="btnLiveCall" type="button">📞 Live Call</button><button id="btnImage" type="button">🖼️ Generate Image</button><button id="btnLoc" type="button">📍 Share My Location</button><button id="btnMyBike" type="button">🏍️ My Bike</button><button id="btnPerm" type="button">📱 Phone Permissions</button></div></div></div>
+<div id="chatView" style="display:none;flex-direction:column;flex:1"><div id="messages" class="chat"><div style="color:#8ea0c3;text-align:center">You are connected. Send Tabby a message to begin.</div></div><div id="voiceStatus" style="text-align:center;color:#7ee2a8"></div><div class="composer"><form id="composerForm" class="composer-box"><textarea id="message" placeholder="Message Tabby..."></textarea><button id="send" type="submit">➤</button></form><div class="tools"><button id="btnVoiceNote" type="button">🎤 Voice Input</button><button id="btnLiveCall" type="button">📞 Live Call</button><button id="btnImage" type="button">🖼️ Generate Image</button><button id="btnLoc" type="button">📍 Share My Location</button><button id="btnMyBike" type="button">🏍️ My Bike</button><button id="btnPerm" type="button">📱 Phone Permissions</button><button onclick="sendMsg('Tell me latest news in Nigeria')" type="button">📰 Live News</button><button onclick="sendMsg('What is Naira to Dollar rate today?')" type="button">💵 Naira Rate</button></div></div></div>
 </main></div></div>
 <div id="customerWrap"><div class="alva"><div class="alva-top"><div><div style="color:#8aa294;font-size:12px">Hello,</div><b id="custName">Customer</b><div style="color:#8aa294;font-size:12px">Welcome back</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:900;color:#2ee86b">⚡ ALVA</div><div style="color:#8aa294;font-size:11px">Tabby Ride</div></div></div>
 <div id="custHome"><div class="alva-bike"><div style="display:flex;justify-content:space-between"><span style="color:#8aa294;font-size:12px" id="custBikeName">Tabby Bike</span><span style="background:#2ee86b;color:#000;padding:4px 8px;border-radius:20px;font-size:11px;font-weight:800">App connected</span></div><img id="custBikeImg" src="https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80" alt="My Bike"><div style="display:flex;justify-content:space-between;margin-top:10px"><span style="font-size:22px;font-weight:900" id="custRange">125 km</span><span style="font-size:22px;font-weight:900;color:#2ee86b" id="custBatt">100%</span></div><div style="height:8px;background:#1a2a1a;border-radius:10px;overflow:hidden"><div id="custBattBar" style="width:100%;height:100%;background:#2ee86b"></div></div><div style="color:#8aa294;font-size:12px;margin-top:6px">Range • Battery • Please turn off using App</div></div><div class="alva-stats"><div class="alva-stat"><small style="color:#8aa294">TOTAL TRIP</small><b id="custTrips">0</b></div><div class="alva-stat"><small style="color:#8aa294">TOTAL DISTANCE</small><b id="custDist">0 km</b></div></div><div class="alva-btns"><button style="background:#1a2a1a;color:#fff" onclick="custTab('home')">🚲<br><span style="font-size:10px">Trip</span></button><button style="background:#2ee86b" onclick="sendCustMsg('Unlock my bike')">⚡</button><button style="background:#1a2a1a;color:#fff" onclick="custTab('home')">🆘<br><span style="font-size:10px">Emergency</span></button></div><div style="padding:14px"><button class="green-btn" onclick="sendCustMsg('Check my bike')">CHECK MY BIKE →</button></div><div id="custChat" style="padding:0 14px;display:grid;gap:10px"></div></div>
@@ -464,247 +548,4 @@ function custLogout(){localStorage.removeItem("tabby_token");location.reload()}
 function showView(v){["overviewView","autoView","rideView","chatView"].forEach(id=>$(id).style.display="none");document.querySelectorAll("[data-view]").forEach(b=>b.classList.remove("active"));if(v==="overview"){$("overviewView").style.display="block";$("viewTitle").textContent="Overview";$("viewSub").textContent="Your personal AI and automotive intelligence platform."}if(v==="chat"){$("chatView").style.display="flex";$("viewTitle").textContent="Tabby AI";$("viewSub").textContent="Your private AI workspace. One long chat."}if(v==="auto"){$("autoView").style.display="block";$("viewTitle").textContent="Tabby Automotive";$("viewSub").textContent="Your motorcycle intelligence and management centre.";loadOwnerData()}if(v==="ride"){$("rideView").style.display="block";$("viewTitle").textContent="Tabby Ride";$("viewSub").textContent="Owner view - all customers, all motorcycles.";loadOwnerData()}document.querySelector(`[data-view="${v}"]`)?.classList.add("active")}
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
 async function api(path,opt={}){const h={...(opt.headers||{})};if(token)h.Authorization="Bearer "+token;if(opt.body)h["Content-Type"]="application/json";const r=await fetch(path,{...opt,headers:h});const d=await r.json().catch(()=>({error:"Server error"}));if(!r.ok)throw new Error(d.error||"Request failed");return d}
-async function loadOwnerData(){try{const d=await api("/api/owner/dashboard");$("statBikes").textContent=d.total_bikes;$("statAccounts").textContent=d.total_accounts;$("autoBikes").textContent=d.total_bikes;$("rideBikes").textContent=d.total_bikes;$("ridePayments").textContent=d.total_payments;if(d.bikes?.length){const b=d.bikes[0];$("autoSelected").textContent=b.name;$("autoBatt").textContent=(b.battery_health||100)+"%";$("dashBatt").textContent=(b.battery_health||100)+"%";$("dashRange").textContent=(b.range_km||0)+" km";$("dashSpeed").textContent=(b.speed||0)+" km/h";$("dashDiag").textContent=b.lock_status||"locked";$("ownerBikeList").innerHTML=d.bikes.map(x=>`<div style="padding:10px;border-bottom:1px solid #1e2d4d"><b>${x.name}</b> - ${x.model||""} - Battery ${x.battery_health||100}% - ${x.lock_status} - Assigned to ${x.assigned_name||"No one"}</div>`).join("")}else{$("ownerBikeList").innerHTML="No motorcycles yet."}if(d.customers?.length){$("ownerCustomerList").innerHTML=d.customers.map(c=>`<div style="padding:10px;border-bottom:1px solid #1e2d4d"><b>${c.name}</b> (${c.email}) - Bike: ${c.bike_name||"None"}</div>`).join("")}else{$("ownerCustomerList").innerHTML="No customers yet."}}catch(e){if($("ownerBikeList"))$("ownerBikeList").textContent="Failed to load: "+e.message}}
-async function loadCustomerData(){try{const d=await api("/api/customer/bike");$("custName").textContent=currentUser.name;$("custBikeName").textContent=d.bike?.name||"Tabby Bike";$("custRange").textContent=(d.bike?.range_km||125)+" km";$("custBatt").textContent=(d.bike?.battery_health||100)+"%";$("custBattBar").style.width=(d.bike?.battery_health||100)+"%";$("custTrips").textContent=d.trip?.total_trip||0;$("custDist").textContent=(d.trip?.total_distance||0)+" km";$("tripTrips").textContent=(d.trip?.total_trip||0)+" Trips";$("tripDist").textContent=(d.trip?.total_distance||0)+" km";$("tripCO2").textContent=(d.trip?.co2_saved||0)+" kg";$("tripDate").textContent=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});if(d.bike?.latitude){$("custMapFrame").src=`https://www.google.com/maps?q=${d.bike.latitude},${d.bike.longitude}&output=embed`}}catch(e){console.log(e)}}
-function addMsg(role,text,img){const box=$("messages");const d=document.createElement("div");d.className="msg "+role;d.textContent=text||"";if(img){const im=document.createElement("img");im.src=img;box.appendChild(d);d.appendChild(im)}else box.appendChild(d);box.scrollTop=box.scrollHeight}
-function addCustMsg(role,text){const box=$("custChat");const d=document.createElement("div");d.style.cssText="background:"+(role==="user"?"#2b4aa5":"#141f38")+";padding:10px;border-radius:12px";d.textContent=text;box.appendChild(d)}
-async function sendCustMsg(text){addCustMsg("user",text);try{const d=await api("/api/chat",{method:"POST",body:JSON.stringify({message:text})});addCustMsg("assistant",d.reply||"Done.");loadCustomerData()}catch(e){addCustMsg("assistant","Sorry: "+e.message)}}
-function setHomeLoc(){if(!navigator.geolocation)return alert("Allow location");navigator.geolocation.getCurrentPosition(async p=>{await api("/api/location",{method:"POST",body:JSON.stringify({latitude:p.coords.latitude,longitude:p.coords.longitude})});alert("Home location saved.");loadCustomerData()})}
-$("tabSignin").addEventListener("click",()=>{$("tabSignin").classList.add("active");$("tabSignup").classList.remove("active");$("signinForm").style.display="grid";$("signupForm").style.display="none"});
-$("tabSignup").addEventListener("click",()=>{$("tabSignup").classList.add("active");$("tabSignin").classList.remove("active");$("signinForm").style.display="none";$("signupForm").style.display="grid"});
-$("login").addEventListener("click",async()=>{$("status").textContent="Signing in...";try{const d=await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value.trim(),password:$("password").value})});token=d.token;currentUser=d.user;localStorage.setItem("tabby_token",token);afterLogin()}catch(e){$("status").textContent=e.message}});
-$("registerBtn").addEventListener("click",async()=>{try{const d=await api("/api/register",{method:"POST",body:JSON.stringify({name:$("regName").value.trim(),email:$("regEmail").value.trim(),password:$("regPassword").value})});token=d.token;currentUser=d.user;localStorage.setItem("tabby_token",token);afterLogin()}catch(e){$("status").textContent=e.message}});
-$("btnLogout").addEventListener("click",()=>{localStorage.removeItem("tabby_token");location.reload()});
-async function afterLogin(){$("authWrap").style.display="none";if(currentUser.role==="owner"){$("appWrap").hidden=false;$("customerWrap").style.display="none";$("userLine").textContent=currentUser.name;$("namePill").textContent=currentUser.name+" OWNER";$("statRole").textContent="OWNER";showView("overview");loadOwnerData();const s=await api("/api/chat/single");s.messages.forEach(m=>addMsg(m.role,m.content))}else{$("appWrap").hidden=true;$("customerWrap").style.display="block";loadCustomerData();addCustMsg("assistant","Hello "+currentUser.name+", welcome to Tabby Ride. Your bike is connected.")}}
-async function sendMsg(text){addMsg("user",text);try{const d=await api("/api/chat",{method:"POST",body:JSON.stringify({message:text})});addMsg("assistant",d.reply||"Done.",d.image||d.image_url)}catch(e){addMsg("assistant","Sorry: "+e.message)}}
-$("composerForm").addEventListener("submit",e=>{e.preventDefault();const v=$("message").value.trim();if(!v)return;$("message").value="";sendMsg(v)});
-$("btnImage").addEventListener("click",()=>{const p=prompt("What image do you want?");if(p)sendMsg("Generate image: "+p)});
-$("btnLoc").addEventListener("click",()=>{navigator.geolocation?.getCurrentPosition(async pos=>{await api("/api/location",{method:"POST",body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude})});addMsg("assistant","Location saved.")})});
-$("btnMyBike").addEventListener("click",()=>sendMsg("Check my bike"));
-$("btnPerm").addEventListener("click",async()=>{const d=await api("/api/phone/permissions");addMsg("assistant","Phone permissions: "+JSON.stringify(d.permissions))});
-$("btnVoiceNote").addEventListener("click",()=>addMsg("assistant","Hold Voice Input to talk - I am listening, Boss."));
-$("btnLiveCall").addEventListener("click",()=>addMsg("assistant","Live Call - please use Voice Input for now, Boss."));
-if(token){api("/api/me").then(d=>{currentUser=d.user;afterLogin()}).catch(()=>{localStorage.removeItem("tabby_token")})}else{$("customerWrap").style.display="none"}
-</script></body></html>'''
-
-@app.route("/", methods=["GET"])
-def home():
-    return WORKSPACE_HTML, 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "15.0-owner-customer-alva", "database_ready": DATABASE_READY, "image_providers": {"cloudflare_flux": bool(CLOUDFLARE_API_TOKEN), "midjourney_goapi": bool(GOAPI_API_KEY), "openai": bool(OPENAI_API_KEY)}, "time": current_time()})
-@app.route("/api/status", methods=["GET"])
-def api_status(): return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "15.0"})
-@app.route("/api/greeting", methods=["GET"])
-@auth_required
-def greeting(): return jsonify({"success": True, "greeting": get_greeting_lagos()})
-@app.route("/register", methods=["POST"])
-@app.route("/api/register", methods=["POST"])
-def register():
-    data = request.get_json(silent=True) or {}
-    name = clean_ai_text(str(data.get("name","")).strip()); email = str(data.get("email","")).strip().lower(); password = str(data.get("password",""))
-    if not name or not email or not password: return json_error("Name, email and password required.")
-    if len(password) < 8: return json_error("Password must be at least 8 chars.")
-    with get_db() as db:
-        if db.execute("SELECT id FROM users WHERE email=%s", (email,)).fetchone(): return json_error("Account already exists. Please sign in.", 409)
-        role = "owner" if OWNER_EMAIL and email == OWNER_EMAIL else "customer"
-        cur = db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,%s)", (name, email, generate_password_hash(password), role))
-        user = db.execute("SELECT * FROM users WHERE id=%s", (cur.lastrowid,)).fetchone()
-    user = dict(user)
-    return jsonify({"success": True, "token": create_token(user), "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}), 201
-@app.route("/login", methods=["POST"])
-@app.route("/api/login", methods=["POST"])
-def login():
-    data = request.get_json(silent=True) or {}
-    email = str(data.get("email","")).strip().lower(); password = str(data.get("password",""))
-    with get_db() as db:
-        user = db.execute("SELECT * FROM users WHERE email=%s", (email,)).fetchone()
-    if not user or not check_password_hash(user["password_hash"], password): return json_error("Invalid email or password.", 401)
-    user = dict(user)
-    if OWNER_EMAIL and email == OWNER_EMAIL and user["role"] != "owner":
-        with get_db() as db: db.execute("UPDATE users SET role='owner' WHERE id=%s", (user["id"],))
-        user["role"] = "owner"
-    return jsonify({"success": True, "token": create_token(user), "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}})
-@app.route("/me", methods=["GET"])
-@app.route("/api/me", methods=["GET"])
-@auth_required
-def me():
-    u = request.current_user
-    return jsonify({"success": True, "user": {"id": u["id"], "name": u["name"], "email": u["email"], "role": u["role"]}, "creator": CREATOR_NAME, "greeting": get_greeting_lagos()})
-@app.route("/api/owner/dashboard", methods=["GET"])
-@owner_required
-def owner_dashboard():
-    with get_db() as db:
-        bikes = db.execute("SELECT m.*, u2.name as assigned_name, bs.battery_health, bs.range_km, bs.lock_status, t.speed, t.latitude, t.longitude FROM motorcycles m LEFT JOIN users u2 ON u2.id=m.assigned_user_id LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id LEFT JOIN telemetry t ON t.id=(SELECT MAX(id) FROM telemetry WHERE motorcycle_id=m.id) ORDER BY m.id DESC", ()).fetchall()
-        custs = db.execute("SELECT u.id,u.name,u.email,m.name as bike_name FROM users u LEFT JOIN motorcycles m ON m.assigned_user_id=u.id WHERE u.role='customer' ORDER BY u.id DESC", ()).fetchall()
-        total_acc = db.execute("SELECT COUNT(*) as c FROM users", ()).fetchone()["c"]
-        total_pay = db.execute("SELECT COUNT(*) as c FROM payments", ()).fetchone()["c"]
-    return jsonify({"success": True, "total_bikes": len(bikes), "total_accounts": total_acc, "total_payments": total_pay, "bikes": [dict(r) for r in bikes], "customers": [dict(r) for r in custs]})
-@app.route("/api/customer/bike", methods=["GET"])
-@auth_required
-def customer_bike():
-    u = request.current_user
-    with get_db() as db:
-        if u["role"] == "owner":
-            bike = db.execute("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1", ()).fetchone()
-        else:
-            bike = db.execute("SELECT * FROM motorcycles WHERE assigned_user_id=%s ORDER BY id DESC LIMIT 1", (u["id"],)).fetchone()
-        if not bike:
-            return jsonify({"success": True, "bike": None, "trip": {"total_trip": 0, "total_distance": 0, "co2_saved": 0}})
-        bike = dict(bike)
-        st = db.execute("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bike["id"],)).fetchone()
-        tel = db.execute("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],)).fetchone()
-        if st: bike.update(dict(st))
-        if tel: bike.update({"speed": dict(tel).get("speed"), "latitude": dict(tel).get("latitude"), "longitude": dict(tel).get("longitude")})
-    return jsonify({"success": True, "bike": bike, "trip": {"total_trip": bike.get("total_trip", 0), "total_distance": bike.get("total_distance", 0), "co2_saved": bike.get("co2_saved", 0)}})
-@app.route("/api/owner/create-customer", methods=["POST"])
-@owner_required
-def owner_create_customer():
-    data = request.get_json(silent=True) or {}
-    name = clean_ai_text(str(data.get("name","")).strip()); email = str(data.get("email","")).strip().lower(); password = str(data.get("password","") or "Tabby1234")
-    bike_name = clean_ai_text(str(data.get("bike_name","")).strip())
-    if not name or not email: return json_error("Customer name and email required.")
-    with get_db() as db:
-        if db.execute("SELECT id FROM users WHERE email=%s", (email,)).fetchone(): return json_error("Customer already exists.", 409)
-        cur = db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,'customer')", (name, email, generate_password_hash(password)))
-        cust_id = cur.lastrowid; bike_id = None
-        if bike_name:
-            bcur = db.execute("INSERT INTO motorcycles (owner_id, assigned_user_id, name, model, registration_number) VALUES (%s,%s,%s,%s,%s)", (request.current_user["id"], cust_id, bike_name, "Tabby EV", ""))
-            bike_id = bcur.lastrowid
-            db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bike_id,))
-    return jsonify({"success": True, "user": {"id": cust_id, "name": name, "email": email, "role": "customer"}, "bike_id": bike_id, "message": f"Customer {name} created."}), 201
-@app.route("/api/owner/customers", methods=["GET"])
-@owner_required
-def owner_customers():
-    with get_db() as db:
-        rows = db.execute("SELECT u.id, u.name, u.email, u.role, u.created_at, m.name as bike_name FROM users u LEFT JOIN motorcycles m ON m.assigned_user_id=u.id WHERE u.role='customer' ORDER BY u.id DESC", ()).fetchall()
-    return jsonify({"success": True, "customers": [dict(r) for r in rows]})
-@app.route("/api/owner/customers/<int:customer_id>/assign-bike", methods=["POST"])
-@owner_required
-def owner_assign_bike(customer_id):
-    data = request.get_json(silent=True) or {}
-    bike_name = clean_ai_text(str(data.get("bike_name") or data.get("name") or "Tabby Bike").strip())
-    with get_db() as db:
-        cust = db.execute("SELECT * FROM users WHERE id=%s", (customer_id,)).fetchone()
-        if not cust: return json_error("Customer not found.", 404)
-        cur = db.execute("INSERT INTO motorcycles (owner_id, assigned_user_id, name, model, registration_number) VALUES (%s,%s,%s,%s,%s)", (request.current_user["id"], customer_id, bike_name, "Tabby EV", ""))
-        db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (cur.lastrowid,))
-    return jsonify({"success": True, "bike_id": cur.lastrowid, "message": f"Bike {bike_name} assigned."})
-@app.route("/api/phone/permissions", methods=["GET"])
-@auth_required
-def phone_permissions():
-    u = request.current_user
-    with get_db() as db:
-        rows = db.execute("SELECT permission, granted FROM phone_permissions WHERE user_id=%s", (u["id"],)).fetchall()
-    granted = {r["permission"]: bool(r["granted"]) for r in rows}
-    return jsonify({"success": True, "permissions": {p: granted.get(p, False) for p in PHONE_PERMISSIONS}})
-@app.route("/api/phone/approve", methods=["POST"])
-@auth_required
-def phone_approve():
-    u = request.current_user; data = request.get_json(silent=True) or {}
-    perm = str(data.get("permission") or "").strip(); action_text = str(data.get("action") or "").strip()
-    if perm not in PHONE_PERMISSIONS: return json_error("Invalid permission.")
-    grant_phone_permission(u["id"], perm)
-    with get_db() as db:
-        db.execute("INSERT INTO phone_actions (user_id, action, target, status) VALUES (%s,%s,%s,'approved')", (u["id"], perm, action_text[:200]))
-    action_url = None
-    if perm == "send_email": action_url = "mailto:?subject=Message from Tabby&body=" + urllib.parse.quote(action_text)
-    if perm == "send_sms": action_url = "sms:?body=" + urllib.parse.quote(action_text)
-    if perm == "open_mail": action_url = "mailto:"
-    if perm == "open_maps": action_url = "https://www.google.com/maps"
-    return jsonify({"success": True, "message": f"Permission granted for {perm}, Boss.", "permission": perm, "action_url": action_url})
-@app.route("/api/location", methods=["POST"])
-@auth_required
-def save_loc():
-    u = request.current_user; data = request.get_json(silent=True) or {}
-    try: lat = float(data.get("latitude")); lng = float(data.get("longitude"))
-    except Exception: return json_error("Invalid location.")
-    with get_db() as db:
-        db.execute("INSERT INTO locations (user_id, latitude, longitude, label) VALUES (%s,%s,%s,%s)", (u["id"], lat, lng, "phone_location"))
-    return jsonify({"success": True, "message": "Location saved."})
-@app.route("/api/chat/single", methods=["GET"])
-@auth_required
-def get_single_chat():
-    user = request.current_user; cid = get_single_conversation_id(user["id"])
-    with get_db() as db:
-        msgs = db.execute("SELECT id,role,content,created_at FROM messages WHERE conversation_id=%s ORDER BY id ASC", (cid,)).fetchall()
-    return jsonify({"success": True, "conversation_id": cid, "greeting": get_greeting_lagos(), "messages": [dict(r) for r in msgs]})
-@app.route("/api/conversations", methods=["GET"])
-@auth_required
-def list_conversations_compat():
-    user = request.current_user; cid = get_single_conversation_id(user["id"])
-    return jsonify({"success": True, "conversations": [{"id": cid, "title": "Tabby Chat"}]})
-@app.route("/chat", methods=["POST"])
-@app.route("/api/chat", methods=["POST"])
-@auth_required
-def chat():
-    user = request.current_user
-    data = request.get_json(silent=True) or {}
-    message = str(data.get("message","")).strip()
-    if not message: return json_error("Message required.")
-    # Phone permission check
-    perm = detect_sensitive_action(message)
-    if perm and not has_phone_permission(user["id"], perm):
-        return jsonify({"success": True, "needs_permission": True, "permission": perm, "reply": f"Boss, do you want me to allow {perm}? Say Yes to allow.", "response": f"Boss, do you want me to allow {perm}? Say Yes to allow."})
-    # Bike / House quick commands
-    low = message.lower()
-    if "going home" in low:
-        bike_reply = handle_tabby_bike_command(user, "unlock my bike") or ""
-        handle_tabby_house_command(user, "turn on light living")
-        handle_tabby_house_command(user, "turn on ac living")
-        reply = f"Done, Boss. Going Home scene is running. {bike_reply} Light is on, AC is on."
-        cid = get_single_conversation_id(user["id"])
-        with get_db() as db:
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", reply))
-        return jsonify({"success": True, "reply": reply, "response": reply})
-    bike_reply = handle_tabby_bike_command(user, low)
-    if bike_reply:
-        cid = get_single_conversation_id(user["id"])
-        with get_db() as db:
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", bike_reply))
-        return jsonify({"success": True, "reply": bike_reply, "response": bike_reply})
-    house_reply = handle_tabby_house_command(user, low)
-    if house_reply:
-        cid = get_single_conversation_id(user["id"])
-        with get_db() as db:
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", house_reply))
-        return jsonify({"success": True, "reply": house_reply, "response": house_reply})
-    # Image
-    if is_image_request(message):
-        try:
-            img = generate_flux_image(clean_image_prompt(message))
-            cid = get_single_conversation_id(user["id"])
-            with get_db() as db:
-                db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-                db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", "Here is your image, Boss."))
-            return jsonify({"success": True, "reply": "Here is your image, Boss.", "response": "Here is your image, Boss.", "image": img, "image_url": img})
-        except Exception as e:
-            return jsonify({"success": True, "reply": f"Image generation is active, Boss. Just tell me what image you want. Detail: {clean_ai_text(str(e))[:200]}", "response": "Image generation is active, Boss."})
-    # AI Chat
-    try:
-        memories = get_memories(user["id"], 20)
-        loc = get_latest_location(user["id"])
-        loc_text = f"{loc.get('latitude')},{loc.get('longitude')}" if loc else "No location yet."
-        bike_ctx = get_bike_context_for_user(user)
-        search = live_search(message, 3) if needs_live_search(message) else []
-        system = build_system_prompt(user, memories, loc_text, bike_ctx)
-        if search: system += "\nLIVE SEARCH:\n" + "\n".join(search)
-        cid = get_single_conversation_id(user["id"])
-        with get_db() as db:
-            hist = db.execute("SELECT role, content FROM messages WHERE conversation_id=%s ORDER BY id DESC LIMIT 10", (cid,)).fetchall()
-        hist = list(reversed([dict(r) for r in hist]))
-        msgs = [{"role": "system", "content": system}] + [{"role": h["role"], "content": h["content"]} for h in hist] + [{"role": "user", "content": message}]
-        reply = call_ai_with_fallback(msgs)
-        with get_db() as db:
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "user", message))
-            db.execute("INSERT INTO messages (conversation_id, role, content) VALUES (%s,%s,%s)", (cid, "assistant", reply))
-        return jsonify({"success": True, "reply": reply, "response": reply})
-    except Exception as e:
-        return jsonify({"success": True, "reply": f"Sorry Boss, I had a small issue: {clean_ai_text(str(e))[:300]}", "response": "Sorry Boss."})
-
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", "10000"))
-    app.run(host="0.0.0.0", port=port)
+async function loadOwnerData(){try{const d=await api("/api/owner/dashboard");$("statBikes").textContent=d.total_bikes;$("statAccounts").textContent=d.total_accounts;$("autoBikes").textContent=d.total_bikes;$("rideBikes").textContent=d.total_bikes;$("ridePayments").textContent=d.total_payments;if(d.bikes?.length){const b=d.bikes[0];$("autoSelected").textContent=b.name;$("autoBatt").textContent=(b.battery_health||100)+"%";$("dashBatt").textContent=(b.battery_health||100)+"%";$("dashRange").textContent=(b.range_km||0)+" km";$("dashSpeed").textContent=(b.speed||0)+" km/h";$("dashDiag").textContent=b.lock_status||"locked";$("ownerBikeList").innerHTML=d.bikes.map(x=>`<div style="padding:10px;border-bottom:1px solid #1e2d4d"><b>${x.name}</b> - ${x.model||""} - Battery ${x.battery_health||100}% - ${x.lock_status} - Assigned to ${x.assigned_name||"No one"}</div>`).join("")}else{$("ownerBikeList").innerHTML="No motorcycles yet."}if(d.customers?.length){$("ownerCustomerList").innerHTML=d.customers.map(c=>`<div style="padding
