@@ -18,11 +18,8 @@ body{margin:0;background:#070d1f;color:#e6edff;font:15px system-ui,-apple-system
 .navBtn{width:100%;text-align:left;background:transparent;border:0;color:#c8d3ee;padding:11px 12px;border-radius:10px;cursor:pointer;font:inherit;display:flex;gap:10px;align-items:center}
 .navBtn:hover{background:#162147}
 .navBtn.active{background:#1e2e5c;color:#fff}
-.navBtn small{margin-left:auto;background:#e11d48;color:#fff;font-size:10px;padding:2px 7px;border-radius:20px}
 .main{flex:1;min-width:0;padding:0 26px 26px}
 .topbar{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid #1b2745}
-.topbar b{font-size:15px}
-.topbar div{font-size:12px;color:#8aa0c8}
 .badge{background:#e11d48;color:#fff;font-size:10px;padding:3px 8px;border-radius:20px;margin-left:8px}
 .badge.customer{background:#0ea5e9}
 .badge.online{background:#16a34a}
@@ -32,7 +29,6 @@ body{margin:0;background:#070d1f;color:#e6edff;font:15px system-ui,-apple-system
 .card{background:#111a33;border:1px solid #26334e;border-radius:16px;padding:16px}
 input,textarea,select,button{font:inherit;border-radius:12px;padding:12px;border:1px solid #34435f;background:#0b1427;color:#edf2ff}
 button{background:#526cf5;border:0;font-weight:650;cursor:pointer}
-button:disabled{opacity:.6}
 button.ghost{background:#1c2942}
 button.danger{background:#e11d48}
 .authCard{max-width:520px;margin:0 auto}
@@ -44,14 +40,10 @@ button.danger{background:#e11d48}
 .authCard .full{width:100%;margin-top:14px}
 #status{color:#ffb7b7;font-size:13px;min-height:18px;margin-top:10px;text-align:center}
 #voiceStatus{color:#7ee2a8;font-size:13px;text-align:center;min-height:18px}
-.chatWrap{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
-.convList{padding:0;overflow:hidden}
-.convList h3{padding:14px 16px;margin:0;display:flex;justify-content:space-between;align-items:center;font-size:15px}
-.convItem{padding:11px 16px;border-top:1px solid #1b2745;cursor:pointer;font-size:13px;color:#c8d3ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.convItem:hover,.convItem.active{background:#1a2a52}
-.chatCard{display:flex;flex-direction:column;height:68vh;min-height:480px}
-#messages{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
-.msg{max-width:88%;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 15px;border-radius:15px;line-height:1.5;font-size:14px}
+/* SINGLE LONG CHAT - NO CONVERSATIONS PANEL */
+.chatCard{display:flex;flex-direction:column;height:72vh;min-height:520px;width:100%}
+#messages{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 15px;border-radius:15px;line-height:1.5;font-size:14px}
 .msg img{max-width:100%;border-radius:12px;margin-top:8px}
 .user{align-self:flex-end;background:#3448a5}
 .assistant{align-self:flex-start;background:#1c2942}
@@ -65,32 +57,16 @@ button.danger{background:#e11d48}
 .stat span{font-size:11px;color:#8aa0c8;letter-spacing:.5px;text-transform:uppercase}
 .stat p{font-size:12px;color:#8aa0c8;margin:6px 0 0}
 .bikeGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.bikeGrid .card{font-size:13px}
-.bikeGrid .card b{font-size:18px}
 .ownerPanel{margin-top:16px}
 .ownerPanel input{width:100%;margin-bottom:8px}
 .customerRow{padding:8px 0;border-bottom:1px solid #1b2745;display:flex;justify-content:space-between;gap:10px;font-size:13px}
 .memRow{padding:10px 0;border-bottom:1px solid #1b2745;font-size:13px;color:#c8d3ee}
-@media(max-width:820px){
-.sidebar{width:210px}
-.chatWrap{grid-template-columns:1fr}
-.convList{display:none}
-.stats,.bikeGrid{grid-template-columns:1fr 1fr}
-}
-@media(max-width:560px){
-.layout{flex-direction:column}
-.sidebar{width:100%;height:auto;position:relative;flex-direction:row;overflow:auto;padding:10px}
-.sidebar .sideLabel,.sidebar .logo span{display:none}
-.navBtn{white-space:nowrap;width:auto}
-.main{padding:0 14px 20px}
-.stats,.bikeGrid{grid-template-columns:1fr}
-.chatCard{height:72vh}
-}
+@media(max-width:820px){.sidebar{width:210px}.stats,.bikeGrid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.layout{flex-direction:column}.sidebar{width:100%;height:auto;position:relative;flex-direction:row;overflow:auto;padding:10px}.sidebar .sideLabel,.sidebar .logo span{display:none}.navBtn{white-space:nowrap;width:auto}.main{padding:0 14px 20px}.stats,.bikeGrid{grid-template-columns:1fr}.chatCard{height:74vh}}
 </style>
 </head>
 <body>
 <div class="layout">
-<!-- SIDEBAR - LIKE YOUR IMAGE 1 -->
 <aside class="sidebar">
   <div class="logo"><div class="logoIcon">✦</div><div><b>TABBY</b><span>AI & AUTOMOTIVE<br>INTELLIGENCE</span></div></div>
   <div class="sideLabel">WORKSPACE</div>
@@ -103,46 +79,40 @@ button.danger{background:#e11d48}
   <button class="navBtn" data-page="memories">▣ Saved Memories</button>
   <button class="navBtn" data-page="settings">⚙ Settings</button>
 </aside>
-
 <main class="main">
-  <div class="topbar"><b>Tabby AI</b><div><span id="topUser">Faruq Sulaimon</span> <span id="topBadge" class="badge">OWNER</span> <span class="badge online">● SYSTEM ONLINE</span></div></div>
+  <div class="topbar"><b>Tabby AI</b><div><span id="topUser">Not signed in</span> <span id="topBadge" class="badge">GUEST</span> <span class="badge online">● SYSTEM ONLINE</span></div></div>
 
-  <!-- OVERVIEW -->
   <section id="page-overview" class="page" hidden>
-    <h1>Overview</h1><p class="sub">Your private AI workspace. Conversations are stored in your account.</p>
+    <h1>Overview</h1><p class="sub">Your private AI workspace.</p>
     <div class="stats">
       <div class="card stat"><span>Motorbikes</span><b id="ovBikes">0</b><p>On your account</p></div>
       <div class="card stat"><span>Memories</span><b id="ovMems">0</b><p>Saved by Tabby</p></div>
       <div class="card stat"><span>Customers</span><b id="ovCust">0</b><p>Owner only</p></div>
       <div class="card stat"><span>Status</span><b style="font-size:20px;color:#7ee2a8">Online</b><p>Tabby AI ready</p></div>
     </div>
-    <div class="card"><b>Welcome back, Boss.</b><p style="color:#8aa0c8">Use Tabby AI to chat, Automotive Dashboard to see your motorbikes, Tabby Ride for customer rides. Go to Account & Login first if you are not signed in.</p><button data-goto="tabby">Open Tabby AI →</button> <button class="ghost" data-goto="auto">Open Automotive Dashboard →</button></div>
+    <div class="card"><b>Welcome back, Boss.</b><p style="color:#8aa0c8">Use Tabby AI to chat, Automotive Dashboard to see your motorbikes, Tabby Ride for customer rides.</p><button data-goto="tabby">Open Tabby AI →</button> <button class="ghost" data-goto="auto">Open Automotive Dashboard →</button></div>
   </section>
 
-  <!-- TABBY AI CHAT -->
   <section id="page-tabby" class="page" hidden>
-    <h1>Tabby AI</h1><p class="sub">Your private AI workspace. Conversations are stored in your account.</p>
-    <div class="chatWrap">
-      <div class="card convList"><h3>Conversations <button id="newChatBtn" style="padding:6px 10px;font-size:12px">+</button></h3><div id="convList"><div class="convItem active">Tabby Chat</div></div></div>
-      <div class="card chatCard">
-        <div id="messages"><div class="hint">Sign in to start. Send Tabby a message to begin.</div></div>
-        <div id="voiceStatus"></div>
-        <form id="composer"><textarea id="message" placeholder="Message Tabby..."></textarea><button id="send" type="submit">➤</button></form>
-        <div class="toolsRow">
-          <button id="btnVoiceNote" type="button">🎤 Voice Input</button>
-          <button id="btnLiveCall" type="button">🔊 Live Call</button>
-          <button id="btnImage" type="button">🖼 Generate Image</button>
-          <button id="btnLoc" type="button">📍 Share My Location</button>
-          <button id="btnMyBike" type="button">My Bike</button>
-          <button id="btnPerms" type="button">Phone Permissions</button>
-        </div>
+    <h1>Tabby AI</h1><p class="sub">Your private AI workspace. One long chat. Everything is stored in your account.</p>
+    <!-- SINGLE LONG CHAT - NO CONVERSATIONS LIST -->
+    <div class="card chatCard">
+      <div id="messages"><div class="hint">Sign in to start. Send Tabby a message to begin.</div></div>
+      <div id="voiceStatus"></div>
+      <form id="composer"><textarea id="message" placeholder="Message Tabby..."></textarea><button id="send" type="submit">➤</button></form>
+      <div class="toolsRow">
+        <button id="btnVoiceNote" type="button">🎤 Voice Input</button>
+        <button id="btnLiveCall" type="button">🔊 Live Call</button>
+        <button id="btnImage" type="button">🖼 Generate Image</button>
+        <button id="btnLoc" type="button">📍 Share My Location</button>
+        <button id="btnMyBike" type="button">My Bike</button>
+        <button id="btnPerms" type="button">Phone Permissions</button>
       </div>
     </div>
   </section>
 
-  <!-- AUTOMOTIVE DASHBOARD -->
   <section id="page-auto" class="page" hidden>
-    <h1>Tabby Automotive</h1><p class="sub">Your motorcycle intelligence and management centre. Register motorcycles and monitor available vehicle data.</p>
+    <h1>Tabby Automotive</h1><p class="sub">Your motorcycle intelligence and management centre.</p>
     <div class="stats">
       <div class="card stat"><span>Registered Motorcycles</span><b id="statBikes">0</b><p>Vehicles on your account</p></div>
       <div class="card stat"><span>Selected Motorcycle</span><b id="statSelected" style="font-size:22px">None</b><p>Currently selected</p></div>
@@ -152,276 +122,75 @@ button.danger{background:#e11d48}
     <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Your Motorcycles</h3><button id="btnRegisterBike">+ Register Motorcycle</button></div>
     <div id="bikeList" class="card" style="margin-top:12px">Please sign in to view your motorcycles.</div>
     <h3 style="margin-top:20px">Motorcycle Dashboard</h3>
-    <div class="card"><p style="color:#8aa0c8;margin:0 0 12px">Select a motorcycle to view its readings.</p><div class="bikeGrid">
-      <div class="card">🔋 BATTERY<br><b id="dashBattery">—</b></div>
-      <div class="card">↗ ESTIMATED RANGE<br><b id="dashRange">—</b></div>
-      <div class="card">⚡ SPEED<br><b id="dashSpeed">—</b></div>
-      <div class="card">🛠 DIAGNOSTICS<br><b id="dashDiag">—</b></div>
-    </div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" id="btnLockBike">Lock Bike</button><button class="ghost" id="btnUnlockBike">Unlock Bike</button><button class="ghost" id="btnCheckBike">Check Bike Status</button></div></div>
+    <div class="card"><p style="color:#8aa0c8;margin:0 0 12px">Select a motorcycle to view its readings.</p><div class="bikeGrid"><div class="card">🔋 BATTERY<br><b id="dashBattery">—</b></div><div class="card">↗ ESTIMATED RANGE<br><b id="dashRange">—</b></div><div class="card">⚡ SPEED<br><b id="dashSpeed">—</b></div><div class="card">🛠 DIAGNOSTICS<br><b id="dashDiag">—</b></div></div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" id="btnLockBike">Lock Bike</button><button class="ghost" id="btnUnlockBike">Unlock Bike</button><button class="ghost" id="btnCheckBike">Check Bike Status</button></div></div>
   </section>
 
-  <!-- TABBY RIDE -->
   <section id="page-ride" class="page" hidden>
-    <h1>Tabby Ride</h1><p class="sub">Customer-facing ride service. Owner sees all rides, customer sees only their own bike and payments.</p>
+    <h1>Tabby Ride</h1><p class="sub">Customer-facing ride service.</p>
     <div class="card"><b id="rideTitle">Please sign in to view Tabby Ride.</b><p id="rideBody" style="color:#8aa0c8">Your bike, payments and location will show here after you sign in.</p><div id="rideActions" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
     <div class="card" style="margin-top:14px"><h3 style="margin:0 0 8px">Payments</h3><div id="paymentList">Please sign in to view payments.</div></div>
   </section>
 
-  <!-- ACCOUNT & LOGIN - DEFAULT PAGE, LIKE IMAGE 2 -->
   <section id="page-account" class="page">
     <h1 style="text-align:center">Account & Login</h1><p class="sub" style="text-align:center">Sign in or create your Tabby account.</p>
     <div class="card authCard">
       <div class="tabs"><button id="tabSignin" class="active" type="button">Login</button><button id="tabSignup" type="button">Register</button></div>
-      <div id="signinForm">
-        <label>Email Address</label><input id="email" type="email" placeholder="sulaimonfaruq2611@gmail.com">
-        <label>Password</label><input id="password" type="password" placeholder="Password">
-        <button id="login" class="full" type="button">Sign in</button>
-      </div>
-      <div id="signupForm" hidden>
-        <label>Email Address</label><input id="regEmail" type="email" placeholder="Email address">
-        <label>Your Name</label><input id="regName" placeholder="Sulaimon Faruq">
-        <label>Password</label><input id="regPassword" type="password" placeholder="Password (8+ chars)">
-        <button id="registerBtn" class="full" type="button">Create Account</button>
-      </div>
-      <div id="status"></div>
-      <p style="font-size:12px;color:#8aa0c8;text-align:center">Your account is managed by the Tabby backend.</p>
+      <div id="signinForm"><label>Email Address</label><input id="email" type="email" placeholder="sulaimonfaruq2611@gmail.com"><label>Password</label><input id="password" type="password" placeholder="Password"><button id="login" class="full" style="margin-top:14px;width:100%" type="button">Sign in</button></div>
+      <div id="signupForm" hidden><label>Email Address</label><input id="regEmail" type="email" placeholder="Email address"><label>Your Name</label><input id="regName" placeholder="Sulaimon Faruq"><label>Password</label><input id="regPassword" type="password" placeholder="Password (8+ chars)"><button id="registerBtn" class="full" style="margin-top:14px;width:100%" type="button">Create Account</button></div>
+      <div id="status"></div><p style="font-size:12px;color:#8aa0c8;text-align:center">Your account is managed by the Tabby backend.</p>
       <div id="loggedInBox" hidden style="text-align:center;margin-top:10px"><p id="loggedInText" style="color:#7ee2a8"></p><button id="btnLogout" class="danger" type="button">Log Out</button></div>
     </div>
-
-    <div id="ownerPanel" class="card ownerPanel" hidden>
-      <h3>Owner - Customers</h3><div id="customerList">Loading customers...</div>
-      <h3 style="margin-top:16px">Create Customer Account</h3>
-      <input id="custName" placeholder="Customer full name"><input id="custEmail" placeholder="Customer email"><input id="custPass" placeholder="Temp password (8+ chars)"><input id="custBike" placeholder="Assign bike name (optional) e.g. Tabby Bike 1">
-      <button id="createCustBtn" type="button">Create Customer</button>
-      <p style="font-size:12px;color:#8aa0c8">Customer will sign in with this email + password and see only their bike.</p>
-    </div>
+    <div id="ownerPanel" class="card ownerPanel" hidden style="margin-top:16px"><h3>Owner - Customers</h3><div id="customerList">Loading customers...</div><h3 style="margin-top:16px">Create Customer Account</h3><input id="custName" placeholder="Customer full name"><input id="custEmail" placeholder="Customer email"><input id="custPass" placeholder="Temp password (8+ chars)"><input id="custBike" placeholder="Assign bike name (optional)"><button id="createCustBtn" type="button">Create Customer</button></div>
   </section>
 
-  <!-- SAVED MEMORIES -->
-  <section id="page-memories" class="page" hidden>
-    <h1>Saved Memories</h1><p class="sub">What Tabby remembers about you. It never saves passwords or keys.</p>
-    <div class="card"><div id="memoryList">Please sign in to view memories.</div></div>
-  </section>
-
-  <!-- SETTINGS -->
-  <section id="page-settings" class="page" hidden>
-    <h1>Settings</h1><p class="sub">Manage your Tabby interface preferences.</p>
-    <div class="card"><b>Voice preferences</b><p style="color:#8aa0c8;font-size:12px">Speech voice</p><select id="voiceSelect" style="width:100%"><option>Default - English (en-NG)</option><option>English (en-US)</option><option>Yoruba</option><option>Hausa</option><option>Igbo</option><option>French</option><option>Arabic</option></select><div style="display:flex;gap:8px;margin-top:10px"><button class="ghost" id="btnTestVoice">Test voice</button><button class="ghost" id="btnToggleVoice">Toggle voice replies</button></div></div>
-    <div class="card" style="margin-top:14px"><b>System Information</b><p style="color:#8aa0c8;font-size:12px">Tabby web interface - Flask API - Owner/customer access control.</p><button class="ghost" id="btnCheckServer">Check server connection</button><p id="serverStatus" style="font-size:12px;color:#7ee2a8"></p></div>
-  </section>
-
+  <section id="page-memories" class="page" hidden><h1>Saved Memories</h1><p class="sub">What Tabby remembers about you.</p><div class="card"><div id="memoryList">Please sign in to view memories.</div></div></section>
+  <section id="page-settings" class="page" hidden><h1>Settings</h1><p class="sub">Manage your Tabby interface preferences.</p><div class="card"><b>Voice preferences</b><p style="color:#8aa0c8;font-size:12px">Speech voice</p><select id="voiceSelect" style="width:100%"><option>Default - English (en-NG)</option><option>English (en-US)</option><option>Yoruba</option><option>Hausa</option><option>Igbo</option><option>French</option><option>Arabic</option></select><div style="display:flex;gap:8px;margin-top:10px"><button class="ghost" id="btnTestVoice">Test voice</button><button class="ghost" id="btnToggleVoice">Toggle voice replies</button></div></div><div class="card" style="margin-top:14px"><b>System Information</b><p style="color:#8aa0c8;font-size:12px">Tabby web interface - Flask API - Owner/customer access control.</p><button class="ghost" id="btnCheckServer">Check server connection</button><p id="serverStatus" style="font-size:12px;color:#7ee2a8"></p></div></section>
   <p style="text-align:center;color:#5b6b8c;font-size:11px;margin-top:20px">Tabby - AI & Automotive Intelligence</p>
 </main>
 </div>
-
 <script>
 (()=>{ 
 const $=id=>document.getElementById(id);
-let token=localStorage.getItem("tabby_token")||"";
-let currentUser=null;
-let mediaRecorder=null, chunks=[];
-let livePc=null, liveStream=null, liveCallActive=false, voiceReplies=true;
-
-function showPage(name){
-  document.querySelectorAll(".page").forEach(p=>p.hidden=true);
-  const el=$("page-"+name); if(el) el.hidden=false;
-  document.querySelectorAll(".navBtn").forEach(b=>b.classList.toggle("active", b.dataset.page===name));
-  if(name==="auto") loadBikes();
-  if(name==="ride") loadRide();
-  if(name==="memories") loadMemories();
-  if(name==="overview") loadOverview();
-}
-document.querySelectorAll(".navBtn").forEach(b=>b.addEventListener("click",()=>{
-  if(!currentUser && b.dataset.page!=="account"){
-    showPage("account");
-    $("status").textContent="Please sign in first, Boss.";
-    return;
-  }
-  showPage(b.dataset.page);
-}));
+let token=localStorage.getItem("tabby_token")||""; let currentUser=null; let mediaRecorder=null, chunks=[]; let livePc=null, liveStream=null, liveCallActive=false, voiceReplies=true;
+function showPage(name){ document.querySelectorAll(".page").forEach(p=>p.hidden=true); const el=$("page-"+name); if(el) el.hidden=false; document.querySelectorAll(".navBtn").forEach(b=>b.classList.toggle("active", b.dataset.page===name)); if(name==="auto") loadBikes(); if(name==="ride") loadRide(); if(name==="memories") loadMemories(); if(name==="overview") loadOverview(); }
+document.querySelectorAll(".navBtn").forEach(b=>b.addEventListener("click",()=>{ if(!currentUser && b.dataset.page!=="account"){ showPage("account"); $("status").textContent="Please sign in first, Boss."; return; } showPage(b.dataset.page); }));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.goto)));
-
-function addMsg(role,text,img){
-  const hint=document.querySelector(".hint"); if(hint) hint.remove();
-  const d=document.createElement("div"); d.className="msg "+role; d.textContent=text;
-  if(img){ const im=document.createElement("img"); im.src=img; d.appendChild(im); }
-  $("messages").appendChild(d); $("messages").scrollTop=$("messages").scrollHeight;
-}
-async function api(path,opt={}){
-  const headers={...(opt.headers||{})}; if(token) headers.Authorization="Bearer "+token;
-  if(opt.body) headers["Content-Type"]="application/json";
-  const r=await fetch(path,{...opt,headers});
-  const data=await r.json().catch(()=>({error:"Server error"}));
-  if(!r.ok) throw new Error(data.error||"Request failed");
-  return data;
-}
-function updateAuthUI(){
-  if(currentUser){
-    $("topUser").textContent=currentUser.name;
-    $("topBadge").textContent=currentUser.role==="owner"?"OWNER":"CUSTOMER";
-    $("topBadge").className="badge "+(currentUser.role==="owner"?"":"customer");
-    $("loggedInBox").hidden=false;
-    $("loggedInText").textContent="Signed in as "+currentUser.name+" ("+currentUser.email+")";
-    $("ownerPanel").hidden = currentUser.role!=="owner";
-    if(currentUser.role==="owner") loadCustomers();
-  } else {
-    $("topUser").textContent="Not signed in";
-    $("topBadge").textContent="GUEST";
-    $("loggedInBox").hidden=true;
-    $("ownerPanel").hidden=true;
-  }
-}
-async function loadCustomers(){
-  try{ const d=await api("/api/owner/customers"); $("customerList").innerHTML=d.customers.map(c=>`<div class="customerRow"><span>${c.name} - ${c.email} - Bike: ${c.bike_name||"none"}</span><button class="ghost" style="padding:4px 8px;font-size:11px" onclick="window.assignBike(${c.id})">Assign Bike</button></div>`).join("")||"No customers yet."; }catch(e){ $("customerList").textContent="Could not load customers: "+e.message; }
-}
+function addMsg(role,text,img){ const hint=document.querySelector(".hint"); if(hint) hint.remove(); const d=document.createElement("div"); d.className="msg "+role; d.textContent=text; if(img){ const im=document.createElement("img"); im.src=img; d.appendChild(im); } $("messages").appendChild(d); $("messages").scrollTop=$("messages").scrollHeight; }
+async function api(path,opt={}){ const headers={...(opt.headers||{})}; if(token) headers.Authorization="Bearer "+token; if(opt.body) headers["Content-Type"]="application/json"; const r=await fetch(path,{...opt,headers}); const data=await r.json().catch(()=>({error:"Server error"})); if(!r.ok) throw new Error(data.error||"Request failed"); return data; }
+function updateAuthUI(){ if(currentUser){ $("topUser").textContent=currentUser.name; $("topBadge").textContent=currentUser.role==="owner"?"OWNER":"CUSTOMER"; $("topBadge").className="badge "+(currentUser.role==="owner"?"":"customer"); $("loggedInBox").hidden=false; $("loggedInText").textContent="Signed in as "+currentUser.name+" ("+currentUser.email+")"; $("ownerPanel").hidden = currentUser.role!=="owner"; if(currentUser.role==="owner") loadCustomers(); } else { $("topUser").textContent="Not signed in"; $("topBadge").textContent="GUEST"; $("loggedInBox").hidden=true; $("ownerPanel").hidden=true; } }
+async function loadCustomers(){ try{ const d=await api("/api/owner/customers"); $("customerList").innerHTML=d.customers.map(c=>`<div class="customerRow"><span>${c.name} - ${c.email} - Bike: ${c.bike_name||"none"}</span><button class="ghost" style="padding:4px 8px;font-size:11px" onclick="window.assignBike(${c.id})">Assign Bike</button></div>`).join("")||"No customers yet."; }catch(e){ $("customerList").textContent="Could not load customers: "+e.message; } }
 window.assignBike=async(id)=>{ const name=prompt("Bike name to assign?"); if(!name) return; try{ await api("/api/owner/customers/"+id+"/assign-bike",{method:"POST",body:JSON.stringify({bike_name:name})}); alert("Bike assigned."); loadCustomers(); }catch(e){ alert(e.message); } };
-async function loadBikes(){
-  if(!currentUser){ $("bikeList").textContent="Please sign in to view your motorcycles."; return; }
-  try{
-    const d=await api("/api/bikes"); const bikes=d.bikes||[];
-    $("statBikes").textContent=bikes.length;
-    $("ovBikes").textContent=bikes.length;
-    if(!bikes.length){ $("bikeList").textContent="No motorcycles yet. Click Register Motorcycle."; $("statSelected").textContent="None"; return; }
-    const b=bikes[0]; $("statSelected").textContent=b.name||"Bike"; $("statBattery").textContent="100%"; $("dashBattery").textContent="100%"; $("dashRange").textContent="0 km"; $("dashSpeed").textContent="0 km/h"; $("dashDiag").textContent="OK";
-    $("bikeList").innerHTML=bikes.map(x=>`<div style="padding:10px 0;border-bottom:1px solid #1b2745"><b>${x.name}</b> - ${x.model||"Tabby EV"} - Reg: ${x.registration_number||"—"} <button class="ghost" style="padding:4px 8px;font-size:11px" onclick="window.selectBike(${x.id},'${x.name}')">Select</button></div>`).join("");
-  }catch(e){ $("bikeList").textContent="Could not load bikes: "+e.message; }
-}
-window.selectBike=(id,name)=>{ $("statSelected").textContent=name; alert("Selected "+name); };
-async function loadRide(){
-  if(!currentUser){ $("rideTitle").textContent="Please sign in to view Tabby Ride."; return; }
-  try{
-    const b=await api("/api/bikes"); const bikes=b.bikes||[];
-    const pays=await api("/api/payments"); const plist=pays.payments||[];
-    $("rideTitle").textContent=currentUser.role==="owner" ? "Owner Ride View - All bikes" : "Your Ride - "+(bikes[0]?.name||"No bike assigned yet");
-    $("rideBody").textContent=currentUser.role==="owner" ? "You can see all customers, bikes and payments." : "You see only your bike, payments and location. House and other bikes are hidden from you.";
-    $("rideActions").innerHTML=`<button onclick="document.querySelector('[data-page=tabby]').click()">Chat with Tabby</button> <button class="ghost" onclick="document.querySelector('[data-page=auto]').click()">Open Dashboard</button>`;
-    $("paymentList").innerHTML=plist.length? plist.map(p=>`<div class="memRow">${p.amount} ${p.currency} - ${p.status} - ${p.reference||""}</div>`).join("") : "No payments yet.";
-  }catch(e){ $("rideBody").textContent="Could not load ride: "+e.message; }
-}
-async function loadMemories(){
-  if(!currentUser){ $("memoryList").textContent="Please sign in to view memories."; return; }
-  try{ const d=await api("/api/memories"); $("memoryList").innerHTML=(d.memories||[]).length? d.memories.map(m=>`<div class="memRow">${m.content}</div>`).join("") : "No memories yet."; $("ovMems").textContent=(d.memories||[]).length; }catch(e){ $("memoryList").textContent="Could not load: "+e.message; }
-}
-async function loadOverview(){
-  if(!currentUser) return;
-  try{ const c=await api("/api/owner/customers").catch(()=>({customers:[]})); $("ovCust").textContent=(c.customers||[]).length; }catch(e){}
-  loadBikes(); loadMemories();
-}
-
+async function loadBikes(){ if(!currentUser){ $("bikeList").textContent="Please sign in to view your motorcycles."; return; } try{ const d=await api("/api/bikes"); const bikes=d.bikes||[]; $("statBikes").textContent=bikes.length; $("ovBikes").textContent=bikes.length; if(!bikes.length){ $("bikeList").textContent="No motorcycles yet. Click Register Motorcycle."; $("statSelected").textContent="None"; return; } const b=bikes[0]; $("statSelected").textContent=b.name||"Bike"; $("statBattery").textContent="100%"; $("dashBattery").textContent="100%"; $("dashRange").textContent="0 km"; $("dashSpeed").textContent="0 km/h"; $("dashDiag").textContent="OK"; $("bikeList").innerHTML=bikes.map(x=>`<div style="padding:10px 0;border-bottom:1px solid #1b2745"><b>${x.name}</b> - ${x.model||"Tabby EV"} - Reg: ${x.registration_number||"—"}</div>`).join(""); }catch(e){ $("bikeList").textContent="Could not load bikes: "+e.message; } }
+async function loadRide(){ if(!currentUser){ $("rideTitle").textContent="Please sign in to view Tabby Ride."; return; } try{ const b=await api("/api/bikes"); const bikes=b.bikes||[]; const pays=await api("/api/payments"); const plist=pays.payments||[]; $("rideTitle").textContent=currentUser.role==="owner" ? "Owner Ride View - All bikes" : "Your Ride - "+(bikes[0]?.name||"No bike assigned yet"); $("rideBody").textContent=currentUser.role==="owner" ? "You can see all customers, bikes and payments." : "You see only your bike, payments and location."; $("rideActions").innerHTML=`<button onclick="document.querySelector('[data-page=tabby]').click()">Chat with Tabby</button>`; $("paymentList").innerHTML=plist.length? plist.map(p=>`<div class="memRow">${p.amount} ${p.currency} - ${p.status} - ${p.reference||""}</div>`).join("") : "No payments yet."; }catch(e){ $("rideBody").textContent="Could not load ride: "+e.message; } }
+async function loadMemories(){ if(!currentUser){ $("memoryList").textContent="Please sign in to view memories."; return; } try{ const d=await api("/api/memories"); $("memoryList").innerHTML=(d.memories||[]).length? d.memories.map(m=>`<div class="memRow">${m.content}</div>`).join("") : "No memories yet."; $("ovMems").textContent=(d.memories||[]).length; }catch(e){ $("memoryList").textContent="Could not load: "+e.message; } }
+async function loadOverview(){ if(!currentUser) return; try{ const c=await api("/api/owner/customers").catch(()=>({customers:[]})); $("ovCust").textContent=(c.customers||[]).length; }catch(e){} loadBikes(); loadMemories(); }
 $("tabSignin").addEventListener("click",()=>{ $("tabSignin").classList.add("active"); $("tabSignup").classList.remove("active"); $("signinForm").hidden=false; $("signupForm").hidden=true; });
 $("tabSignup").addEventListener("click",()=>{ $("tabSignup").classList.add("active"); $("tabSignin").classList.remove("active"); $("signinForm").hidden=true; $("signupForm").hidden=false; });
-$("login").addEventListener("click",async()=>{
-  $("status").textContent="Signing in..."; $("login").disabled=true;
-  try{
-    const d=await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value.trim(),password:$("password").value})});
-    token=d.token; currentUser=d.user; localStorage.setItem("tabby_token",token); $("status").textContent="Welcome, Boss. Signed in.";
-    updateAuthUI(); showPage("tabby");
-    const s=await api("/api/chat/single"); s.messages.forEach(m=>addMsg(m.role,m.content));
-  }catch(e){ $("status").textContent=e.message; }
-  finally{ $("login").disabled=false; }
-});
-$("registerBtn").addEventListener("click",async()=>{
-  $("status").textContent="Creating account...";
-  try{
-    const d=await api("/api/register",{method:"POST",body:JSON.stringify({name:$("regName").value.trim(),email:$("regEmail").value.trim(),password:$("regPassword").value})});
-    token=d.token; currentUser=d.user; localStorage.setItem("tabby_token",token);
-    $("status").textContent="Account created. Welcome!"; updateAuthUI(); showPage("tabby");
-  }catch(e){ $("status").textContent=e.message; }
-});
-$("createCustBtn").addEventListener("click",async()=>{
-  try{ const d=await api("/api/owner/create-customer",{method:"POST",body:JSON.stringify({name:$("custName").value.trim(),email:$("custEmail").value.trim(),password:$("custPass").value,bike_name:$("custBike").value.trim()})}); alert("Customer created: "+d.user.email); loadCustomers(); }catch(e){ alert(e.message); }
-});
+$("login").addEventListener("click",async()=>{ $("status").textContent="Signing in..."; $("login").disabled=true; try{ const d=await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value.trim(),password:$("password").value})}); token=d.token; currentUser=d.user; localStorage.setItem("tabby_token",token); $("status").textContent="Welcome, Boss. Signed in."; updateAuthUI(); showPage("tabby"); const s=await api("/api/chat/single"); s.messages.forEach(m=>addMsg(m.role,m.content)); }catch(e){ $("status").textContent=e.message; } finally{ $("login").disabled=false; } });
+$("registerBtn").addEventListener("click",async()=>{ $("status").textContent="Creating account..."; try{ const d=await api("/api/register",{method:"POST",body:JSON.stringify({name:$("regName").value.trim(),email:$("regEmail").value.trim(),password:$("regPassword").value})}); token=d.token; currentUser=d.user; localStorage.setItem("tabby_token",token); $("status").textContent="Account created. Welcome!"; updateAuthUI(); showPage("tabby"); }catch(e){ $("status").textContent=e.message; } });
+$("createCustBtn").addEventListener("click",async()=>{ try{ const d=await api("/api/owner/create-customer",{method:"POST",body:JSON.stringify({name:$("custName").value.trim(),email:$("custEmail").value.trim(),password:$("custPass").value,bike_name:$("custBike").value.trim()})}); alert("Customer created: "+d.user.email); loadCustomers(); }catch(e){ alert(e.message); } });
 $("btnLogout").addEventListener("click",()=>{ localStorage.removeItem("tabby_token"); token=""; currentUser=null; updateAuthUI(); showPage("account"); $("status").textContent="Logged out."; });
-$("newChatBtn").addEventListener("click",()=>{ $("messages").innerHTML='<div class="hint">New chat started, Boss.</div>'; });
-
-async function sendMsg(text){
-  addMsg("user",text); $("send").disabled=true;
-  try{
-    const d=await api("/api/chat",{method:"POST",body:JSON.stringify({message:text})});
-    if(d.needs_permission){
-      addMsg("assistant",d.reply);
-      if(confirm(d.reply+"\n\nAllow Tabby to do this?")){
-        const d2=await api("/api/phone/approve",{method:"POST",body:JSON.stringify({permission:d.permission,action:text})});
-        addMsg("assistant",d2.message||"Permission granted. I will do it now, Boss.");
-        if(d2.action_url) window.open(d2.action_url,"_blank");
-      }
-    } else {
-      addMsg("assistant",d.reply||d.response||"Done.",d.image||d.image_url);
-      if(d.action_url) window.open(d.action_url,"_blank");
-    }
-  }catch(e){ addMsg("assistant","Sorry: "+e.message); }
-  finally{ $("send").disabled=false; $("message").focus(); }
-}
+async function sendMsg(text){ addMsg("user",text); $("send").disabled=true; try{ const d=await api("/api/chat",{method:"POST",body:JSON.stringify({message:text})}); if(d.needs_permission){ addMsg("assistant",d.reply); if(confirm(d.reply+"\n\nAllow Tabby to do this?")){ const d2=await api("/api/phone/approve",{method:"POST",body:JSON.stringify({permission:d.permission,action:text})}); addMsg("assistant",d2.message||"Permission granted. I will do it now, Boss."); if(d2.action_url) window.open(d2.action_url,"_blank"); } } else { addMsg("assistant",d.reply||d.response||"Done.",d.image||d.image_url); if(d.action_url) window.open(d.action_url,"_blank"); } }catch(e){ addMsg("assistant","Sorry: "+e.message); } finally{ $("send").disabled=false; $("message").focus(); } }
 $("composer").addEventListener("submit",e=>{ e.preventDefault(); const v=$("message").value.trim(); if(!v) return; $("message").value=""; if(!currentUser){ showPage("account"); $("status").textContent="Please sign in first, Boss."; return; } sendMsg(v); });
-$("btnImage").addEventListener("click",()=>{ const p=prompt("What image do you want?"); if(p) sendMsg("Generate image of "+p); });
-$("btnLoc").addEventListener("click",()=>{
-  if(!navigator.geolocation) return alert("Location not supported");
-  navigator.geolocation.getCurrentPosition(async pos=>{ try{ await api("/api/location",{method:"POST",body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude})}); addMsg("assistant","Location saved."); }catch(e){ addMsg("assistant",e.message); } },()=>alert("Please allow location"));
-});
+$("btnImage").addEventListener("click",()=>{ const p=prompt("What image do you want? Describe it:"); if(p) sendMsg("Generate image: "+p); });
+$("btnLoc").addEventListener("click",()=>{ if(!navigator.geolocation) return alert("Location not supported"); navigator.geolocation.getCurrentPosition(async pos=>{ try{ await api("/api/location",{method:"POST",body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude})}); addMsg("assistant","Location saved."); }catch(e){ addMsg("assistant",e.message); } },()=>alert("Please allow location")); });
 $("btnMyBike").addEventListener("click",()=>sendMsg("Check my bike"));
 $("btnPerms").addEventListener("click",async()=>{ try{ const d=await api("/api/phone/permissions"); addMsg("assistant","Phone Permissions: "+JSON.stringify(d.permissions)); }catch(e){ addMsg("assistant",e.message); } });
-$("btnRegisterBike").addEventListener("click",async()=>{
-  const name=prompt("Bike name? e.g. Tabby Bike 1"); if(!name) return;
-  try{ await api("/api/bikes",{method:"POST",body:JSON.stringify({name})}); alert("Bike registered."); loadBikes(); }catch(e){ alert(e.message); }
-});
+$("btnRegisterBike").addEventListener("click",async()=>{ const name=prompt("Bike name? e.g. Tabby Bike 1"); if(!name) return; try{ await api("/api/bikes",{method:"POST",body:JSON.stringify({name})}); alert("Bike registered."); loadBikes(); }catch(e){ alert(e.message); } });
 $("btnLockBike").addEventListener("click",()=>sendMsg("Lock my bike"));
 $("btnUnlockBike").addEventListener("click",()=>sendMsg("Unlock my bike"));
 $("btnCheckBike").addEventListener("click",()=>sendMsg("Check my bike"));
 $("btnTestVoice").addEventListener("click",()=>{ const u=new SpeechSynthesisUtterance("I am listening, Boss. Go ahead."); speechSynthesis.speak(u); });
 $("btnToggleVoice").addEventListener("click",()=>{ voiceReplies=!voiceReplies; alert(voiceReplies?"Voice replies: On":"Voice replies: Off"); });
-$("btnCheckServer").addEventListener("click",async()=>{ try{ const d=await api("/health"); $("serverStatus").textContent="Connected: "+JSON.stringify(d).slice(0,300); }catch(e){ try{ const r=await fetch("/health"); const j=await r.json(); $("serverStatus").textContent="Connected: "+JSON.stringify(j).slice(0,300); }catch(e2){ $("serverStatus").textContent="Server error: "+e2.message; } } });
-
+$("btnCheckServer").addEventListener("click",async()=>{ try{ const r=await fetch("/health"); const j=await r.json(); $("serverStatus").textContent="Connected: "+JSON.stringify(j).slice(0,300); }catch(e){ $("serverStatus").textContent="Server error: "+e.message; } });
 const vn=$("btnVoiceNote");
-vn.addEventListener("mousedown",async()=>{
-  try{
-    $("voiceStatus").textContent="I am listening, Boss. Go ahead.";
-    const s=await navigator.mediaDevices.getUserMedia({audio:true});
-    chunks=[]; mediaRecorder=new MediaRecorder(s);
-    mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); };
-    mediaRecorder.onstop=async()=>{
-      const blob=new Blob(chunks,{type:"audio/webm"}); const reader=new FileReader();
-      reader.onloadend=async()=>{
-        try{ const d=await api("/api/voice/note",{method:"POST",body:JSON.stringify({audio:reader.result})}); addMsg("user","Voice note: "+(d.transcript||"")); addMsg("assistant",d.reply||"Got it, Boss."); }catch(e){ addMsg("assistant","Sorry: "+e.message); }
-        $("voiceStatus").textContent="Got it, Boss.";
-      };
-      reader.readAsDataURL(blob);
-    };
-    mediaRecorder.start(); vn.classList.add("active");
-  }catch(e){ $("voiceStatus").textContent="Please allow microphone access."; }
-});
-vn.addEventListener("mouseup",()=>{ if(mediaRecorder&&mediaRecorder.state==="recording"){ mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(t=>t.stop()); vn.classList.remove("active"); $("voiceStatus").textContent="Got it, Boss."; } });
+vn.addEventListener("mousedown",async()=>{ try{ $("voiceStatus").textContent="I am listening, Boss. Go ahead."; const s=await navigator.mediaDevices.getUserMedia({audio:true}); chunks=[]; mediaRecorder=new MediaRecorder(s); mediaRecorder.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); }; mediaRecorder.onstop=async()=>{ const blob=new Blob(chunks,{type:"audio/webm"}); const reader=new FileReader(); reader.onloadend=async()=>{ try{ const d=await api("/api/voice/note",{method:"POST",body:JSON.stringify({audio:reader.result})}); addMsg("user","Voice note: "+(d.transcript||"")); addMsg("assistant",d.reply||"Got it, Boss."); }catch(e){ addMsg("assistant","Sorry: "+e.message); } $("voiceStatus").textContent="Got it, Boss."; }; reader.readAsDataURL(blob); }; mediaRecorder.start(); }catch(e){ $("voiceStatus").textContent="Please allow microphone access."; } });
+vn.addEventListener("mouseup",()=>{ if(mediaRecorder&&mediaRecorder.state==="recording"){ mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(t=>t.stop()); $("voiceStatus").textContent="Got it, Boss."; } });
 vn.addEventListener("touchstart",e=>{ e.preventDefault(); vn.dispatchEvent(new Event("mousedown")); });
 vn.addEventListener("touchend",e=>{ e.preventDefault(); vn.dispatchEvent(new Event("mouseup")); });
-
-$("btnLiveCall").addEventListener("click",async()=>{
-  if(liveCallActive){
-    if(livePc) livePc.close(); if(liveStream) liveStream.getTracks().forEach(t=>t.stop());
-    liveCallActive=false; $("btnLiveCall").textContent="🔊 Live Call"; $("voiceStatus").textContent="Live call ended. Got it, Boss."; return;
-  }
-  try{
-    $("voiceStatus").textContent="Starting live call...";
-    const sess=await api("/api/voice/session",{method:"POST",body:JSON.stringify({})});
-    const clientSecret=sess.session?.client_secret?.value||sess.session?.client_secret;
-    if(!clientSecret) throw new Error("Live call not configured. Add OPENAI_API_KEY.");
-    livePc=new RTCPeerConnection();
-    liveStream=await navigator.mediaDevices.getUserMedia({audio:true});
-    liveStream.getTracks().forEach(t=>livePc.addTrack(t,liveStream));
-    livePc.ontrack=e=>{ const a=document.createElement("audio"); a.srcObject=e.streams[0]; a.autoplay=true; document.body.appendChild(a); };
-    const offer=await livePc.createOffer(); await livePc.setLocalDescription(offer);
-    const r=await fetch(`https://api.openai.com/v1/realtime?model=gpt-realtime`,{method:"POST",headers:{Authorization:`Bearer ${clientSecret}`,"Content-Type":"application/sdp"},body:offer.sdp});
-    const answer=await r.text(); await livePc.setRemoteDescription({type:"answer",sdp:answer});
-    liveCallActive=true; $("btnLiveCall").textContent="End Live Call"; $("voiceStatus").textContent="I am listening, Boss. Go ahead. You are on a live call.";
-  }catch(e){ $("voiceStatus").textContent="Live call failed: "+e.message; addMsg("assistant","Live call failed: "+e.message); }
-});
-
-// START HERE - ALWAYS SHOW ACCOUNT & LOGIN FIRST
-showPage("account");
-updateAuthUI();
-if(token){
-  api("/api/me").then(d=>{ currentUser=d.user; updateAuthUI(); return api("/api/chat/single"); })
-  .then(s=>{ s.messages.forEach(m=>addMsg(m.role,m.content)); showPage("tabby"); })
-  .catch(()=>{ localStorage.removeItem("tabby_token"); token=""; updateAuthUI(); showPage("account"); });
-}
+$("btnLiveCall").addEventListener("click",async()=>{ if(liveCallActive){ if(livePc) livePc.close(); if(liveStream) liveStream.getTracks().forEach(t=>t.stop()); liveCallActive=false; $("btnLiveCall").textContent="🔊 Live Call"; $("voiceStatus").textContent="Live call ended. Got it, Boss."; return; } try{ $("voiceStatus").textContent="Starting live call..."; const sess=await api("/api/voice/session",{method:"POST",body:JSON.stringify({})}); const clientSecret=sess.session?.client_secret?.value||sess.session?.client_secret; if(!clientSecret) throw new Error("Live call not configured. Add OPENAI_API_KEY."); livePc=new RTCPeerConnection(); liveStream=await navigator.mediaDevices.getUserMedia({audio:true}); liveStream.getTracks().forEach(t=>livePc.addTrack(t,liveStream)); livePc.ontrack=e=>{ const a=document.createElement("audio"); a.srcObject=e.streams[0]; a.autoplay=true; document.body.appendChild(a); }; const offer=await livePc.createOffer(); await livePc.setLocalDescription(offer); const r=await fetch(`https://api.openai.com/v1/realtime?model=gpt-realtime`,{method:"POST",headers:{Authorization:`Bearer ${clientSecret}`,"Content-Type":"application/sdp"},body:offer.sdp}); const answer=await r.text(); await livePc.setRemoteDescription({type:"answer",sdp:answer}); liveCallActive=true; $("btnLiveCall").textContent="End Live Call"; $("voiceStatus").textContent="I am listening, Boss. Go ahead. You are on a live call."; }catch(e){ $("voiceStatus").textContent="Live call failed: "+e.message; addMsg("assistant","Live call failed: "+e.message); } });
+showPage("account"); updateAuthUI();
+if(token){ api("/api/me").then(d=>{ currentUser=d.user; updateAuthUI(); return api("/api/chat/single"); }).then(s=>{ s.messages.forEach(m=>addMsg(m.role,m.content)); showPage("tabby"); }).catch(()=>{ localStorage.removeItem("tabby_token"); token=""; updateAuthUI(); showPage("account"); }); }
 })();
 </script>
 </body>
