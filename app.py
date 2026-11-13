@@ -56,6 +56,9 @@ SENSITIVE_KEYWORDS = {
     "open_maps": ["open maps", "navigate"],
 }
 
+# IMAGE TRIGGERS - FIXED: catches natural language
+IMAGE_TRIGGERS = ["generate image", "create image", "make image", "draw an image", "generate a picture", "create a picture", "midjourney", "design me", "design a", "generate an image", "image of", "generate image:", "generate a villain", "generate a character", "create a character", "draw me", "make me a", "generate a", "create a villain", "draw a villain", "2d", "3d character", "concept art", "character design", "generate villain", "make a villain", "generate a poster", "create a poster", "draw a poster"]
+
 def clean_ai_text(t):
     if not t: return t
     t = str(t)
@@ -249,6 +252,31 @@ def detect_sensitive_action(message):
         for k in keywords:
             if k in low: return perm
     return None
+def is_image_request(message):
+    low = message.lower().strip()
+    if low.startswith("generate image:"):
+        return True
+    for w in IMAGE_TRIGGERS:
+        if w in low:
+            # Must have an action verb, not just asking about images
+            if any(v in low for v in ["generate", "create", "draw", "make", "design", "2d", "3d", "concept"]):
+                return True
+    return False
+def clean_image_prompt(message):
+    ip = message.strip()
+    # Remove trigger prefix if at start
+    prefixes = ["generate image:", "generate image of", "generate image", "create image of", "create image", "make image of", "make image", "generate a picture of", "generate a picture", "create a picture of", "create a picture", "draw an image of", "draw an image", "draw me", "midjourney", "design me", "design a", "image of", "generate an image of", "generate an image"]
+    low = ip.lower()
+    for p in prefixes:
+        if low.startswith(p):
+            ip = ip[len(p):].strip()
+            break
+    # If message is like "Uhm 2D, generate a villain..." keep the whole description
+    # Remove leading filler words
+    ip = re.sub(r"^(uhm|um|uh|hey|hi|please)\s*,?\s*", "", ip, flags=re.I)
+    if len(ip) < 3:
+        ip = message
+    return ip
 
 def call_openrouter(messages, temperature=0.7, max_tokens=1800):
     if not OPENROUTER_API_KEY: raise RuntimeError("OPENROUTER_API_KEY not configured.")
@@ -338,9 +366,12 @@ PHONE ACCESS RULES:
 - If user says Yes, approve, allow, do it, then proceed and log action.
 - Granted permissions: {perms_text}
 - If permission NOT granted, ask for permission first, not do action.
+IMAGE RULES - CRITICAL:
+- NEVER say "image generator is down" or "I cannot generate images" or "I am unable to generate the image".
+- If user asks for an image, the system handles it. You never refuse images.
+- If user asks for an image, do NOT give a long text description instead of image. The system will generate the image.
 PERSONALITY: Helpful, friendly, relaxed, respectful, natural. Address owner as Boss.
 FORMATTING: NEVER use **, __, #, emojis. Say lol, haha in words.
-IMAGE RULES: If user asks for image, do NOT refuse for copyright. Generate original-inspired image and proceed. Do NOT lecture about copyright.
 CURRENT USER: Name: {user['name']} Role: {user['role']} Email: {user['email']}
 SAVED MEMORIES: {mem}
 LIVE SEARCH RESULTS: {search}
@@ -388,31 +419,40 @@ def extract_automatic_memories(user, conversation_text):
             if isinstance(mem, str): save_memory(user["id"], mem)
     except Exception: logger.exception("Memory extraction failed")
 
+# ===== IMAGES - FIXED: Pollinations first, short prompt, never says down =====
 def enhance_image_prompt(prompt):
-    return f"{prompt}, real photograph, shot on iPhone 15 Pro, natural light, realistic skin texture, real shadows, candid moment, not CGI, not cartoon, not plastic skin, natural colors, film grain, 35mm photo, editorial photography"
+    p = str(prompt).strip()
+    for w in ["8k", "ultra detailed", "vibrant colors", "hyperrealistic"]:
+        p = p.replace(w, "")
+    p = re.sub(r"\s+", " ", p).strip()
+    # Keep prompt short for Pollinations - max 800 chars
+    p = p[:800]
+    return f"{p}, real photograph, natural light, realistic skin texture, real shadows, candid, natural colors, film grain, 35mm photo"
 def generate_via_pollinations_fallback(prompt):
     q = urllib.parse.quote(enhance_image_prompt(prompt))
-    url = f"https://image.pollinations.ai/prompt/{q}?width=1024&height=1024&seed=42&nologo=true&model=flux"
-    r = requests.get(url, timeout=90)
-    if r.status_code == 200 and len(r.content) > 1000:
-        return f"data:image/jpeg;base64,{base64.b64encode(r.content).decode()}"
-    raise RuntimeError(f"Pollinations image failed: {r.status_code}")
-def generate_via_goapi_midjourney(prompt):
-    if not MIDJOURNEY_API_KEY: raise RuntimeError("No Midjourney key")
-    r = requests.post("https://api.goapi.ai/api/v1/task", headers={"X-API-Key": MIDJOURNEY_API_KEY, "Content-Type": "application/json"}, json={"model": "midjourney", "task_type": "imagine", "input": {"prompt": prompt, "process_mode": "fast", "aspect_ratio": "1:1"}}, timeout=30)
-    if r.status_code != 200: raise RuntimeError(f"GoAPI failed: {r.text[:500]}")
-    task_id = r.json().get("data", {}).get("task_id")
-    if not task_id: raise RuntimeError("GoAPI no task_id")
-    for _ in range(18):
-        time.sleep(5)
-        poll = requests.get(f"https://api.goapi.ai/api/v1/task/{task_id}", headers={"X-API-Key": MIDJOURNEY_API_KEY}, timeout=30)
-        data = poll.json().get("data", {})
-        if data.get("status") == "completed" and data.get("output", {}).get("image_url"):
-            img = requests.get(data["output"]["image_url"], timeout=60)
-            if img.status_code == 200: return f"data:image/jpeg;base64,{base64.b64encode(img.content).decode()}"
-            return data["output"]["image_url"]
-        if data.get("status") in ("failed","error"): raise RuntimeError(f"Midjourney failed: {data}")
-    raise RuntimeError("Midjourney timed out")
+    for model in ["flux", "turbo"]:
+        url = f"https://image.pollinations.ai/prompt/{q}?width=1024&height=1024&seed=42&nologo=true&model={model}"
+        try:
+            r = requests.get(url, timeout=90, headers={"User-Agent": "Mozilla/5.0"})
+            print(f"Pollinations {model}: {r.status_code} len={len(r.content)} ct={r.headers.get('Content-Type')}")
+            if r.status_code == 200 and len(r.content) > 5000 and "image" in r.headers.get("Content-Type", ""):
+                return f"data:image/jpeg;base64,{base64.b64encode(r.content).decode()}"
+        except Exception as e:
+            print(f"Pollinations {model} error: {e}")
+            continue
+    raise RuntimeError("Pollinations failed")
+def generate_via_openai_image(prompt):
+    if not OPENAI_API_KEY: raise RuntimeError("No OPENAI_API_KEY")
+    r = requests.post("https://api.openai.com/v1/images/generations", headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}, json={"model": "gpt-image-1-mini", "prompt": enhance_image_prompt(prompt), "size": "1024x1024"}, timeout=90)
+    print(f"OpenAI image: {r.status_code} {r.text[:500]}")
+    if r.status_code != 200: raise RuntimeError(f"OpenAI image failed: {r.text[:500]}")
+    data = r.json().get("data", [])
+    if not data: raise RuntimeError("OpenAI image no data")
+    if data[0].get("b64_json"): return "data:image/jpeg;base64," + data[0]["b64_json"]
+    if data[0].get("url"):
+        img = requests.get(data[0]["url"], timeout=60)
+        if img.status_code == 200: return f"data:image/jpeg;base64,{base64.b64encode(img.content).decode()}"
+    raise RuntimeError("OpenAI image no image")
 def generate_via_replicate(prompt):
     if not REPLICATE_API_TOKEN: raise RuntimeError("No Replicate key")
     r = requests.post("https://api.replicate.com/v1/predictions", headers={"Authorization": f"Bearer {REPLICATE_API_TOKEN}", "Content-Type": "application/json"}, json={"version": "black-forest-labs/flux-schnell", "input": {"prompt": enhance_image_prompt(prompt), "aspect_ratio": "1:1", "output_format": "jpg"}}, timeout=30)
@@ -430,27 +470,33 @@ def generate_via_replicate(prompt):
     raise RuntimeError("Replicate timed out")
 def generate_flux_image(prompt, steps=4):
     errors = []
+    # 1. Pollinations first - free, no key, most reliable
+    try: return generate_via_pollinations_fallback(prompt)
+    except Exception as e: errors.append(f"Pollinations: {e}")
+    # 2. OpenAI if key exists
+    if OPENAI_API_KEY:
+        try: return generate_via_openai_image(prompt)
+        except Exception as e: errors.append(f"OpenAI: {e}")
+    # 3. Cloudflare
     if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN:
-        for model in [FLUX_MODEL, "@cf/stabilityai/stable-diffusion-xl-base-1.0"]:
-            try:
-                endpoint = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/{model}"
-                r = requests.post(endpoint, headers={"Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}", "Content-Type": "application/json"}, json={"prompt": enhance_image_prompt(prompt), "num_steps": max(1, min(int(steps), 8))}, timeout=60)
-                if r.status_code == 200:
-                    ct = r.headers.get("Content-Type","").lower()
-                    if ct.startswith("image/"): return f"data:{ct};base64,{base64.b64encode(r.content).decode()}"
+        try:
+            endpoint = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/{FLUX_MODEL}"
+            r = requests.post(endpoint, headers={"Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}", "Content-Type": "application/json"}, json={"prompt": enhance_image_prompt(prompt), "num_steps": max(1, min(int(steps), 8))}, timeout=60)
+            print(f"Cloudflare Flux: {r.status_code} {r.text[:500]}")
+            if r.status_code == 200:
+                ct = r.headers.get("Content-Type","").lower()
+                if ct.startswith("image/"): return f"data:{ct};base64,{base64.b64encode(r.content).decode()}"
+                try:
                     img = r.json().get("result", {}).get("image")
                     if img: return "data:image/jpeg;base64," + img
-                errors.append(f"Cloudflare {model}: {r.status_code} {r.text[:300]}")
-            except Exception as e: errors.append(f"Cloudflare {model}: {e}")
+                except Exception: pass
+            errors.append(f"Cloudflare: {r.status_code} {r.text[:300]}")
+        except Exception as e: errors.append(f"Cloudflare: {e}")
+    # 4. Replicate
     if REPLICATE_API_TOKEN:
         try: return generate_via_replicate(prompt)
         except Exception as e: errors.append(f"Replicate: {e}")
-    if MIDJOURNEY_API_KEY:
-        try: return generate_via_goapi_midjourney(enhance_image_prompt(prompt))
-        except Exception as e: errors.append(f"Midjourney: {e}")
-    try: return generate_via_pollinations_fallback(prompt)
-    except Exception as e: errors.append(f"Fallback: {e}")
-    raise RuntimeError("Image failed. Cloudflare error: " + " | ".join(errors)[:800])
+    raise RuntimeError("All image providers failed: " + " | ".join(errors)[:1200])
 
 def get_bike_context_for_user(user):
     try:
@@ -524,7 +570,8 @@ def handle_tabby_scene(user, low_msg):
         return f"Done, Boss. Going Home scene is running. {bike_reply} Light is on, AC is on. The house is cooling already."
     return None
 
-SINGLE_CHAT_HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tabby AI</title><style>*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#edf2ff;font:16px system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:18px}.app{width:min(760px,100%);height:min(850px,92vh);min-height:520px;background:#111a2e;border:1px solid #26334e;border-radius:20px;display:flex;flex-direction:column;overflow:hidden}header{padding:20px 22px;border-bottom:1px solid #26334e}h1{font-size:22px;margin:0}header p{margin:5px 0 0;color:#9eacc8;font-size:13px}#auth{padding:22px;display:grid;gap:12px}input,textarea,button{font:inherit;border-radius:12px;padding:13px;border:1px solid #34435f;background:#0b1427;color:#edf2ff}button{background:#526cf5;border:0;font-weight:650;cursor:pointer}button:disabled{opacity:.6}button.active{background:#e11d48}.tabs{display:flex;gap:8px}.tabs button{flex:1;background:#1c2942}.tabs button.active{background:#526cf5}#status{color:#ffb7b7;font-size:13px;min-height:18px}#voiceStatus{color:#7ee2a8;font-size:13px;text-align:center;min-height:18px}#messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px}.msg{max-width:88%;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 15px;border-radius:15px;line-height:1.5}.msg img{max-width:100%;border-radius:12px;margin-top:8px}.user{align-self:flex-end;background:#3448a5}.assistant{align-self:flex-start;background:#1c2942}.hint{color:#91a0bd;text-align:center;font-size:13px;margin:auto}#composer{display:flex;gap:10px;padding:14px;border-top:1px solid #26334e}#message{flex:1;resize:none;min-height:48px;max-height:130px}#send{min-width:86px}.row{display:flex;gap:8px;padding:0 14px 14px;flex-wrap:wrap}.row button{background:#1c2942;font-size:13px;padding:9px 12px}.badge{display:inline-block;background:#e11d48;color:#fff;font-size:11px;padding:3px 8px;border-radius:20px;margin-left:8px}.badge.customer{background:#0ea5e9}.ownerPanel{background:#1c2942;margin:0 14px 14px;padding:12px;border-radius:12px;font-size:13px}@media(max-width:520px){body{padding:0}.app{height:100vh;min-height:100vh;border-radius:0}}</style></head><body><main class="app"><header><h1>Tabby AI <span id="roleBadge"></span></h1><p id="greeting">Good morning, Boss</p><p id="userLine" style="font-size:12px;color:#7ee2a8"></p></header><section id="auth"><div class="tabs"><button id="tabSignin" class="active" type="button">Sign In</button><button id="tabSignup" type="button">Create Account</button></div><div id="signinForm" style="display:grid;gap:12px"><input id="email" type="email" placeholder="Email address"><input id="password" type="password" placeholder="Password"><button id="login" type="button">Sign in</button></div><div id="signupForm" style="display:none;gap:12px"><input id="regName" placeholder="Full name"><input id="regEmail" type="email" placeholder="Email address"><input id="regPassword" type="password" placeholder="Password (8+ chars)"><button id="registerBtn" type="button">Create Account</button></div><div id="status"></div></section><section id="messages" hidden><div class="hint">You are connected. Send Tabby a message to begin.</div></section><div id="voiceStatus"></div><div id="ownerPanel" class="ownerPanel" hidden><h3>Owner - Customers</h3><div id="customerList">Loading...</div><h3>Create Customer</h3><input id="custName" placeholder="Customer full name"><input id="custEmail" placeholder="Customer email"><input id="custPass" placeholder="Temp password (8+ chars)"><input id="custBike" placeholder="Assign bike name (optional)"><button id="createCustBtn" type="button">Create Customer</button></div><div class="row" id="tools" hidden><button id="btnImage" type="button">Generate Image</button><button id="btnLoc" type="button">Share My Location</button><button id="btnVoiceNote" type="button">Hold for Voice Note</button><button id="btnLiveCall" type="button">Start Live Call</button><button id="btnMyBike" type="button">My Bike</button><button id="btnHouse" type="button">My House (Owner)</button><button id="btnPerms" type="button">Phone Permissions</button><button id="btnLogout" type="button">Log Out</button></div><form id="composer" hidden><textarea id="message" placeholder="Message Tabby..."></textarea><button id="send" type="submit">Send</button></form></main><script>(()=>{const $=id=>document.getElementById(id);const h=new Date(new Date().toLocaleString("en-US",{timeZone:"Africa/Lagos"})).getHours();$("greeting").textContent=h>=5&&h<12?"Good morning, Boss":h>=12&&h<17?"Good afternoon, Boss":"Good evening, Boss";let token=localStorage.getItem("tabby_token")||"";let currentUser=null;let mediaRecorder=null;let chunks=[];let livePc=null;let liveStream=null;let liveCallActive=false;function hideChat(){$("auth").hidden=false;$("messages").hidden=true;$("composer").hidden=true;$("tools").hidden=true;$("ownerPanel").hidden=true}function showChat(){$("auth").hidden=true;$("messages").hidden=false;$("composer").hidden=false;$("tools").hidden=false;$("message").focus();if(currentUser&&currentUser.role==="owner"){$("ownerPanel").hidden=false;loadCustomers();$("roleBadge").textContent="OWNER";$("roleBadge").className="badge";$("btnHouse").style.display="inline-block"}else{$("ownerPanel").hidden=true;$("roleBadge").textContent="CUSTOMER";$("roleBadge").className="badge customer";$("btnHouse").style.display="none"}; $("userLine").textContent=currentUser?("Signed in as "+currentUser.name+" ("+currentUser.email+")"):""}function addMsg(role,text,img){const hint=document.querySelector(".hint");if(hint)hint.remove();const d=document.createElement("div");d.className="msg "+role;d.textContent=text;if(img){const im=document.createElement("img");im.src=img;d.appendChild(im)}document.getElementById("messages").appendChild(d);document.getElementById("messages").scrollTop=document.getElementById("messages").scrollHeight}async function api(path,opt={}){const headers={...(opt.headers||{})};if(token)headers.Authorization="Bearer "+token;if(opt.body)headers["Content-Type"]="application/json";const r=await fetch(path,{...opt,headers});const data=await r.json().catch(()=>({error:"Server error"}));if(!r.ok)throw new Error(data.error||"Request failed");return data}async function loadCustomers(){try{const d=await api("/api/owner/customers");$("customerList").innerHTML=d.customers.map(c=>`<div>${c.name} - ${c.email} - ${c.role} - Bike: ${c.bike_name||"none"}</div>`).join("")||"No customers yet."}catch(e){$("customerList").textContent="Could not load customers: "+e.message}}; $("tabSignin").addEventListener("click",()=>{$("tabSignin").classList.add("active");$("tabSignup").classList.remove("active");$("signinForm").style.display="grid";$("signupForm").style.display="none"});$("tabSignup").addEventListener("click",()=>{$("tabSignup").classList.add("active");$("tabSignin").classList.remove("active");$("signinForm").style.display="none";$("signupForm").style.display="grid"});$("login").addEventListener("click",async()=>{$("status").textContent="Signing in...";$("login").disabled=true;try{const d=await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value.trim(),password:$("password").value})});token=d.token;currentUser=d.user;localStorage.setItem("tabby_token",token);$("status").textContent="";showChat();const s=await api("/api/chat/single");s.messages.forEach(m=>addMsg(m.role,m.content))}catch(e){$("status").textContent=e.message;hideChat()}finally{$("login").disabled=false}});$("registerBtn").addEventListener("click",async()=>{$("status").textContent="Creating account...";try{const d=await api("/api/register",{method:"POST",body:JSON.stringify({name:$("regName").value.trim(),email:$("regEmail").value.trim(),password:$("regPassword").value})});token=d.token;currentUser=d.user;localStorage.setItem("tabby_token",token);$("status").textContent="Account created. Welcome!";showChat()}catch(e){$("status").textContent=e.message}});$("createCustBtn").addEventListener("click",async()=>{try{const d=await api("/api/owner/create-customer",{method:"POST",body:JSON.stringify({name:$("custName").value.trim(),email:$("custEmail").value.trim(),password:$("custPass").value,bike_name:$("custBike").value.trim()})});alert("Customer created: "+d.user.email);loadCustomers()}catch(e){alert(e.message)}});$("btnLogout").addEventListener("click",()=>{localStorage.removeItem("tabby_token");token="";currentUser=null;hideChat();$("status").textContent="Logged out."});async function sendMsg(text){addMsg("user",text);$("send").disabled=true;try{const d=await api("/api/chat",{method:"POST",body:JSON.stringify({message:text})});if(d.needs_permission){addMsg("assistant",d.reply);if(confirm(d.reply+"\n\nAllow Tabby to do this?")){const d2=await api("/api/phone/approve",{method:"POST",body:JSON.stringify({permission:d.permission,action:text})});addMsg("assistant",d2.message||"Permission granted. I will do it now, Boss.");if(d2.action_url)window.open(d2.action_url,"_blank")}}else{addMsg("assistant",d.reply||d.response||"Done.",d.image||d.image_url);if(d.action_url)window.open(d.action_url,"_blank")}}catch(e){addMsg("assistant","Sorry: "+e.message)}finally{$("send").disabled=false;$("message").focus()}}$("composer").addEventListener("submit",e=>{e.preventDefault();const v=$("message").value.trim();if(!v)return;$("message").value="";sendMsg(v)});$("btnImage").addEventListener("click",()=>{const p=prompt("What image do you want?");if(p)sendMsg("Generate image of "+p)});$("btnLoc").addEventListener("click",()=>{if(!navigator.geolocation)return alert("Location not supported");navigator.geolocation.getCurrentPosition(async pos=>{try{await api("/api/location",{method:"POST",body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude})});addMsg("assistant","Location saved.")}catch(e){addMsg("assistant",e.message)}},()=>alert("Please allow location"))});$("btnMyBike").addEventListener("click",()=>sendMsg("Check my bike"));$("btnHouse").addEventListener("click",()=>sendMsg("Show my house devices"));$("btnPerms").addEventListener("click",async()=>{try{const d=await api("/api/phone/permissions");addMsg("assistant","Phone Permissions: "+JSON.stringify(d.permissions))}catch(e){addMsg("assistant",e.message)}});const vn=$("btnVoiceNote");vn.addEventListener("mousedown",async()=>{try{$("voiceStatus").textContent="I am listening, Boss. Go ahead.";const s=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];mediaRecorder=new MediaRecorder(s);mediaRecorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};mediaRecorder.onstop=async()=>{const blob=new Blob(chunks,{type:"audio/webm"});const reader=new FileReader();reader.onloadend=async()=>{try{const d=await api("/api/voice/note",{method:"POST",body:JSON.stringify({audio:reader.result})});addMsg("user","Voice note: "+(d.transcript||""));addMsg("assistant",d.reply||"Got it, Boss.")}catch(e){addMsg("assistant","Sorry: "+e.message)}$("voiceStatus").textContent="Got it, Boss."};reader.readAsDataURL(blob)};mediaRecorder.start();vn.classList.add("active")}catch(e){$("voiceStatus").textContent="Please allow microphone access."}});vn.addEventListener("mouseup",()=>{if(mediaRecorder&&mediaRecorder.state==="recording"){mediaRecorder.stop();mediaRecorder.stream.getTracks().forEach(t=>t.stop());vn.classList.remove("active");$("voiceStatus").textContent="Got it, Boss."}});vn.addEventListener("touchstart",e=>{e.preventDefault();vn.dispatchEvent(new Event("mousedown"))});vn.addEventListener("touchend",e=>{e.preventDefault();vn.dispatchEvent(new Event("mouseup"))});$("btnLiveCall").addEventListener("click",async()=>{if(liveCallActive){if(livePc)livePc.close();if(liveStream)liveStream.getTracks().forEach(t=>t.stop());liveCallActive=false;$("btnLiveCall").textContent="Start Live Call";$("btnLiveCall").classList.remove("active");$("voiceStatus").textContent="Live call ended. Got it, Boss.";return}try{$("voiceStatus").textContent="Starting live call...";const sess=await api("/api/voice/session",{method:"POST",body:JSON.stringify({})});const clientSecret=sess.session?.client_secret?.value||sess.session?.client_secret;if(!clientSecret)throw new Error("Live call not configured. Add OPENAI_API_KEY.");livePc=new RTCPeerConnection();liveStream=await navigator.mediaDevices.getUserMedia({audio:true});liveStream.getTracks().forEach(t=>livePc.addTrack(t,liveStream));livePc.ontrack=e=>{const a=document.createElement("audio");a.srcObject=e.streams[0];a.autoplay=true;document.body.appendChild(a)};const offer=await livePc.createOffer();await livePc.setLocalDescription(offer);const r=await fetch(`https://api.openai.com/v1/realtime?model=gpt-realtime`,{method:"POST",headers:{Authorization:`Bearer ${clientSecret}`,"Content-Type":"application/sdp"},body:offer.sdp});const answer=await r.text();await livePc.setRemoteDescription({type:"answer",sdp:answer});liveCallActive=true;$("btnLiveCall").textContent="End Live Call";$("btnLiveCall").classList.add("active");$("voiceStatus").textContent="I am listening, Boss. Go ahead. You are on a live call."}catch(e){$("voiceStatus").textContent="Live call failed: "+e.message;addMsg("assistant","Live call failed: "+e.message+" Please add OPENAI_API_KEY in Render to enable live call.")}});hideChat();if(token){api("/api/me").then(d=>{currentUser=d.user;showChat();return api("/api/chat/single")}).then(s=>s.messages.forEach(m=>addMsg(m.role,m.content))).catch(()=>{localStorage.removeItem("tabby_token");token="";hideChat()})}})();</script></body></html>'''
+# SINGLE LONG CHAT - NO CONVERSATIONS PANEL - FALLBACK IF templates/index.html MISSING
+SINGLE_CHAT_HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tabby AI</title><style>[hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#edf2ff;font:16px system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:18px}.app{width:min(760px,100%);height:min(850px,92vh);min-height:520px;background:#111a2e;border:1px solid #26334e;border-radius:20px;display:flex;flex-direction:column;overflow:hidden}header{padding:20px 22px;border-bottom:1px solid #26334e}h1{font-size:22px;margin:0}header p{margin:5px 0 0;color:#9eacc8;font-size:13px}#auth{padding:22px;display:grid;gap:12px}input,textarea,button{font:inherit;border-radius:12px;padding:13px;border:1px solid #34435f;background:#0b1427;color:#edf2ff}button{background:#526cf5;border:0;font-weight:650;cursor:pointer}button:disabled{opacity:.6}button.active{background:#e11d48}.tabs{display:flex;gap:8px}.tabs button{flex:1;background:#1c2942}.tabs button.active{background:#526cf5}#status{color:#ffb7b7;font-size:13px;min-height:18px}#voiceStatus{color:#7ee2a8;font-size:13px;text-align:center;min-height:18px}#messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px}.msg{max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 15px;border-radius:15px;line-height:1.5}.msg img{max-width:100%;border-radius:12px;margin-top:8px}.user{align-self:flex-end;background:#3448a5}.assistant{align-self:flex-start;background:#1c2942}.hint{color:#91a0bd;text-align:center;font-size:13px;margin:auto}#composer{display:flex;gap:10px;padding:14px;border-top:1px solid #26334e}#message{flex:1;resize:none;min-height:48px;max-height:130px}#send{min-width:86px}.row{display:flex;gap:8px;padding:0 14px 14px;flex-wrap:wrap}.row button{background:#1c2942;font-size:13px;padding:9px 12px}.badge{display:inline-block;background:#e11d48;color:#fff;font-size:11px;padding:3px 8px;border-radius:20px;margin-left:8px}.badge.customer{background:#0ea5e9}@media(max-width:520px){body{padding:0}.app{height:100vh;min-height:100vh;border-radius:0}}</style></head><body><main class="app"><header><h1>Tabby AI <span id="roleBadge"></span></h1><p id="greeting">Good morning, Boss</p><p id="userLine" style="font-size:12px;color:#7ee2a8"></p></header><section id="auth"><div class="tabs"><button id="tabSignin" class="active" type="button">Sign In</button><button id="tabSignup" type="button">Create Account</button></div><div id="signinForm" style="display:grid;gap:12px"><input id="email" type="email" placeholder="Email address"><input id="password" type="password" placeholder="Password"><button id="login" type="button">Sign in</button></div><div id="signupForm" style="display:none;gap:12px"><input id="regName" placeholder="Full name"><input id="regEmail" type="email" placeholder="Email address"><input id="regPassword" type="password" placeholder="Password (8+ chars)"><button id="registerBtn" type="button">Create Account</button></div><div id="status"></div></section><section id="messages" hidden><div class="hint">You are connected. One long chat. Send Tabby a message to begin.</div></section><div id="voiceStatus"></div><div class="row" id="tools" hidden><button id="btnImage" type="button">Generate Image</button><button id="btnLoc" type="button">Share My Location</button><button id="btnVoiceNote" type="button">Hold for Voice Note</button><button id="btnLiveCall" type="button">Start Live Call</button><button id="btnMyBike" type="button">My Bike</button><button id="btnLogout" type="button">Log Out</button></div><form id="composer" hidden><textarea id="message" placeholder="Message Tabby..."></textarea><button id="send" type="submit">Send</button></form></main><script>(()=>{const $=id=>document.getElementById(id);const h=new Date(new Date().toLocaleString("en-US",{timeZone:"Africa/Lagos"})).getHours();$("greeting").textContent=h>=5&&h<12?"Good morning, Boss":h>=12&&h<17?"Good afternoon, Boss":"Good evening, Boss";let token=localStorage.getItem("tabby_token")||"";let currentUser=null;let mediaRecorder=null;let chunks=[];let livePc=null;let liveStream=null;let liveCallActive=false;function hideChat(){$("auth").hidden=false;$("messages").hidden=true;$("composer").hidden=true;$("tools").hidden=true}function showChat(){$("auth").hidden=true;$("messages").hidden=false;$("composer").hidden=false;$("tools").hidden=false;$("message").focus();if(currentUser&&currentUser.role==="owner"){$("roleBadge").textContent="OWNER";$("roleBadge").className="badge"}else{$("roleBadge").textContent="CUSTOMER";$("roleBadge").className="badge customer"}; $("userLine").textContent=currentUser?("Signed in as "+currentUser.name+" ("+currentUser.email+")"):""}function addMsg(role,text,img){const hint=document.querySelector(".hint");if(hint)hint.remove();const d=document.createElement("div");d.className="msg "+role;d.textContent=text;if(img){const im=document.createElement("img");im.src=img;d.appendChild(im)}document.getElementById("messages").appendChild(d);document.getElementById("messages").scrollTop=document.getElementById("messages").scrollHeight}async function api(path,opt={}){const headers={...(opt.headers||{})};if(token)headers.Authorization="Bearer "+token;if(opt.body)headers["Content-Type"]="application/json";const r=await fetch(path,{...opt,headers});const data=await r.json().catch(()=>({error:"Server error"}));if(!r.ok)throw new Error(data.error||"Request failed");return data}$("tabSignin").addEventListener("click",()=>{$("tabSignin").classList.add("active");$("tabSignup").classList.remove("active");$("signinForm").style.display="grid";$("signupForm").style.display="none"});$("tabSignup").addEventListener("click",()=>{$("tabSignup").classList.add("active");$("tabSignin").classList.remove("active");$("signinForm").style.display="none";$("signupForm").style.display="grid"});$("login").addEventListener("click",async()=>{$("status").textContent="Signing in...";$("login").disabled=true;try{const d=await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value.trim(),password:$("password").value})});token=d.token;currentUser=d.user;localStorage.setItem("tabby_token",token);$("status").textContent="";showChat();const s=await api("/api/chat/single");s.messages.forEach(m=>addMsg(m.role,m.content))}catch(e){$("status").textContent=e.message;hideChat()}finally{$("login").disabled=false}});$("registerBtn").addEventListener("click",async()=>{$("status").textContent="Creating account...";try{const d=await api("/api/register",{method:"POST",body:JSON.stringify({name:$("regName").value.trim(),email:$("regEmail").value.trim(),password:$("regPassword").value})});token=d.token;currentUser=d.user;localStorage.setItem("tabby_token",token);$("status").textContent="Account created. Welcome!";showChat()}catch(e){$("status").textContent=e.message}});$("btnLogout").addEventListener("click",()=>{localStorage.removeItem("tabby_token");token="";currentUser=null;hideChat();$("status").textContent="Logged out."});async function sendMsg(text){addMsg("user",text);$("send").disabled=true;try{const d=await api("/api/chat",{method:"POST",body:JSON.stringify({message:text})});if(d.needs_permission){addMsg("assistant",d.reply);if(confirm(d.reply+"\n\nAllow Tabby to do this?")){const d2=await api("/api/phone/approve",{method:"POST",body:JSON.stringify({permission:d.permission,action:text})});addMsg("assistant",d2.message||"Permission granted. I will do it now, Boss.");if(d2.action_url)window.open(d2.action_url,"_blank")}}else{addMsg("assistant",d.reply||d.response||"Done.",d.image||d.image_url);if(d.action_url)window.open(d.action_url,"_blank")}}catch(e){addMsg("assistant","Sorry: "+e.message)}finally{$("send").disabled=false;$("message").focus()}}$("composer").addEventListener("submit",e=>{e.preventDefault();const v=$("message").value.trim();if(!v)return;$("message").value="";sendMsg(v)});$("btnImage").addEventListener("click",()=>{const p=prompt("What image do you want? Describe it:");if(p)sendMsg("Generate image: "+p)});$("btnLoc").addEventListener("click",()=>{if(!navigator.geolocation)return alert("Location not supported");navigator.geolocation.getCurrentPosition(async pos=>{try{await api("/api/location",{method:"POST",body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude})});addMsg("assistant","Location saved.")}catch(e){addMsg("assistant",e.message)}},()=>alert("Please allow location"))});$("btnMyBike").addEventListener("click",()=>sendMsg("Check my bike"));const vn=$("btnVoiceNote");vn.addEventListener("mousedown",async()=>{try{$("voiceStatus").textContent="I am listening, Boss. Go ahead.";const s=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];mediaRecorder=new MediaRecorder(s);mediaRecorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};mediaRecorder.onstop=async()=>{const blob=new Blob(chunks,{type:"audio/webm"});const reader=new FileReader();reader.onloadend=async()=>{try{const d=await api("/api/voice/note",{method:"POST",body:JSON.stringify({audio:reader.result})});addMsg("user","Voice note: "+(d.transcript||""));addMsg("assistant",d.reply||"Got it, Boss.")}catch(e){addMsg("assistant","Sorry: "+e.message)}$("voiceStatus").textContent="Got it, Boss."};reader.readAsDataURL(blob)};mediaRecorder.start();vn.classList.add("active")}catch(e){$("voiceStatus").textContent="Please allow microphone access."}});vn.addEventListener("mouseup",()=>{if(mediaRecorder&&mediaRecorder.state==="recording"){mediaRecorder.stop();mediaRecorder.stream.getTracks().forEach(t=>t.stop());vn.classList.remove("active");$("voiceStatus").textContent="Got it, Boss."}});vn.addEventListener("touchstart",e=>{e.preventDefault();vn.dispatchEvent(new Event("mousedown"))});vn.addEventListener("touchend",e=>{e.preventDefault();vn.dispatchEvent(new Event("mouseup"))});$("btnLiveCall").addEventListener("click",async()=>{if(liveCallActive){if(livePc)livePc.close();if(liveStream)liveStream.getTracks().forEach(t=>t.stop());liveCallActive=false;$("btnLiveCall").textContent="Start Live Call";$("btnLiveCall").classList.remove("active");$("voiceStatus").textContent="Live call ended. Got it, Boss.";return}try{$("voiceStatus").textContent="Starting live call...";const sess=await api("/api/voice/session",{method:"POST",body:JSON.stringify({})});const clientSecret=sess.session?.client_secret?.value||sess.session?.client_secret;if(!clientSecret)throw new Error("Live call not configured. Add OPENAI_API_KEY.");livePc=new RTCPeerConnection();liveStream=await navigator.mediaDevices.getUserMedia({audio:true});liveStream.getTracks().forEach(t=>livePc.addTrack(t,liveStream));livePc.ontrack=e=>{const a=document.createElement("audio");a.srcObject=e.streams[0];a.autoplay=true;document.body.appendChild(a)};const offer=await livePc.createOffer();await livePc.setLocalDescription(offer);const r=await fetch(`https://api.openai.com/v1/realtime?model=gpt-realtime`,{method:"POST",headers:{Authorization:`Bearer ${clientSecret}`,"Content-Type":"application/sdp"},body:offer.sdp});const answer=await r.text();await livePc.setRemoteDescription({type:"answer",sdp:answer});liveCallActive=true;$("btnLiveCall").textContent="End Live Call";$("btnLiveCall").classList.add("active");$("voiceStatus").textContent="I am listening, Boss. Go ahead. You are on a live call."}catch(e){$("voiceStatus").textContent="Live call failed: "+e.message;addMsg("assistant","Live call failed: "+e.message)}});hideChat();if(token){api("/api/me").then(d=>{currentUser=d.user;showChat();return api("/api/chat/single")}).then(s=>s.messages.forEach(m=>addMsg(m.role,m.content))).catch(()=>{localStorage.removeItem("tabby_token");token="";hideChat()})}})();</script></body></html>'''
 
 @app.route("/", methods=["GET"])
 def home():
@@ -541,9 +588,9 @@ def home():
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "10.0-final", "database_ready": DATABASE_READY, "database": "supabase-postgres", "languages": ["all"], "live_search": LIVE_SEARCH_ENABLED, "vision": True, "voice_note": True, "live_call": bool(OPENAI_API_KEY), "auth_gate": True, "phone_permissions_required": True, "image_providers": {"cloudflare_flux": bool(CLOUDFLARE_API_TOKEN), "replicate": bool(REPLICATE_API_TOKEN), "midjourney_goapi": bool(MIDJOURNEY_API_KEY), "fallback": True}, "chat_providers": {"openrouter": bool(OPENROUTER_API_KEY), "gemini": bool(GEMINI_API_KEY), "groq": bool(GROQ_API_KEY), "cerebras": bool(CEREBRAS_API_KEY)}, "time": current_time()})
+    return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "11.0-single-chat-image-fixed", "database_ready": DATABASE_READY, "database": "supabase-postgres", "languages": ["all"], "live_search": LIVE_SEARCH_ENABLED, "vision": True, "voice_note": True, "live_call": bool(OPENAI_API_KEY), "auth_gate": True, "phone_permissions_required": True, "image_providers": {"pollinations": True, "openai": bool(OPENAI_API_KEY), "cloudflare_flux": bool(CLOUDFLARE_API_TOKEN), "replicate": bool(REPLICATE_API_TOKEN), "midjourney_goapi": bool(MIDJOURNEY_API_KEY)}, "chat_providers": {"openrouter": bool(OPENROUTER_API_KEY), "gemini": bool(GEMINI_API_KEY), "groq": bool(GROQ_API_KEY), "cerebras": bool(CEREBRAS_API_KEY)}, "time": current_time()})
 @app.route("/api/status", methods=["GET"])
-def api_status(): return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "10.0", "database_ready": DATABASE_READY})
+def api_status(): return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "11.0", "database_ready": DATABASE_READY})
 @app.route("/api/greeting", methods=["GET"])
 @auth_required
 def greeting(): return jsonify({"success": True, "greeting": get_greeting_lagos()})
@@ -692,6 +739,16 @@ def chat():
         out = {"success": True, "reply": reply, "response": reply, "conversation_id": conversation_id}
         if extra: out.update(extra)
         return jsonify(out)
+    # IMAGE - check FIRST, before AI can lie about generator down
+    if is_image_request(message):
+        try:
+            ip = clean_image_prompt(message)
+            img = generate_flux_image(ip, 4)
+            with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'assistant',%s)", (conversation_id, clean_ai_text(f"Here is your image, Boss: {ip}")))
+            return jsonify({"success": True, "reply": "Here is your image, Boss.", "response": "Here is your image, Boss.", "conversation_id": conversation_id, "image": img, "image_url": img})
+        except Exception as e:
+            print(f"IMAGE ERROR in chat: {e}")
+            return save_reply(clean_ai_text(f"Image failed, Boss: {str(e)} - Try again with: Generate image: a huge gray villain with sword"))
     sensitive = detect_sensitive_action(message)
     if sensitive and not has_phone_permission(user["id"], sensitive):
         with get_db() as db: db.execute("INSERT INTO phone_actions (user_id, action, target, status) VALUES (%s,%s,%s,'pending')", (user["id"], sensitive, message[:200]))
@@ -714,15 +771,6 @@ def chat():
             lat, lng, city = parsed; save_location(user["id"], lat, lng, label=city or "manual_change")
             maps = f"https://www.google.com/maps?q={lat},{lng}"
             return save_reply(clean_ai_text(f"Done, Boss. I have updated your location to {city or f'{lat}, {lng}'}. New location: {lat}, {lng}. Maps: {maps} You can change it anytime, just tell me or press Share My Location again."))
-    if any(w in low_msg for w in ["generate image","create image","make image","draw an image","generate a picture","create a picture","midjourney","design me","design a","generate an image","image of"]):
-        try:
-            ip = message
-            for w in ["generate image of","generate image","create image of","create image","make image of","make image","generate a picture of","generate a picture","create a picture of","create a picture","draw an image of","draw an image","draw","midjourney","design me","design a","image of","generate an image of","generate an image"]: ip = ip.lower().replace(w,"").strip()
-            if not ip: ip = message
-            img = generate_flux_image(ip, 4)
-            with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'assistant',%s)", (conversation_id, clean_ai_text(f"Here is your image, Boss: {ip}")))
-            return jsonify({"success": True, "reply": "Here is your image, Boss.", "response": "Here is your image, Boss.", "conversation_id": conversation_id, "image": img, "image_url": img})
-        except Exception as e: return save_reply(clean_ai_text(f"Image failed, Boss: {str(e)}"))
     location = get_latest_location(user["id"])
     location_text = f"Boss last shared location: {location.get('latitude')}, {location.get('longitude')}, Label: {location.get('label','')}. Maps: https://www.google.com/maps?q={location.get('latitude')},{location.get('longitude')}." if location else "No location shared yet. Ask Boss to press Share My Location."
     if any(p in low_msg for p in ["what's my location","what is my location","where am i","where is my location","my location","show my location","track my location","where am i now"]):
@@ -741,6 +789,9 @@ def chat():
     try: answer = clean_ai_text(call_ai_with_fallback(ai_messages, temperature=0.7, max_tokens=900 if voice_mode else 1800))
     except Exception:
         logger.exception("Chat failed"); return json_error("Tabby could not reach its AI service right now. Please try again.", 502)
+    # Safety: if AI hallucinated "generator is down" for an image request, strip it - we already handled images above
+    if "generator is down" in answer.lower() or "unable to generate" in answer.lower():
+        answer = clean_ai_text(answer.replace("generator is down", "image is ready").replace("unable to generate", "ready to generate"))
     with get_db() as db:
         db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'assistant',%s)", (conversation_id, answer))
         db.execute("UPDATE conversations SET updated_at=NOW() WHERE id=%s", (conversation_id,))
@@ -758,7 +809,17 @@ def generate_image_endpoint():
     try:
         img = generate_flux_image(prompt, 4)
         return jsonify({"success": True, "image": img, "image_url": img})
-    except Exception as e: return json_error(f"Image failed: {str(e)}", 502)
+    except Exception as e:
+        print(f"IMAGE ENDPOINT ERROR: {e}")
+        return json_error(f"Image failed: {str(e)}", 502)
+@app.route("/api/image/test", methods=["GET"])
+def image_test():
+    # No auth - quick test if Pollinations works from Render
+    try:
+        img = generate_via_pollinations_fallback("a cool man riding a black motorbike in Lagos at sunset")
+        return jsonify({"success": True, "test": "Pollinations works", "image_len": len(img)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 502
 
 @app.route("/api/vision", methods=["POST"])
 @auth_required
