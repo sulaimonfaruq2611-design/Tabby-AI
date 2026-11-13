@@ -71,8 +71,33 @@ def init_db():
             CREATE TABLE IF NOT EXISTS auto_learned(id SERIAL PRIMARY KEY, topic TEXT, content TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
             CREATE TABLE IF NOT EXISTS bike_commands(id SERIAL PRIMARY KEY, motorcycle_id INT, command TEXT, issued_by INT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
             """)
-            if OWNER_EMAIL: db.q("UPDATE users SET role='owner' WHERE lower(email)=%s", (OWNER_EMAIL,))
-    except Exception as e: print("DB init", e)
+            # --- MIGRATION: Fix old Supabase tables with camelCase userId ---
+            # This is the fix for: column "userId" does not exist
+            for table in ["messages", "memories"]:
+                try:
+                    db.q(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS user_id INT')
+                    db.q(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS "userId" INT')
+                    db.q(f'UPDATE {table} SET user_id = COALESCE(user_id, "userId") WHERE user_id IS NULL')
+                    db.q(f'UPDATE {table} SET "userId" = COALESCE("userId", user_id) WHERE "userId" IS NULL')
+                except Exception as e:
+                    print(f"migrate {table}", e)
+            try:
+                db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS assigned_user_id INT')
+                db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS "assignedUserId" INT')
+                db.q('UPDATE motorcycles SET assigned_user_id = COALESCE(assigned_user_id, "assignedUserId") WHERE assigned_user_id IS NULL')
+                db.q('UPDATE motorcycles SET "assignedUserId" = COALESCE("assignedUserId", assigned_user_id) WHERE "assignedUserId" IS NULL')
+            except Exception as e:
+                print("migrate motorcycles", e)
+            try:
+                db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS owner_id INT')
+                db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS "ownerId" INT')
+                db.q('UPDATE motorcycles SET owner_id = COALESCE(owner_id, "ownerId") WHERE owner_id IS NULL')
+            except Exception as e:
+                print("migrate owner", e)
+            if OWNER_EMAIL:
+                db.q("UPDATE users SET role='owner' WHERE lower(email)=%s", (OWNER_EMAIL,))
+    except Exception as e:
+        print("DB init", e)
 init_db()
 
 AUTO = {"news": [], "last": ""}
@@ -84,8 +109,7 @@ def clean(t):
 # ---------- LIVE SEARCH - AUTOMATIC ----------
 def live_search(query, limit=5):
     out = []
-    q = query.lower()
-    # Always try FX + Crypto if relevant
+    q = (query or "").lower()
     if any(w in q for w in ["naira","dollar","usd","ngn","rate","exchange","price"]):
         try:
             r = requests.get("https://open.er-api.com/v6/latest/USD", timeout=8).json()
@@ -96,7 +120,6 @@ def live_search(query, limit=5):
             r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd,ngn", timeout=8).json()
             out.append(f"Title: Crypto Price\nInfo: Bitcoin ${r['bitcoin']['usd']} / {r['bitcoin']['ngn']} NGN. Ethereum ${r['ethereum']['usd']}")
         except: pass
-    # News - Google RSS
     try:
         qq = urllib.parse.quote(query or "Nigeria news")
         url = f"https://news.google.com/rss/search?q={qq}&hl=en-NG&gl=NG&ceid=NG:en"
@@ -107,7 +130,7 @@ def live_search(query, limit=5):
     except Exception as e:
         print("RSS fail", e)
         try:
-            r = requests.get("https://api.allorigins.win/raw?url=" + urllib.parse.quote(f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-NG&gl=NG&ceid=NG:en"), timeout=10)
+            r = requests.get("https://api.allorigins.win/raw?url=" + urllib.parse.quote(f"https://news.google.com/rss/search?q={urllib.parse.quote(query or 'Nigeria')}&hl=en-NG&gl=NG&ceid=NG:en"), timeout=10)
             root = ET.fromstring(r.content)
             for it in root.findall(".//item")[:limit]:
                 out.append(f"Title: {it.findtext('title')}\nInfo: {it.findtext('pubDate')}")
@@ -129,7 +152,8 @@ def auto_study():
                 all_n += live_search(t, 2); time.sleep(1)
             AUTO["news"] = all_n; AUTO["last"] = datetime.now(timezone.utc).isoformat()
             with DB() as db:
-                for n in all_n[:8]: db.q("INSERT INTO auto_learned (topic, content) VALUES (%s,%s)", ("auto", n[:1000]))
+                for n in all_n[:8]:
+                    db.q("INSERT INTO auto_learned (topic, content) VALUES (%s,%s)", ("auto", n[:1000]))
             print("Auto-learn done", len(all_n))
         except Exception as e: print("Auto", e)
         time.sleep(1800)
@@ -165,7 +189,6 @@ def call_ai(msgs):
     raise RuntimeError(" | ".join(errs)[:800])
 
 def analyze_image_b64(b64, prompt):
-    # OpenAI Vision -> Gemini Vision fallback
     if OPENAI_KEY:
         try:
             r = requests.post("https://api.openai.com/v1/chat/completions", headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"}, json={"model": VISION_MODEL, "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": b64}}]}], "max_tokens": 1200}, timeout=60)
@@ -173,7 +196,6 @@ def analyze_image_b64(b64, prompt):
         except Exception as e: print("Vision OpenAI", e)
     if GEMINI_KEY:
         try:
-            # strip data prefix
             pure = b64.split(",", 1)[-1] if "," in b64 else b64
             r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_KEY}", json={"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": pure}}]}]}, timeout=60)
             if r.status_code == 200: return clean(r.json()["candidates"][0]["content"]["parts"][0]["text"])
@@ -224,21 +246,25 @@ def bike_ctx(user):
         if user["role"] == "owner":
             c = db.one("SELECT COUNT(*) as c FROM motorcycles")["c"]
             return f"Owner fleet: {c} bikes. Owner can see all."
-        b = db.one("SELECT * FROM motorcycles WHERE assigned_user_id=%s ORDER BY id DESC LIMIT 1", (user["id"],))
+        b = db.one('SELECT * FROM motorcycles WHERE COALESCE(assigned_user_id, "assignedUserId")=%s ORDER BY id DESC LIMIT 1', (user["id"],))
         if not b: return "No bike assigned."
         st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=%s", (b["id"],))
         pl = db.one("SELECT * FROM payment_plans WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (b["id"],))
         return f"Bike: {b} Status: {st} Plan: {pl}"
 
+# Helper to save message in BOTH columns so old + new code work
+def save_msg(user_id, role, content):
+    with DB() as db:
+        db.q('INSERT INTO messages (user_id, "userId", role, content) VALUES (%s,%s,%s,%s)', (user_id, user_id, role, content))
+
 @app.route("/")
 def home(): return render_template("index.html")
 @app.route("/health")
-def health(): return jsonify({"success": True, "version": "18.0-final", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", []))})
+def health(): return jsonify({"success": True, "version": "18.0-final-fixed", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", []))})
 
 @app.route("/api/register", methods=["POST"])
 @owner_only
 def create_customer():
-    # ONLY OWNER creates customers - no self register
     d = request.get_json() or {}
     name = clean(d.get("name")); email = str(d.get("email","")).lower().strip(); pw = str(d.get("password","") or "Tabby1234")
     bike_name = clean(d.get("bike_name") or "Tabby EV 1")
@@ -246,9 +272,8 @@ def create_customer():
     with DB() as db:
         if db.one("SELECT id FROM users WHERE email=%s", (email,)): return jsonify({"success": False, "error": "Customer already exists"}), 409
         uid = db.ins("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,'customer')", (name, email, generate_password_hash(pw)))
-        bid = db.ins("INSERT INTO motorcycles (owner_id, assigned_user_id, name) VALUES (%s,%s,%s)", (request.user["id"], uid, bike_name))
+        bid = db.ins('INSERT INTO motorcycles (owner_id, "ownerId", assigned_user_id, "assignedUserId", name) VALUES (%s,%s,%s,%s,%s)', (request.user["id"], request.user["id"], uid, uid, bike_name))
         db.q("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bid,))
-        # Payment plan if provided
         if d.get("total_amount"):
             db.q("INSERT INTO payment_plans (user_id,motorcycle_id,total_amount,deposit,installment_amount,installments_total,next_due_date) VALUES (%s,%s,%s,%s,%s,%s,%s)", (uid, bid, float(d.get("total_amount")), float(d.get("deposit") or 0), float(d.get("installment_amount") or 0), int(d.get("installments_total") or 1), str(d.get("next_due_date") or "")))
     return jsonify({"success": True, "user_id": uid, "bike_id": bid, "message": f"Customer {name} created. Password: {pw}"}), 201
@@ -271,12 +296,12 @@ def dashboard():
     u = request.user
     with DB() as db:
         if u["role"] == "owner":
-            bikes = db.all("SELECT m.*, bs.battery_level, bs.range_km, bs.lock_status, bs.access_mode, bs.battery_health, u2.name as customer_name FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id LEFT JOIN users u2 ON u2.id=m.assigned_user_id ORDER BY m.id DESC")
-            customers = db.all("SELECT u.id,u.name,u.email,m.name as bike_name, pp.status as plan_status, pp.installments_paid, pp.installments_total, pp.next_due_date FROM users u LEFT JOIN motorcycles m ON m.assigned_user_id=u.id LEFT JOIN payment_plans pp ON pp.user_id=u.id WHERE u.role='customer' ORDER BY u.id DESC")
+            bikes = db.all('SELECT m.*, bs.battery_level, bs.range_km, bs.lock_status, bs.access_mode, bs.battery_health, u2.name as customer_name FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id LEFT JOIN users u2 ON u2.id=COALESCE(m.assigned_user_id, m."assignedUserId") ORDER BY m.id DESC')
+            customers = db.all("SELECT u.id,u.name,u.email,m.name as bike_name, pp.status as plan_status, pp.installments_paid, pp.installments_total, pp.next_due_date FROM users u LEFT JOIN motorcycles m ON COALESCE(m.assigned_user_id, m.\"assignedUserId\")=u.id LEFT JOIN payment_plans pp ON pp.user_id=u.id WHERE u.role='customer' ORDER BY u.id DESC")
             total = db.one("SELECT COUNT(*) as c FROM motorcycles")["c"]
             return jsonify({"success": True, "role": "owner", "total_bikes": total, "bikes": bikes, "customers": customers})
         else:
-            bikes = db.all("SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE m.assigned_user_id=%s", (u["id"],))
+            bikes = db.all('SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE COALESCE(m.assigned_user_id, m."assignedUserId")=%s', (u["id"],))
             plans = db.all("SELECT * FROM payment_plans WHERE user_id=%s", (u["id"],))
             return jsonify({"success": True, "role": "customer", "bikes": bikes, "plans": plans})
 
@@ -286,7 +311,7 @@ def list_bikes():
     u = request.user
     with DB() as db:
         if u["role"] == "owner": rows = db.all("SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id ORDER BY m.id DESC")
-        else: rows = db.all("SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE assigned_user_id=%s", (u["id"],))
+        else: rows = db.all('SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE COALESCE(m.assigned_user_id, m."assignedUserId")=%s', (u["id"],))
     return jsonify({"success": True, "bikes": rows})
 
 @app.route("/api/bike/<int:bid>/command", methods=["POST"])
@@ -296,8 +321,8 @@ def bike_cmd(bid):
     with DB() as db:
         bike = db.one("SELECT * FROM motorcycles WHERE id=%s", (bid,))
         if not bike: return jsonify({"success": False, "error": "Bike not found"}), 404
-        if u["role"] != "owner" and bike["assigned_user_id"] != u["id"]: return jsonify({"success": False, "error": "Not your bike"}), 403
-        # Restricted mode check
+        assigned = bike.get("assigned_user_id") or bike.get("assignedUserId")
+        if u["role"] != "owner" and assigned != u["id"]: return jsonify({"success": False, "error": "Not your bike"}), 403
         st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bid,))
         if st and st.get("access_mode") == "restricted" and cmd in ("unlock", "start"):
             return jsonify({"success": False, "error": "Bike in restricted mode - payment overdue. Contact Ultimate Gee Industry."}), 403
@@ -311,21 +336,16 @@ def bike_cmd(bid):
 
 @app.route("/api/bike/<int:bid>/telemetry", methods=["POST"])
 def telemetry(bid):
-    # For hardware / GPS unit to push data - no auth for device, uses device key if set
     d = request.get_json() or {}
     with DB() as db:
         db.q("INSERT INTO telemetry (motorcycle_id, latitude, longitude, speed, battery_level, engine_temp) VALUES (%s,%s,%s,%s,%s,%s)", (bid, d.get("latitude"), d.get("longitude"), d.get("speed"), d.get("battery_level"), d.get("engine_temp")))
         db.q("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bid,))
         db.q("UPDATE bike_status SET battery_level=COALESCE(%s,battery_level), last_seen=%s WHERE motorcycle_id=%s", (d.get("battery_level"), datetime.now(timezone.utc).isoformat(), bid))
-        # Predictive maintenance: low battery health, high temp
-        if d.get("battery_level") is not None and float(d.get("battery_level")) < 20:
-            pass
     return jsonify({"success": True})
 
 @app.route("/api/payments/remind", methods=["POST"])
 @owner_only
 def remind():
-    # Owner triggers reminders - in real app this is cron
     with DB() as db:
         due = db.all("SELECT pp.*, u.name, u.email FROM payment_plans pp JOIN users u ON u.id=pp.user_id WHERE pp.status='active' AND pp.next_due_date <= %s", ((datetime.now(timezone.utc)+timedelta(days=3)).date().isoformat(),))
     return jsonify({"success": True, "due_soon": due, "message": f"{len(due)} customers due soon. Reminders ready to send."})
@@ -336,7 +356,6 @@ def overdue():
     with DB() as db:
         overdue_plans = db.all("SELECT * FROM payment_plans WHERE status='active' AND next_due_date < %s", (datetime.now(timezone.utc).date().isoformat(),))
         for p in overdue_plans:
-            # Grace period logic: if >7 days overdue -> restricted
             try:
                 due = datetime.fromisoformat(p["next_due_date"]).date()
                 if (datetime.now(timezone.utc).date() - due).days > 7:
@@ -348,21 +367,19 @@ def overdue():
 @app.route("/api/chat/history")
 @owner_only
 def hist():
-    with DB() as db: rows = db.all("SELECT role, content FROM messages WHERE user_id=%s ORDER BY id ASC", (request.user["id"],))
+    with DB() as db: rows = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=%s ORDER BY id ASC', (request.user["id"],))
     return jsonify({"success": True, "messages": rows})
 
 @app.route("/api/chat", methods=["POST"])
 @owner_only
 def chat():
-    # AI IS OWNER ONLY - customer gets 403 from owner_only
     u = request.user
     d = request.get_json() or {}
     msg = str(d.get("message","")).strip()
-    image_b64 = d.get("image")  # base64 image to analyze
+    image_b64 = d.get("image")
     if not msg and not image_b64: return jsonify({"success": False, "error": "Message required"}), 400
     low = (msg or "").lower()
     with DB() as db:
-        # BIKE commands via chat
         if "bike" in low and any(w in low for w in ["lock","unlock","check","battery","locate","status"]):
             bike = db.one("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1")
             if bike:
@@ -372,52 +389,44 @@ def chat():
                 elif "locate" in low:
                     tel = db.one("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],)); reply = f"Boss, your bike is at {tel}."
                 else: reply = f"Boss, your bike {bike['name']} - Lock: {st.get('lock_status') if st else 'locked'}, Battery: {st.get('battery_level') if st else 100}%, Health: {st.get('battery_health') if st else 100}%, Range: {st.get('range_km') if st else 125}km. BMS: Cell temp {st.get('cell_temp')}C, Motor {st.get('motor_temp')}C. It is ready."
-                db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg)); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant",reply))
+                save_msg(u["id"], "user", msg); save_msg(u["id"], "assistant", reply)
                 return jsonify({"success": True, "reply": reply})
-        # HOUSE
         if any(w in low for w in ["light","fan","ac","tv","generator","house"]):
             act = "on" if any(w in low for w in ["turn on","switch on","open","start"]) else "off" if any(w in low for w in ["turn off","switch off","close","stop"]) else None
             if act:
                 dev = next((w for w in ["light","fan","ac","tv","generator"] if w in low), "light")
                 db.q("INSERT INTO house_devices (user_id,name,room,type,status) VALUES (%s,%s,%s,%s,%s)", (u["id"], dev, "living", dev, act))
                 reply = f"Done, Boss. Living {dev} is now {act}."
-                db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg)); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant",reply))
+                save_msg(u["id"], "user", msg); save_msg(u["id"], "assistant", reply)
                 return jsonify({"success": True, "reply": reply})
-    # IMAGE ANALYZE
     if image_b64:
         try:
             analysis = analyze_image_b64(image_b64, msg or "Describe this image in detail, what do you see? Be friendly and helpful.")
-            with DB() as db:
-                db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg or "Analyze this image")); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant",analysis))
+            save_msg(u["id"], "user", msg or "Analyze this image"); save_msg(u["id"], "assistant", analysis)
             return jsonify({"success": True, "reply": analysis})
         except Exception as e: return jsonify({"success": True, "reply": f"Sorry Boss, image analysis small issue: {clean(str(e))[:200]}"})
-    # IMAGE GENERATE - Cloudflare, question must NOT trigger
     is_q = "?" in low and ("can you" in low or "do you" in low or "you can" in low)
     if not is_q and (low.startswith(("generate image","create image","make image","draw","generate a villain","generate a poster","create a poster")) or "generate image" in low):
         try:
             prompt = re.sub(r"^(generate image|create image|make image|draw|generate a villain|generate a poster|create a poster)\s*(of|:)?", "", msg, flags=re.I).strip() or msg
             img = gen_image_cloudflare(prompt)
-            with DB() as db:
-                db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg)); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant","Here is your image, Boss."))
+            save_msg(u["id"], "user", msg); save_msg(u["id"], "assistant", "Here is your image, Boss.")
             return jsonify({"success": True, "reply": "Here is your image, Boss.", "image": img, "image_url": img})
         except Exception as e: return jsonify({"success": True, "reply": f"Image service busy small, Boss. Check Cloudflare keys in Render. Detail: {clean(str(e))[:200]}"})
-    # NORMAL CHAT - AUTO LIVE
     try:
         with DB() as db:
-            mems = db.all("SELECT content FROM memories WHERE user_id=%s ORDER BY id DESC LIMIT 15", (u["id"],))
-            hist = db.all("SELECT role, content FROM messages WHERE user_id=%s ORDER BY id DESC LIMIT 12", (u["id"],))
+            mems = db.all('SELECT content FROM memories WHERE COALESCE(user_id, "userId")=%s ORDER BY id DESC LIMIT 15', (u["id"],))
+            hist = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=%s ORDER BY id DESC LIMIT 12', (u["id"],))
         mem_txt = "\n".join([m["content"] for m in mems]) or "No memories yet. Boss is Faruq Sulaimon, owner of Ultimate Gee Industry, creator of Tabby."
         if "remember" in low:
-            with DB() as db: db.q("INSERT INTO memories (user_id,content) VALUES (%s,%s)", (u["id"], msg))
-        # AUTOMATIC LIVE - always fetch + auto-learned
+            with DB() as db: db.q('INSERT INTO memories (user_id, "userId", content) VALUES (%s,%s,%s)', (u["id"], u["id"], msg))
         search = live_search(msg, 5)
         if AUTO.get("news"): search = search + ["AUTO-LEARNED TODAY: " + x for x in AUTO["news"][:4]]
         system = f"You are Tabby, friendly AI assistant for Faruq Sulaimon, Boss, creator and owner of Ultimate Gee Industry. Call him Boss. You are warm, friendly, witty, not generic robot. Basic language: English with UK accent style (use British spelling: colour, favourite, organise). You understand ANY language - reply in same language user used, but default English. NEVER say I do not have live access, my knowledge goes up to, I cannot give latest news. You HAVE live internet - LIVE SEARCH is provided automatically. If LIVE SEARCH is given, USE IT. If empty, say Network small Boss, try again. NEVER use asterisks, hashtags, emojis. Be direct first, then small detail. USER: {u['name']} Role owner. MEMORIES: {mem_txt}. BIKE CONTEXT: {bike_ctx(u)}. You manage Tabby EV bikes: Intelligent BMS, GPS tracking, anti-theft, journey assistant, predictive maintenance, remote security, installment payments."
         if search: system += "\nLIVE SEARCH - REAL LIVE DATA, USE THIS, DO NOT INVENT:\n" + "\n".join(search)
         msgs = [{"role": "system", "content": system}] + [{"role": r["role"], "content": r["content"]} for r in reversed(hist)] + [{"role": "user", "content": msg}]
         reply = call_ai(msgs)
-        with DB() as db:
-            db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"user",msg)); db.q("INSERT INTO messages (user_id,role,content) VALUES (%s,%s,%s)", (u["id"],"assistant",reply))
+        save_msg(u["id"], "user", msg); save_msg(u["id"], "assistant", reply)
         return jsonify({"success": True, "reply": reply})
     except Exception as e:
         return jsonify({"success": True, "reply": f"Sorry Boss, small issue: {clean(str(e))[:300]}"})
