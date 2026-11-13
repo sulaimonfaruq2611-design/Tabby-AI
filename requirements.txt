@@ -5,3 +5,4 @@ psycopg2-binary==2.9.9
 itsdangerous==2.1.2
 Werkzeug==3.0.1
 ddgs==9.5.0
+gunicorn==22.0.0
