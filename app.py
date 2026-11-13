@@ -20,6 +20,8 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
 OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip()
+GROQ_KEY = os.getenv("GROQ_API_KEY", "").strip()
+CEREBRAS_KEY = os.getenv("CEREBRAS_API_KEY", "").strip()
 CLOUDFLARE_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
 CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
 DB_URL = os.getenv("SUPABASE_DATABASE_URL", "") or os.getenv("DATABASE_URL", "")
@@ -71,8 +73,6 @@ def init_db():
             CREATE TABLE IF NOT EXISTS auto_learned(id SERIAL PRIMARY KEY, topic TEXT, content TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
             CREATE TABLE IF NOT EXISTS bike_commands(id SERIAL PRIMARY KEY, motorcycle_id INT, command TEXT, issued_by INT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
             """)
-            # --- MIGRATION: Fix old Supabase tables with camelCase userId ---
-            # This is the fix for: column "userId" does not exist
             for table in ["messages", "memories"]:
                 try:
                     db.q(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS user_id INT')
@@ -159,7 +159,7 @@ def auto_study():
         time.sleep(1800)
 threading.Thread(target=auto_study, daemon=True).start()
 
-# ---------- AI: OPENAI -> GEMINI -> OPENROUTER ----------
+# ---------- AI: OPENAI -> GEMINI (4 models) -> GROQ -> CEREBRAS -> OPENROUTER ----------
 def call_openai(msgs, temp=0.7):
     if not OPENAI_KEY: raise RuntimeError("no openai key")
     r = requests.post("https://api.openai.com/v1/chat/completions", headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"}, json={"model": "gpt-4o-mini", "messages": msgs, "temperature": temp, "max_tokens": 1800}, timeout=60)
@@ -171,22 +171,50 @@ def call_gemini(msgs, temp=0.7):
     if not GEMINI_KEY: raise RuntimeError("no gemini key")
     system = "\n".join([m["content"] for m in msgs if m["role"] == "system"])
     contents = [{"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]} for m in msgs if m["role"] != "system"]
-    r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_KEY}", json={"system_instruction": {"parts": [{"text": system}]}, "contents": contents, "generationConfig": {"temperature": temp, "maxOutputTokens": 1800}}, timeout=60)
-    if r.status_code != 200: raise RuntimeError(f"Gemini {r.status_code}: {r.text[:300]}")
-    return clean(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+    for model in [GEMINI_MODEL, "gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]:
+        try:
+            r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_KEY}", json={"system_instruction": {"parts": [{"text": system}]}, "contents": contents, "generationConfig": {"temperature": temp, "maxOutputTokens": 1800}}, timeout=60)
+            if r.status_code == 200:
+                return clean(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+            print(f"Gemini {model} failed {r.status_code}")
+        except Exception as e:
+            print(f"Gemini {model} error", e)
+    raise RuntimeError("Gemini free tier not available for this project (403) - tried 4 models")
+
+def call_groq(msgs, temp=0.7):
+    if not GROQ_KEY: raise RuntimeError("no groq key")
+    r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}, json={"model": "llama-3.1-8b-instant", "messages": msgs, "temperature": temp, "max_tokens": 1800}, timeout=60)
+    if r.status_code != 200: raise RuntimeError(f"Groq {r.status_code}: {r.text[:300]}")
+    return clean(r.json()["choices"][0]["message"]["content"])
+
+def call_cerebras(msgs, temp=0.7):
+    if not CEREBRAS_KEY: raise RuntimeError("no cerebras key")
+    r = requests.post("https://api.cerebras.ai/v1/chat/completions", headers={"Authorization": f"Bearer {CEREBRAS_KEY}", "Content-Type": "application/json"}, json={"model": "llama3.1-8b", "messages": msgs, "temperature": temp, "max_tokens": 1800}, timeout=60)
+    if r.status_code != 200: raise RuntimeError(f"Cerebras {r.status_code}: {r.text[:300]}")
+    return clean(r.json()["choices"][0]["message"]["content"])
 
 def call_openrouter(msgs, temp=0.7):
     if not OPENROUTER_KEY: raise RuntimeError("no openrouter")
-    r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"}, json={"model": OPENROUTER_MODEL, "messages": msgs, "temperature": temp, "max_tokens": 1800}, timeout=60)
-    if r.status_code != 200: raise RuntimeError(r.text[:300])
-    return clean(r.json()["choices"][0]["message"]["content"])
+    for model in [OPENROUTER_MODEL, "meta-llama/llama-3.1-8b-instruct:free", "google/gemma-2-9b-it:free", "mistralai/mistral-7b-instruct:free"]:
+        try:
+            r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"}, json={"model": model, "messages": msgs, "temperature": temp, "max_tokens": 1800}, timeout=60)
+            if r.status_code == 200:
+                return clean(r.json()["choices"][0]["message"]["content"])
+            print(f"OpenRouter {model} {r.status_code}")
+        except Exception as e:
+            print(f"OpenRouter {model} error", e)
+    raise RuntimeError("OpenRouter free models failed")
 
 def call_ai(msgs):
     errs = []
-    for fn, name in [(call_openai, "OpenAI"), (call_gemini, "Gemini"), (call_openrouter, "OpenRouter")]:
-        try: return fn(msgs)
-        except Exception as e: errs.append(f"{name}: {e}"); print(f"AI fallback {name} failed", e)
-    raise RuntimeError(" | ".join(errs)[:800])
+    for fn, name in [(call_openai, "OpenAI"), (call_gemini, "Gemini"), (call_groq, "Groq"), (call_cerebras, "Cerebras"), (call_openrouter, "OpenRouter")]:
+        try:
+            ans = fn(msgs)
+            print(f"AI success via {name}")
+            return ans
+        except Exception as e:
+            errs.append(f"{name}: {e}"); print(f"AI fallback {name} failed", e)
+    raise RuntimeError("All AI busy. Add GROQ_API_KEY (free) in Render to fix forever. | " + " | ".join(errs)[:500])
 
 def analyze_image_b64(b64, prompt):
     if OPENAI_KEY:
@@ -200,6 +228,11 @@ def analyze_image_b64(b64, prompt):
             r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_KEY}", json={"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": pure}}]}]}, timeout=60)
             if r.status_code == 200: return clean(r.json()["candidates"][0]["content"]["parts"][0]["text"])
         except Exception as e: print("Vision Gemini", e)
+    if GROQ_KEY:
+        try:
+            r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}, json={"model": "meta-llama/llama-4-scout-17b-16e-instruct", "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": b64}}]}], "max_tokens": 1200}, timeout=60)
+            if r.status_code == 200: return clean(r.json()["choices"][0]["message"]["content"])
+        except Exception as e: print("Vision Groq", e)
     raise RuntimeError("Image analysis unavailable - check API keys")
 
 # ---------- IMAGE: CLOUDFLARE ----------
@@ -252,7 +285,6 @@ def bike_ctx(user):
         pl = db.one("SELECT * FROM payment_plans WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (b["id"],))
         return f"Bike: {b} Status: {st} Plan: {pl}"
 
-# Helper to save message in BOTH columns so old + new code work
 def save_msg(user_id, role, content):
     with DB() as db:
         db.q('INSERT INTO messages (user_id, "userId", role, content) VALUES (%s,%s,%s,%s)', (user_id, user_id, role, content))
@@ -260,7 +292,7 @@ def save_msg(user_id, role, content):
 @app.route("/")
 def home(): return render_template("index.html")
 @app.route("/health")
-def health(): return jsonify({"success": True, "version": "18.0-final-fixed", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", []))})
+def health(): return jsonify({"success": True, "version": "19.0-final-mobile", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", []))})
 
 @app.route("/api/register", methods=["POST"])
 @owner_only
