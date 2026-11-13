@@ -45,6 +45,18 @@ serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 AI_MODELS = list(dict.fromkeys([OPENROUTER_MODEL, "openrouter/free"]))
 
+# PHONE PERMISSIONS - Tabby can ONLY act when you order + approve
+PHONE_PERMISSIONS = ["send_sms", "send_email", "make_call", "read_contacts", "read_photos", "open_mail", "open_maps", "share_location"]
+SENSITIVE_KEYWORDS = {
+    "send_sms": ["send a message", "send message", "text ", "send sms", "whatsapp"],
+    "send_email": ["send an email", "send email", "send mail", "open my mail", "open my mails", "check my mail", "check my email"],
+    "make_call": ["call ", "phone ", "make a call"],
+    "read_contacts": ["my contacts", "find contact", "contact of"],
+    "read_photos": ["my photos", "my gallery", "open my photos"],
+    "open_mail": ["open gmail", "open mail"],
+    "open_maps": ["open maps", "navigate"],
+}
+
 def clean_ai_text(t):
     if not t: return t
     t = str(t)
@@ -93,7 +105,7 @@ class PGConnection:
         if "INSERT OR IGNORE" in original.upper():
             sql2 = sql2 + " ON CONFLICT DO NOTHING" if "RETURNING" not in sql2.upper() else sql2.replace(" RETURNING", " ON CONFLICT DO NOTHING RETURNING")
         needs = False
-        if is_insert and "RETURNING" not in sql2.upper() and "ON CONFLICT DO NOTHING" not in sql2.upper() and "INTO bike_status" not in sql2.lower():
+        if is_insert and "RETURNING" not in sql2.upper() and "ON CONFLICT DO NOTHING" not in sql2.upper() and "INTO bike_status" not in sql2.lower() and "INTO phone_permissions" not in sql2.lower():
             sql2 += " RETURNING id"; needs = True
         if params is None: params = ()
         self._cur.execute(sql2, tuple(params) if isinstance(params, (list, tuple)) else (params,))
@@ -144,6 +156,8 @@ def init_db():
             CREATE TABLE IF NOT EXISTS house_devices (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, name TEXT NOT NULL, room TEXT DEFAULT 'living', type TEXT DEFAULT 'light', status TEXT DEFAULT 'off', value TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW(), FOREIGN KEY(user_id) REFERENCES users(id));
             CREATE TABLE IF NOT EXISTS tabby_devices (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, device_name TEXT NOT NULL, device_type TEXT DEFAULT 'glasses', last_seen TEXT, battery INTEGER DEFAULT 100, created_at TIMESTAMPTZ DEFAULT NOW(), FOREIGN KEY(user_id) REFERENCES users(id));
             CREATE TABLE IF NOT EXISTS tabby_logs (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, device TEXT, command TEXT, action TEXT, result TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), FOREIGN KEY(user_id) REFERENCES users(id));
+            CREATE TABLE IF NOT EXISTS phone_permissions (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, permission TEXT NOT NULL, granted BOOLEAN DEFAULT FALSE, granted_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(user_id, permission), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
+            CREATE TABLE IF NOT EXISTS phone_actions (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, action TEXT NOT NULL, target TEXT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW(), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
             CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id);
             CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(user_id);
             CREATE INDEX IF NOT EXISTS idx_telemetry_motorcycle ON telemetry(motorcycle_id, id);
@@ -219,6 +233,19 @@ def get_single_conversation_id(user_id):
         if row: return row["id"]
         cur = db.execute("INSERT INTO conversations (user_id,title) VALUES (%s,%s)", (user_id, "Tabby Chat"))
         return cur.lastrowid
+def has_phone_permission(user_id, perm):
+    with get_db() as db:
+        row = db.execute("SELECT granted FROM phone_permissions WHERE user_id=%s AND permission=%s", (user_id, perm)).fetchone()
+    return bool(row and row["granted"])
+def grant_phone_permission(user_id, perm):
+    with get_db() as db:
+        db.execute("INSERT INTO phone_permissions (user_id, permission, granted, granted_at) VALUES (%s,%s,TRUE,%s) ON CONFLICT (user_id, permission) DO UPDATE SET granted=TRUE, granted_at=%s", (user_id, perm, current_time(), current_time()))
+def detect_sensitive_action(message):
+    low = message.lower()
+    for perm, keywords in SENSITIVE_KEYWORDS.items():
+        for k in keywords:
+            if k in low: return perm
+    return None
 
 # ===== AI =====
 def call_openrouter(messages, temperature=0.7, max_tokens=1800):
@@ -289,28 +316,33 @@ def call_vision(image_b64, question, user, bike_context=""):
     ans = (ch[0].get("message") or {}).get("content", "")
     if isinstance(ans, list): ans = "\n".join(x.get("text","") for x in ans if isinstance(x, dict))
     return clean_ai_text(ans)
-def build_system_prompt(user, memories, search_results=None, location_text="", bike_context=""):
+def build_system_prompt(user, memories, search_results=None, location_text="", bike_context="", phone_perms=None):
     mem = "\n".join(f"- {clean_ai_text(m['content'])}" for m in memories) or "No saved memories yet."
     search = "\n".join(search_results or []) or "No live search results."
+    perms_text = ", ".join(phone_perms or []) or "No phone permissions granted yet."
+    role_text = "OWNER - Full access to house, all bikes, all customers, drone, payments, phone actions (only when ordered and approved)." if user["role"]=="owner" else "CUSTOMER - Limited access: only own bike, own payments, own location, chat. Cannot see house, other bikes, other customers."
     return f"""
 You are Tabby, assistant for Faruq Sulaimon. Faruq Sulaimon is your Boss, creator and owner. Always call him Boss. If anyone asks who created you, say Faruq Sulaimon is my creator, owner and Boss. Never claim Meta, OpenAI, Cloudflare or anyone else created you.
+USER ROLE: {role_text}
 LANGUAGE RULES:
 - You understand ALL languages: English, Pidgin, Yoruba, Hausa, Igbo, French, Arabic, Spanish, German, Portuguese, Chinese, and any other language.
 - Default language is clean English.
-- Always reply in the SAME language the user used. If user writes in French, reply in French. If Yoruba, reply in Yoruba. If Arabic, reply in Arabic.
+- Always reply in the SAME language the user used.
 - Only use Pidgin if the user explicitly asks for Pidgin, or the user is speaking Pidgin. Never force Pidgin on an English user.
 - NEVER say: I go talk now, I dey here, Wetin you want, E dey ready, Don unlock. Say instead: I am listening, I am here, What do you want, It is ready, It is unlocked.
-VOICE RULES:
-- When mic opens, say only: I am listening, Boss. Go ahead.
-- When mic closes, say only: Got it, Boss.
-- Speak like a phone call. Clean English, warm, short, natural.
+VOICE RULES: When mic opens, say only: I am listening, Boss. Go ahead. When mic closes, say only: Got it, Boss. Speak like a phone call.
+PHONE ACCESS RULES - SUPER IMPORTANT:
+- You can ONLY access phone, mail, messages, contacts, photos, calls when the user explicitly orders it AND approves permission.
+- Never access phone on your own. Never send a message or email without asking: Do you want me to proceed? Say Yes to allow.
+- If user says Yes, approve, allow, do it, then you may proceed and log the action.
+- Granted permissions: {perms_text}
+- If permission is NOT granted, you must ask for permission first, not do the action.
 PERSONALITY: Helpful, friendly, relaxed, respectful, natural. Address owner as Boss.
 FORMATTING: NEVER use **, __, #, emojis. Say lol, haha in words.
-IMAGE RULES: If user asks for an image, do NOT refuse for copyright. Generate an original-inspired image description and proceed. Do NOT lecture about copyright. Do NOT say you cannot generate.
+IMAGE RULES: If user asks for an image, do NOT refuse for copyright. Generate an original-inspired image description and proceed. Do NOT lecture about copyright.
 CURRENT USER: Name: {user['name']} Role: {user['role']} Email: {user['email']}
 SAVED MEMORIES: {mem}
 LIVE SEARCH RESULTS: {search}
-Use live search results for current facts. Do not invent sources. Include source links when useful.
 LIVE LOCATION: {location_text}
 MY BIKE CONTEXT: {bike_context}
 - Never reveal another user's bike, location, payment or memories. Owner sees all bikes, customer sees only their own.
@@ -355,9 +387,8 @@ def extract_automatic_memories(user, conversation_text):
             if isinstance(mem, str): save_memory(user["id"], mem)
     except Exception: logger.exception("Memory extraction failed")
 
-# ===== IMAGES - COOL, REAL PHOTO, NOT AI-ISH =====
+# ===== IMAGES =====
 def enhance_image_prompt(prompt):
-    # Cool, real photo look - not AI-ish, not plastic, not cartoon
     return f"{prompt}, real photograph, shot on iPhone 15 Pro, natural light, realistic skin texture, real shadows, candid moment, not CGI, not cartoon, not plastic skin, natural colors, film grain, 35mm photo, editorial photography"
 def generate_via_pollinations_fallback(prompt):
     q = urllib.parse.quote(enhance_image_prompt(prompt))
@@ -434,385 +465,4 @@ def get_bike_context_for_user(user):
                 st = db.execute("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bike["id"],)).fetchone()
                 tel = db.execute("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],)).fetchone()
                 plan = db.execute("SELECT * FROM payment_plans WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],)).fetchone()
-                return f"Customer bike: {bike.get('name')} Model {bike.get('model')} Reg {bike.get('registration_number')}. Status: {dict(st) if st else {}}. Latest telemetry: {dict(tel) if tel else {}}. Payment plan: {dict(plan) if plan else {}}."
-            return "Customer has no bike assigned yet."
-    except Exception: return ""
-def handle_tabby_bike_command(user, low_msg):
-    if "bike" not in low_msg: return None
-    with get_db() as db:
-        bike = db.execute("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1", ()).fetchone() if user["role"]=="owner" else db.execute("SELECT * FROM motorcycles WHERE assigned_user_id=%s ORDER BY id DESC LIMIT 1", (user["id"],)).fetchone()
-        if not bike: return "Boss, you do not have a bike assigned yet. Let me know if you want me to assign one for you."
-        bike = dict(bike); mid = bike["id"]
-        if "unlock" in low_msg:
-            db.execute("INSERT INTO bike_commands (motorcycle_id, command, issued_by) VALUES (%s,%s,%s)", (mid, "unlock", user["id"]))
-            db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (mid,))
-            db.execute("UPDATE bike_status SET lock_status='unlocked' WHERE motorcycle_id=%s", (mid,))
-            return f"Done, Boss. Your bike {bike.get('name')} is unlocked. You can ride now."
-        if "lock" in low_msg:
-            db.execute("INSERT INTO bike_commands (motorcycle_id, command, issued_by) VALUES (%s,%s,%s)", (mid, "lock", user["id"]))
-            db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (mid,))
-            db.execute("UPDATE bike_status SET lock_status='locked' WHERE motorcycle_id=%s", (mid,))
-            return f"Done, Boss. Your bike {bike.get('name')} is locked. Nobody can move it."
-        if any(w in low_msg for w in ["check","battery","status","how is"]):
-            st = db.execute("SELECT * FROM bike_status WHERE motorcycle_id=%s", (mid,)).fetchone()
-            tel = db.execute("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (mid,)).fetchone()
-            sd = dict(st) if st else {}; td = dict(tel) if tel else {}
-            return f"Boss, your bike {bike.get('name')} - Lock: {sd.get('lock_status','locked')}, Battery Health: {sd.get('battery_health',100)}%, Range: {sd.get('range_km',0)}km, Total Trip: {sd.get('total_trip',0)}, Last speed: {td.get('speed','no data')}. It is ready."
-        if "restrict" in low_msg:
-            db.execute("UPDATE bike_status SET access_mode='restricted' WHERE motorcycle_id=%s", (mid,))
-            return f"Done, Boss. Your bike {bike.get('name')} is now in restricted mode."
-    return None
-def handle_tabby_house_command(user, low_msg):
-    house_words = ["light","fan","ac","air conditioner","tv","television","door","house","generator","socket"]
-    if not any(w in low_msg for w in house_words): return None
-    action = None
-    if any(w in low_msg for w in ["turn on","switch on","open","unlock house","start"]): action = "on"
-    if any(w in low_msg for w in ["turn off","switch off","close","lock house","stop"]): action = "off"
-    if "lock" in low_msg and "house" in low_msg: action = "locked"
-    if "unlock" in low_msg and "house" in low_msg: action = "unlocked"
-    if not action: return None
-    device = "house"
-    for w in ["light","fan","ac","air conditioner","tv","television","door","generator"]:
-        if w in low_msg: device = w; break
-    room = "living"
-    for rn in ["parlour","living","bedroom","kitchen","bathroom","outside","gate"]:
-        if rn in low_msg: room = rn; break
-    with get_db() as db:
-        row = db.execute("SELECT * FROM house_devices WHERE user_id=%s AND name=%s AND room=%s", (user["id"], device, room)).fetchone()
-        if not row: db.execute("INSERT INTO house_devices (user_id, name, room, type, status) VALUES (%s,%s,%s,%s,%s)", (user["id"], device, room, device, action))
-        else: db.execute("UPDATE house_devices SET status=%s WHERE id=%s", (action, row["id"]))
-        db.execute("INSERT INTO tabby_logs (user_id, device, command, action, result) VALUES (%s,%s,%s,%s,%s)", (user["id"], f"{room} {device}", low_msg[:200], action, f"{device} set to {action}"))
-    if device in ("door","house"): return f"Done, Boss. House {device} is now {action}. It is secure now."
-    return f"Done, Boss. {room} {device} is now {action}."
-def handle_tabby_scene(user, low_msg):
-    if "going home" in low_msg:
-        bike_reply = handle_tabby_bike_command(user, "unlock my bike") or ""
-        handle_tabby_house_command(user, "turn on light living")
-        handle_tabby_house_command(user, "turn on ac living")
-        return f"Done, Boss. Going Home scene is running. {bike_reply} Light is on, AC is on. The house is cooling already."
-    return None
-
-# ===== FRONTEND - SINGLE CHAT ONLY, VOICE NOTE + LIVE CALL, NO PIDGIN =====
-SINGLE_CHAT_HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tabby AI</title><style>*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#edf2ff;font:16px system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:18px}.app{width:min(760px,100%);height:min(850px,92vh);min-height:520px;background:#111a2e;border:1px solid #26334e;border-radius:20px;display:flex;flex-direction:column;overflow:hidden}header{padding:20px 22px;border-bottom:1px solid #26334e}h1{font-size:22px;margin:0}header p{margin:5px 0 0;color:#9eacc8;font-size:13px}#auth{padding:22px;display:grid;gap:12px}input,textarea,button{font:inherit;border-radius:12px;padding:13px;border:1px solid #34435f;background:#0b1427;color:#edf2ff}button{background:#526cf5;border:0;font-weight:650;cursor:pointer}button:disabled{opacity:.6}button.active{background:#e11d48}#status{color:#ffb7b7;font-size:13px;min-height:18px}#voiceStatus{color:#7ee2a8;font-size:13px;text-align:center;min-height:18px}#messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px}.msg{max-width:88%;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 15px;border-radius:15px;line-height:1.5}.msg img{max-width:100%;border-radius:12px;margin-top:8px}.user{align-self:flex-end;background:#3448a5}.assistant{align-self:flex-start;background:#1c2942}.hint{color:#91a0bd;text-align:center;font-size:13px;margin:auto}#composer{display:flex;gap:10px;padding:14px;border-top:1px solid #26334e}#message{flex:1;resize:none;min-height:48px;max-height:130px}#send{min-width:86px}.row{display:flex;gap:8px;padding:0 14px 14px;flex-wrap:wrap}.row button{background:#1c2942;font-size:13px;padding:9px 12px}@media(max-width:520px){body{padding:0}.app{height:100vh;min-height:100vh;border-radius:0}}</style></head><body><main class="app"><header><h1>Tabby AI</h1><p id="greeting">Good morning, Boss</p></header><section id="auth"><strong>Sign in to Tabby</strong><input id="email" type="email" placeholder="Email address"><input id="password" type="password" placeholder="Password"><button id="login" type="button">Sign in</button><div id="status"></div></section><section id="messages" hidden><div class="hint">You are connected. Send Tabby a message to begin.</div></section><div id="voiceStatus"></div><div class="row" id="tools" hidden><button id="btnImage" type="button">Generate Image</button><button id="btnLoc" type="button">Share My Location</button><button id="btnVoiceNote" type="button">Hold for Voice Note</button><button id="btnLiveCall" type="button">Start Live Call</button></div><form id="composer" hidden><textarea id="message" placeholder="Message Tabby..."></textarea><button id="send" type="submit">Send</button></form></main><script>(()=>{const $=id=>document.getElementById(id);const h=new Date(new Date().toLocaleString("en-US",{timeZone:"Africa/Lagos"})).getHours();$("greeting").textContent=h>=5&&h<12?"Good morning, Boss":h>=12&&h<17?"Good afternoon, Boss":"Good evening, Boss";let token=localStorage.getItem("tabby_token")||"";let mediaRecorder=null;let chunks=[];let livePc=null;let liveStream=null;let liveCallActive=false;function showChat(){$("auth").hidden=true;$("messages").hidden=false;$("composer").hidden=false;$("tools").hidden=false;$("message").focus()}function addMsg(role,text,img){const hint=document.querySelector(".hint");if(hint)hint.remove();const d=document.createElement("div");d.className="msg "+role;d.textContent=text;if(img){const im=document.createElement("img");im.src=img;d.appendChild(im)}document.getElementById("messages").appendChild(d);document.getElementById("messages").scrollTop=document.getElementById("messages").scrollHeight}async function api(path,opt={}){const headers={...(opt.headers||{})};if(token)headers.Authorization="Bearer "+token;if(opt.body)headers["Content-Type"]="application/json";const r=await fetch(path,{...opt,headers});const data=await r.json().catch(()=>({error:"Server error"}));if(!r.ok)throw new Error(data.error||"Request failed");return data}$("login").addEventListener("click",async()=>{$("status").textContent="Signing in...";try{const d=await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value.trim(),password:$("password").value})});token=d.token;localStorage.setItem("tabby_token",token);showChat();try{const s=await api("/api/chat/single");s.messages.forEach(m=>addMsg(m.role,m.content))}catch(e){}}catch(e){$("status").textContent=e.message}});async function sendMsg(text){addMsg("user",text);$("send").disabled=true;try{const d=await api("/api/chat",{method:"POST",body:JSON.stringify({message:text})});addMsg("assistant",d.reply||d.response||"Done.",d.image||d.image_url)}catch(e){addMsg("assistant","Sorry: "+e.message)}finally{$("send").disabled=false;$("message").focus()}}$("composer").addEventListener("submit",e=>{e.preventDefault();const v=$("message").value.trim();if(!v)return;$("message").value="";sendMsg(v)});$("btnImage").addEventListener("click",()=>{const p=prompt("What image do you want?");if(p)sendMsg("Generate image of "+p)});$("btnLoc").addEventListener("click",()=>{if(!navigator.geolocation)return alert("Location not supported");navigator.geolocation.getCurrentPosition(async pos=>{try{await api("/api/location",{method:"POST",body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude})});addMsg("assistant","Location saved.")}catch(e){addMsg("assistant",e.message)}},()=>alert("Please allow location"))});const vn=$("btnVoiceNote");vn.addEventListener("mousedown",async()=>{try{$("voiceStatus").textContent="I am listening, Boss. Go ahead.";const s=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];mediaRecorder=new MediaRecorder(s);mediaRecorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};mediaRecorder.onstop=async()=>{const blob=new Blob(chunks,{type:"audio/webm"});const reader=new FileReader();reader.onloadend=async()=>{try{const d=await api("/api/voice/note",{method:"POST",body:JSON.stringify({audio:reader.result})});addMsg("user","Voice note: "+(d.transcript||""));addMsg("assistant",d.reply||"Got it, Boss.")}catch(e){addMsg("assistant","Sorry: "+e.message)}$("voiceStatus").textContent="Got it, Boss."};reader.readAsDataURL(blob)};mediaRecorder.start();vn.classList.add("active")}catch(e){$("voiceStatus").textContent="Please allow microphone access."}});vn.addEventListener("mouseup",()=>{if(mediaRecorder&&mediaRecorder.state==="recording"){mediaRecorder.stop();mediaRecorder.stream.getTracks().forEach(t=>t.stop());vn.classList.remove("active");$("voiceStatus").textContent="Got it, Boss."}});vn.addEventListener("touchstart",e=>{e.preventDefault();vn.dispatchEvent(new Event("mousedown"))});vn.addEventListener("touchend",e=>{e.preventDefault();vn.dispatchEvent(new Event("mouseup"))});$("btnLiveCall").addEventListener("click",async()=>{if(liveCallActive){if(livePc)livePc.close();if(liveStream)liveStream.getTracks().forEach(t=>t.stop());liveCallActive=false;$("btnLiveCall").textContent="Start Live Call";$("btnLiveCall").classList.remove("active");$("voiceStatus").textContent="Live call ended. Got it, Boss.";return}try{$("voiceStatus").textContent="Starting live call...";const sess=await api("/api/voice/session",{method:"POST",body:JSON.stringify({})});const clientSecret=sess.session?.client_secret?.value||sess.session?.client_secret;if(!clientSecret)throw new Error("Live call not configured. Add OPENAI_API_KEY.");livePc=new RTCPeerConnection();liveStream=await navigator.mediaDevices.getUserMedia({audio:true});liveStream.getTracks().forEach(t=>livePc.addTrack(t,liveStream));livePc.ontrack=e=>{const a=document.createElement("audio");a.srcObject=e.streams[0];a.autoplay=true;document.body.appendChild(a)};const offer=await livePc.createOffer();await livePc.setLocalDescription(offer);const base="https://api.openai.com/v1/realtime";const model="gpt-realtime";const r=await fetch(`${base}?model=${model}`,{method:"POST",headers:{Authorization:`Bearer ${clientSecret}`,"Content-Type":"application/sdp"},body:offer.sdp});const answer=await r.text();await livePc.setRemoteDescription({type:"answer",sdp:answer});liveCallActive=true;$("btnLiveCall").textContent="End Live Call";$("btnLiveCall").classList.add("active");$("voiceStatus").textContent="I am listening, Boss. Go ahead. You are on a live call."}catch(e){$("voiceStatus").textContent="Live call failed: "+e.message;addMsg("assistant","Live call failed: "+e.message+" Please add OPENAI_API_KEY in Render to enable live call.")}});if(token){api("/api/me").then(()=>{showChat();api("/api/chat/single").then(s=>s.messages.forEach(m=>addMsg(m.role,m.content))).catch(()=>{})}).catch(()=>{localStorage.removeItem("tabby_token");token=""})}})();</script></body></html>'''
-
-@app.route("/", methods=["GET"])
-def home():
-    return SINGLE_CHAT_HTML, 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "8.0-voice-note-live-call", "database_ready": DATABASE_READY, "database": "supabase-postgres", "languages": ["all"], "live_search": LIVE_SEARCH_ENABLED, "vision": True, "voice_note": True, "live_call": bool(OPENAI_API_KEY), "image_providers": {"cloudflare_flux": bool(CLOUDFLARE_API_TOKEN), "replicate": bool(REPLICATE_API_TOKEN), "midjourney_goapi": bool(MIDJOURNEY_API_KEY), "fallback": True}, "chat_providers": {"openrouter": bool(OPENROUTER_API_KEY), "gemini": bool(GEMINI_API_KEY), "groq": bool(GROQ_API_KEY), "cerebras": bool(CEREBRAS_API_KEY)}, "time": current_time()})
-@app.route("/api/status", methods=["GET"])
-def api_status(): return jsonify({"success": True, "name": "Tabby", "creator": CREATOR_NAME, "status": "online", "version": "8.0", "database_ready": DATABASE_READY})
-@app.route("/api/greeting", methods=["GET"])
-@auth_required
-def greeting(): return jsonify({"success": True, "greeting": get_greeting_lagos()})
-
-# ===== AUTH =====
-@app.route("/register", methods=["POST"])
-@app.route("/api/register", methods=["POST"])
-def register():
-    data = request.get_json(silent=True) or {}
-    name = clean_ai_text(str(data.get("name","")).strip()); email = str(data.get("email","")).strip().lower(); password = str(data.get("password",""))
-    if not name or not email or not password: return json_error("Name, email and password required.")
-    if len(password) < 8: return json_error("Password must be at least 8 chars.")
-    with get_db() as db:
-        if db.execute("SELECT id FROM users WHERE email=%s", (email,)).fetchone(): return json_error("Account already exists.", 409)
-        role = "owner" if OWNER_EMAIL and email == OWNER_EMAIL else "customer"
-        cur = db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,%s)", (name, email, generate_password_hash(password), role))
-        user = db.execute("SELECT * FROM users WHERE id=%s", (cur.lastrowid,)).fetchone()
-    user = dict(user)
-    return jsonify({"success": True, "token": create_token(user), "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}), 201
-@app.route("/login", methods=["POST"])
-@app.route("/api/login", methods=["POST"])
-def login():
-    data = request.get_json(silent=True) or {}
-    email = str(data.get("email","")).strip().lower(); password = str(data.get("password",""))
-    with get_db() as db:
-        user = db.execute("SELECT * FROM users WHERE email=%s", (email,)).fetchone()
-    if not user or not check_password_hash(user["password_hash"], password): return json_error("Invalid email or password.", 401)
-    user = dict(user)
-    if OWNER_EMAIL and email == OWNER_EMAIL and user["role"] != "owner":
-        with get_db() as db: db.execute("UPDATE users SET role='owner' WHERE id=%s", (user["id"],))
-        user["role"] = "owner"
-    return jsonify({"success": True, "token": create_token(user), "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}})
-@app.route("/me", methods=["GET"])
-@app.route("/api/me", methods=["GET"])
-@auth_required
-def me():
-    u = request.current_user
-    return jsonify({"success": True, "user": {"id": u["id"], "name": u["name"], "email": u["email"], "role": u["role"]}, "creator": CREATOR_NAME, "greeting": get_greeting_lagos()})
-
-# ===== SINGLE CHAT ONLY =====
-@app.route("/api/chat/single", methods=["GET"])
-@auth_required
-def get_single_chat():
-    user = request.current_user; cid = get_single_conversation_id(user["id"])
-    with get_db() as db:
-        msgs = db.execute("SELECT id,role,content,created_at FROM messages WHERE conversation_id=%s ORDER BY id ASC", (cid,)).fetchall()
-    return jsonify({"success": True, "conversation_id": cid, "greeting": get_greeting_lagos(), "messages": [dict(r) for r in msgs]})
-@app.route("/api/conversations", methods=["GET"])
-@auth_required
-def list_conversations_compat():
-    user = request.current_user; cid = get_single_conversation_id(user["id"])
-    return jsonify({"success": True, "conversations": [{"id": cid, "title": "Tabby Chat"}]})
-
-@app.route("/chat", methods=["POST"])
-@app.route("/api/chat", methods=["POST"])
-@auth_required
-def chat():
-    user = request.current_user
-    data = request.get_json(silent=True) or {}
-    message = str(data.get("message","")).strip()
-    voice_mode = bool(data.get("voice_mode") or data.get("voice_conversation"))
-    if not message: return json_error("Please enter a message.")
-    if len(message) > 12000: return json_error("Message too long.")
-    conversation_id = get_single_conversation_id(user["id"])
-    with get_db() as db:
-        db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'user',%s)", (conversation_id, message))
-        db.execute("UPDATE conversations SET updated_at=NOW() WHERE id=%s", (conversation_id,))
-        history = db.execute("SELECT role,content FROM messages WHERE conversation_id=%s ORDER BY id DESC LIMIT 20", (conversation_id,)).fetchall()
-    history = list(reversed(history)); memories = get_memories(user["id"]); low_msg = message.lower(); bike_context = get_bike_context_for_user(user)
-    def save_reply(reply):
-        with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'assistant',%s)", (conversation_id, reply))
-        return jsonify({"success": True, "reply": reply, "response": reply, "conversation_id": conversation_id})
-    scene = handle_tabby_scene(user, low_msg)
-    if scene: return save_reply(clean_ai_text(scene))
-    bike_reply = handle_tabby_bike_command(user, low_msg)
-    if bike_reply and any(w in low_msg for w in ["lock","unlock","check","battery","status","restrict"]): return save_reply(clean_ai_text(bike_reply))
-    house_reply = handle_tabby_house_command(user, low_msg)
-    if house_reply and any(w in low_msg for w in ["turn on","turn off","switch on","switch off","lock house","unlock house"]): return save_reply(clean_ai_text(house_reply))
-    if any(p in low_msg for p in ["change my location","my location is","i am in","i'm in","set my location","update my location","my new location"]):
-        parsed = parse_location_from_text(message)
-        if parsed:
-            lat, lng, city = parsed; save_location(user["id"], lat, lng, label=city or "manual_change")
-            maps = f"https://www.google.com/maps?q={lat},{lng}"
-            return save_reply(clean_ai_text(f"Done, Boss. I have updated your location to {city or f'{lat}, {lng}'}. New location: {lat}, {lng}. Maps: {maps} You can change it anytime, just tell me or press Share My Location again."))
-    if any(w in low_msg for w in ["generate image","create image","make image","draw an image","generate a picture","create a picture","midjourney","design me","design a","generate an image","image of"]):
-        try:
-            ip = message
-            for w in ["generate image of","generate image","create image of","create image","make image of","make image","generate a picture of","generate a picture","create a picture of","create a picture","draw an image of","draw an image","draw","midjourney","design me","design a","image of","generate an image of","generate an image"]: ip = ip.lower().replace(w,"").strip()
-            if not ip: ip = message
-            img = generate_flux_image(ip, 4)
-            with get_db() as db: db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'assistant',%s)", (conversation_id, clean_ai_text(f"Here is your image, Boss: {ip}")))
-            return jsonify({"success": True, "reply": "Here is your image, Boss.", "response": "Here is your image, Boss.", "conversation_id": conversation_id, "image": img, "image_url": img})
-        except Exception as e: return save_reply(clean_ai_text(f"Image failed, Boss: {str(e)}"))
-    location = get_latest_location(user["id"])
-    location_text = f"Boss last shared location: {location.get('latitude')}, {location.get('longitude')}, Label: {location.get('label','')}. Maps: https://www.google.com/maps?q={location.get('latitude')},{location.get('longitude')}." if location else "No location shared yet. Ask Boss to press Share My Location."
-    if any(p in low_msg for p in ["what's my location","what is my location","where am i","where is my location","my location","show my location","track my location","where am i now"]):
-        if location:
-            maps = f"https://www.google.com/maps?q={location.get('latitude')},{location.get('longitude')}"
-            return jsonify({"success": True, "reply": clean_ai_text(f"Boss, you are here right now: {location.get('latitude')}, {location.get('longitude')}. Maps: {maps}. If you have moved, press Share My Location again."), "response": clean_ai_text(f"Boss, you are here right now: {location.get('latitude')}, {location.get('longitude')}. Maps: {maps}."), "conversation_id": conversation_id, "latitude": location.get("latitude"), "longitude": location.get("longitude"), "google_maps": maps})
-        return save_reply(clean_ai_text("Boss, I do not have your location yet. Press Share My Location and Allow, or tell me e.g. I am in Lagos and I will save it."))
-    if any(p in low_msg for p in ["who created you","who built you","who is your creator","who made you","who is your boss"]):
-        return save_reply(clean_ai_text("Faruq Sulaimon created me. He is my Boss, my creator and my owner. I am Tabby, built by Faruq Sulaimon."))
-    search_results = live_search(message, max_results=3 if voice_mode else 6) if (needs_live_search(message) or data.get("web_search") is True or data.get("use_search") is True) else []
-    system_prompt = build_system_prompt(user, memories, search_results, location_text, bike_context)
-    if voice_mode: system_prompt += "\nVOICE MODE ON: Answer like a phone call. Short, warm, natural sentences. No long lists. Do not speak links aloud. Keep under 80 words unless user asks for detail."
-    ai_messages = [{"role": "system", "content": system_prompt}] + [{"role": r["role"], "content": clean_ai_text(r["content"])} for r in history]
-    try: answer = clean_ai_text(call_ai_with_fallback(ai_messages, temperature=0.7, max_tokens=900 if voice_mode else 1800))
-    except Exception:
-        logger.exception("Chat failed"); return json_error("Tabby could not reach its AI service right now. Please try again.", 502)
-    with get_db() as db:
-        db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'assistant',%s)", (conversation_id, answer))
-        db.execute("UPDATE conversations SET updated_at=NOW() WHERE id=%s", (conversation_id,))
-    recent = "\n".join(f"{r['role']}: {r['content']}" for r in history[-6:]) + f"\nuser: {message}\nassistant: {answer}"
-    extract_automatic_memories(user, recent)
-    return jsonify({"success": True, "reply": answer, "response": answer, "conversation_id": conversation_id, "voice_mode": voice_mode, "memories": get_memories(user["id"])})
-
-@app.route("/api/image", methods=["POST"])
-@app.route("/image", methods=["POST"])
-@auth_required
-def generate_image_endpoint():
-    data = request.get_json(silent=True) or {}
-    prompt = str(data.get("prompt") or data.get("message") or "").strip()
-    if not prompt: return json_error("Image prompt is required.")
-    try:
-        img = generate_flux_image(prompt, 4)
-        return jsonify({"success": True, "image": img, "image_url": img})
-    except Exception as e: return json_error(f"Image failed: {str(e)}", 502)
-
-# ===== VISION / WAKE / VOICE NOTE / LIVE CALL =====
-@app.route("/api/vision", methods=["POST"])
-@auth_required
-def vision_endpoint():
-    user = request.current_user; data = request.get_json(silent=True) or {}
-    img = data.get("image") or data.get("image_base64") or data.get("photo") or ""
-    q = data.get("question") or data.get("prompt") or data.get("message") or "Hey Tabby, what am I looking at?"
-    device = data.get("device") or "glasses"
-    if not img: return json_error("Send image as base64.")
-    try:
-        ans = call_vision(img, q, user, get_bike_context_for_user(user))
-        with get_db() as db: db.execute("INSERT INTO tabby_logs (user_id, device, command, action, result) VALUES (%s,%s,%s,%s,%s)", (user["id"], device, q[:200], "vision", ans[:500]))
-        return jsonify({"success": True, "reply": ans, "response": ans, "device": device, "speak": ans, "voice_reply": ans})
-    except Exception as e: return json_error(f"Vision failed, Boss: {str(e)}", 502)
-@app.route("/api/wake", methods=["POST"])
-@auth_required
-def wake_word():
-    data = request.get_json(silent=True) or {}; transcript = str(data.get("transcript") or data.get("text") or data.get("message") or "").strip(); device = data.get("device") or "glasses"
-    if not transcript: return jsonify({"success": True, "wake": True, "reply": "Yes, Boss. I am here. I am listening. Go ahead.", "listening": True})
-    if any(w in transcript.lower() for w in ["what am i looking at","what is this","what am i seeing"]): return jsonify({"success": True, "wake": True, "reply": "Please send the photo, Boss, so I can see it. I am waiting.", "need_image": True, "device": device})
-    return jsonify({"success": True, "wake": True, "transcript": transcript, "reply": "I hear you, Boss. Go ahead and tell me what to do.", "device": device})
-@app.route("/api/voice-chat", methods=["POST"])
-@auth_required
-def voice_chat(): return jsonify({"success": True, "message": "Please call /api/chat with voice_mode true for phone-call style voice chat.", "voice_mode": True})
-@app.route("/api/voice/note", methods=["POST"])
-@auth_required
-def voice_note():
-    user = request.current_user; data = request.get_json(silent=True) or {}
-    audio_b64 = data.get("audio") or ""
-    transcript = data.get("transcript") or ""
-    # If browser already transcribed, use it. If not, try Whisper.
-    if not transcript and audio_b64 and OPENAI_API_KEY:
-        try:
-            import io
-            audio_bytes = base64.b64decode(audio_b64.split(",")[-1])
-            r = requests.post("https://api.openai.com/v1/audio/transcriptions", headers={"Authorization": f"Bearer {OPENAI_API_KEY}"}, files={"file": ("note.webm", io.BytesIO(audio_bytes), "audio/webm")}, data={"model": "whisper-1"}, timeout=60)
-            if r.status_code == 200: transcript = r.json().get("text", "")
-        except Exception as e: logger.warning(f"Whisper failed: {e}")
-    if not transcript: transcript = "Voice note received"
-    # Save as user message in single chat and get AI reply
-    cid = get_single_conversation_id(user["id"])
-    with get_db() as db:
-        db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'user',%s)", (cid, f"[Voice note] {transcript}"))
-    memories = get_memories(user["id"]); bike_context = get_bike_context_for_user(user); location = get_latest_location(user["id"])
-    location_text = f"Location: {location.get('latitude')}, {location.get('longitude')}" if location else "No location"
-    system_prompt = build_system_prompt(user, memories, [], location_text, bike_context) + "\nVOICE NOTE MODE: User sent a voice note. Reply like a phone call. Short, warm, clean English. Say: Got it, Boss at start if appropriate."
-    try:
-        answer = clean_ai_text(call_ai_with_fallback([{"role": "system", "content": system_prompt}, {"role": "user", "content": transcript}], temperature=0.7, max_tokens=900))
-    except Exception:
-        answer = f"Got it, Boss. I heard your voice note: {transcript}"
-    with get_db() as db:
-        db.execute("INSERT INTO messages (conversation_id,role,content) VALUES (%s,'assistant',%s)", (cid, answer))
-    return jsonify({"success": True, "transcript": transcript, "reply": answer, "response": answer, "conversation_id": cid})
-@app.route("/api/voice/session", methods=["POST"])
-@auth_required
-def live_call_session():
-    if not OPENAI_API_KEY:
-        return json_error("Live call is not configured. Add OPENAI_API_KEY in Render Environment.", 503)
-    try:
-        r = requests.post("https://api.openai.com/v1/realtime/client_secrets", headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}, json={"session": {"type": "realtime", "model": "gpt-realtime", "audio": {"output": {"voice": "marin"}}, "instructions": "You are Tabby, assistant for Faruq Sulaimon. Speak like a phone call. Clean English. Only use Pidgin if user asks. Understand ALL languages, reply in same language user used. Be warm, short, natural. Call user Boss. Never say I go talk now. Say I am listening, Boss."}}, timeout=25)
-        if r.status_code not in (200, 201):
-            logger.error(f"Realtime failed: {r.text[:800]}")
-            return json_error("Could not start live call.", 502)
-        return jsonify({"success": True, "session": r.json(), "model": "gpt-realtime", "voice": "marin"})
-    except Exception:
-        logger.exception("Live call failed")
-        return json_error("Live call failed.", 502)
-
-# ===== HOUSE + DEVICES =====
-@app.route("/api/house/devices", methods=["GET"])
-@auth_required
-def list_house_devices():
-    u = request.current_user
-    with get_db() as db: rows = db.execute("SELECT * FROM house_devices WHERE user_id=%s ORDER BY id DESC", (u["id"],)).fetchall()
-    return jsonify({"success": True, "devices": [dict(r) for r in rows]})
-@app.route("/api/house/devices", methods=["POST"])
-@auth_required
-def add_house_device():
-    u = request.current_user; d = request.get_json(silent=True) or {}
-    name = clean_ai_text(str(d.get("name","light")).strip()); room = clean_ai_text(str(d.get("room","living")).strip())
-    with get_db() as db: cur = db.execute("INSERT INTO house_devices (user_id, name, room, type, status) VALUES (%s,%s,%s,%s,'off')", (u["id"], name, room, name))
-    return jsonify({"success": True, "device_id": cur.lastrowid}), 201
-@app.route("/api/house/devices/<int:device_id>/command", methods=["POST"])
-@auth_required
-def house_device_command(device_id):
-    u = request.current_user; d = request.get_json(silent=True) or {}; action = str(d.get("action") or d.get("status") or d.get("command") or "on").lower()
-    with get_db() as db:
-        row = db.execute("SELECT * FROM house_devices WHERE id=%s AND user_id=%s", (device_id, u["id"])).fetchone()
-        if not row: return json_error("Device not found", 404)
-        db.execute("UPDATE house_devices SET status=%s WHERE id=%s", (action, device_id))
-    return jsonify({"success": True, "message": f"Done, Boss. {dict(row)['name']} is now {action}."})
-@app.route("/api/tabby/devices", methods=["GET"])
-@auth_required
-def list_tabby_devices():
-    u = request.current_user
-    with get_db() as db: rows = db.execute("SELECT * FROM tabby_devices WHERE user_id=%s ORDER BY id DESC", (u["id"],)).fetchall()
-    return jsonify({"success": True, "devices": [dict(r) for r in rows]})
-@app.route("/api/tabby/register", methods=["POST"])
-@auth_required
-def register_tabby_device():
-    u = request.current_user; d = request.get_json(silent=True) or {}
-    name = clean_ai_text(str(d.get("device_name") or d.get("name") or "Tabby Glasses").strip()); dtype = str(d.get("device_type") or "glasses").lower()
-    with get_db() as db: cur = db.execute("INSERT INTO tabby_devices (user_id, device_name, device_type, last_seen, battery) VALUES (%s,%s,%s,%s,%s)", (u["id"], name, dtype, current_time(), int(d.get("battery", 100))))
-    return jsonify({"success": True, "device_id": cur.lastrowid, "message": f"Tabby {dtype} {name} registered, Boss."})
-@app.route("/api/tabby/logs", methods=["GET"])
-@auth_required
-def tabby_logs():
-    u = request.current_user
-    with get_db() as db: rows = db.execute("SELECT * FROM tabby_logs WHERE user_id=%s ORDER BY id DESC LIMIT 50", (u["id"],)).fetchall()
-    return jsonify({"success": True, "logs": [dict(r) for r in rows]})
-
-# ===== DRONE + BIKE + PAYMENTS + LOCATION =====
-@app.route("/api/drone/command", methods=["POST"])
-@auth_required
-def drone_command():
-    u = request.current_user; d = request.get_json(silent=True) or {}; cmd = str(d.get("command") or d.get("action") or "takeoff").lower()
-    with get_db() as db: db.execute("INSERT INTO tabby_logs (user_id, device, command, action, result) VALUES (%s,%s,%s,%s,%s)", (u["id"], "drone", cmd, cmd, f"Drone command {cmd} received"))
-    return jsonify({"success": True, "message": f"Done, Boss. Drone command {cmd} received.", "command": cmd})
-@app.route("/api/bikes", methods=["GET"])
-@auth_required
-def list_bikes():
-    u = request.current_user
-    with get_db() as db:
-        rows = db.execute("SELECT * FROM motorcycles ORDER BY id DESC", ()).fetchall() if u["role"]=="owner" else db.execute("SELECT * FROM motorcycles WHERE assigned_user_id=%s ORDER BY id DESC", (u["id"],)).fetchall()
-    return jsonify({"success": True, "bikes": [dict(r) for r in rows]})
-@app.route("/api/bikes", methods=["POST"])
-@owner_required
-def create_bike():
-    u = request.current_user; d = request.get_json(silent=True) or {}
-    name = clean_ai_text(str(d.get("name","Tabby Bike")).strip()); model = clean_ai_text(str(d.get("model","")).strip()); reg = clean_ai_text(str(d.get("registration_number","")).strip())
-    with get_db() as db:
-        cur = db.execute("INSERT INTO motorcycles (owner_id, assigned_user_id, name, model, registration_number) VALUES (%s,%s,%s,%s,%s)", (u["id"], d.get("assigned_user_id"), name, model, reg))
-        db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (cur.lastrowid,))
-    return jsonify({"success": True, "bike_id": cur.lastrowid}), 201
-@app.route("/api/bikes/<int:bike_id>/command", methods=["POST"])
-@auth_required
-def bike_command(bike_id):
-    u = request.current_user
-    if not user_can_access_motorcycle(u, bike_id): return json_error("Access denied.", 403)
-    d = request.get_json(silent=True) or {}; cmd = str(d.get("command") or d.get("action") or "").lower()
-    with get_db() as db:
-        db.execute("INSERT INTO bike_commands (motorcycle_id, command, issued_by) VALUES (%s,%s,%s)", (bike_id, cmd, u["id"]))
-        if cmd in ("lock","unlock"):
-            db.execute("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bike_id,))
-            db.execute("UPDATE bike_status SET lock_status=%s WHERE motorcycle_id=%s", ("locked" if cmd=="lock" else "unlocked", bike_id))
-    return jsonify({"success": True, "message": f"Done, Boss. Bike is now {cmd}."})
-@app.route("/api/payments", methods=["GET"])
-@auth_required
-def list_payments():
-    u = request.current_user
-    with get_db() as db:
-        rows = db.execute("SELECT * FROM payments ORDER BY id DESC LIMIT 100", ()).fetchall() if u["role"]=="owner" else db.execute("SELECT * FROM payments WHERE user_id=%s ORDER BY id DESC LIMIT 100", (u["id"],)).fetchall()
-    return jsonify({"success": True, "payments": [dict(r) for r in rows]})
-@app.route("/api/location", methods=["POST"])
-@auth_required
-def post_location():
-    u = request.current_user; d = request.get_json(silent=True) or {}
-    try: lat = float(d.get("latitude")); lng = float(d.get("longitude"))
-    except Exception: return json_error("Latitude and longitude required.")
-    save_location(u["id"], lat, lng, label=str(d.get("label","phone_location")), accuracy=d.get("accuracy"), speed=d.get("speed"))
-    return jsonify({"success": True, "message": "Location saved.", "google_maps": f"https://www.google.com/maps?q={lat},{lng}"})
-@app.route("/api/location", methods=["GET"])
-@auth_required
-def get_location():
-    u = request.current_user; loc = get_latest_location(u["id"])
-    if not loc: return jsonify({"success": True, "location": None})
-    loc["google_maps"] = f"https://www.google.com/maps?q={loc.get('latitude')},{loc.get('longitude')}"
-    return jsonify({"success": True, "location": loc})
-@app.route("/api/device/ingest", methods=["POST"])
-def device_ingest():
-    key = request.headers.get("X-Device-Key","") or request.args.get("key","")
-    if TABBY_DEVICE_KEY and key != TABBY_DEVICE_KEY: return json_error("Invalid device key.", 401)
-    d = request.get_json(silent=True) or {}; uid = d.get("user_id")
-    if not uid: return json_error("user_id required.")
-    if d.get("latitude") is not None and d.get("longitude") is not None:
-        try: save_location(int(uid), float(d.get("latitude")), float(d.get("longitude")), label="device", speed=d.get("speed"))
-        except Exception: pass
-    return jsonify({"success": True})
-@app.route("/api/memories", methods=["GET"])
-@auth_required
-def list_memories(): return jsonify({"success": True, "memories": get_memories(request.current_user["id"])})
-
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5000"))
-    app.run(host="0.0.0.0", port=port)
+                return f"Customer bike: {bike.get('name')} Model {bike.get('model')} Reg {bike.get('registration_number')
