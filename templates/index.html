@@ -1,10 +1,10 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Tabby AI - Ultimate Gee Industry</title>
 <style>
-*{box-sizing:border-box} body{margin:0;background:#04070f;color:#e6edff;font:15px system-ui,sans-serif}
+*{box-sizing:border-box} body{margin:0;background:#04070f;color:#e6edff;font:15px system-ui,sans-serif;padding-bottom:70px}
 .layout{display:flex;min-height:100vh}
-.sidebar{width:260px;background:#070b16;border-right:1px solid #1e2d4d;padding:18px;position:fixed;top:0;bottom:0;left:0;overflow:auto}
+.sidebar{width:260px;background:#070b16;border-right:1px solid #1e2d4d;padding:18px;position:fixed;top:0;bottom:0;left:0;overflow:auto;z-index:50;transition:transform .3s}
 .logo{text-align:center;padding:10px 0 16px;border-bottom:1px solid #1e2d4d;margin-bottom:16px}
 .logo .t{width:58px;height:58px;background:#2b6cff;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;margin:0 auto;box-shadow:0 0 24px #2b6cff88}
 .logo h1{margin:10px 0 2px;letter-spacing:3px;font-size:22px}
@@ -13,23 +13,42 @@
 .nav button.active,.nav button:hover{background:#1a2a4d;color:#fff}
 .nav small{color:#64748b;font-size:10px;letter-spacing:1px;padding:10px 14px;display:block}
 .main{margin-left:260px;flex:1;padding:20px;max-width:1100px;width:100%}
-.top{display:flex;justify-content:space-between;align-items:center}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .pill{background:#0f3d2a;color:#7ee2a8;padding:6px 12px;border-radius:20px;font-size:12px}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
 .card{background:#0f1a30;border:1px solid #1e2d4d;border-radius:14px;padding:16px}
 .card small{color:#8ea0c3}.card b{font-size:22px}
 .panel{background:#0a1122;border:1px solid #1e2d4d;border-radius:16px;padding:16px;margin:14px 0}
-.msg{padding:13px 15px;border-radius:14px;margin:10px 0;white-space:pre-wrap;line-height:1.55}
-.user{background:#2b4aa5;margin-left:60px}.ai{background:#141f38;border:1px solid #1e2d4d}
+.msg{padding:13px 15px;border-radius:14px;margin:10px 0;white-space:pre-wrap;line-height:1.55;word-break:break-word}
+.user{background:#2b4aa5;margin-left:20px}.ai{background:#141f38;border:1px solid #1e2d4d}
 .msg img{width:100%;max-width:620px;border-radius:12px;margin-top:10px;display:block}
-input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #34435f;background:#0b1427;color:#fff;margin:6px 0}
+input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #34435f;background:#0b1427;color:#fff;margin:6px 0;font-size:16px}
 button.primary{background:#2b6cff;color:#fff;border:none;padding:12px 18px;border-radius:20px;cursor:pointer}
 button.tool{background:#1a2a4d;color:#fff;border:none;padding:10px 14px;border-radius:20px;cursor:pointer;margin:4px}
-button.danger{background:#7a1f2a}
-.auth{max-width:420px;margin:80px auto;background:#0f1a30;border:1px solid #26365e;border-radius:16px;padding:24px}
+.auth{max-width:420px;margin:60px auto;background:#0f1a30;border:1px solid #26365e;border-radius:16px;padding:24px}
 .bike{border:1px solid #1e2d4d;border-radius:12px;padding:14px;margin:8px 0;background:#0f1a30}
 .bar{height:10px;background:#1e293b;border-radius:10px;overflow:hidden}.bar i{display:block;height:100%;background:#22c55e}
-@media(max-width:800px){.sidebar{display:none}.main{margin-left:0}.cards{grid-template-columns:1fr 1fr}}
+.hamburger{display:none;background:#1a2a4d;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-size:18px;cursor:pointer}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40}
+.chat-input-wrap{position:sticky;bottom:70px;background:#0a1122;padding:10px;border-radius:14px;border:1px solid #1e2d4d;display:flex;gap:8px}
+.chat-input-wrap input{margin:0;flex:1}
+.bottomnav{display:none;position:fixed;bottom:0;left:0;right:0;background:#070b16;border-top:1px solid #1e2d4d;z-index:60;grid-template-columns:repeat(4,1fr);padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+.bottomnav button{background:none;border:none;color:#8ea0c3;padding:8px 4px;font-size:11px;cursor:pointer}
+.bottomnav button.active{color:#fff}
+.bottomnav button span{font-size:20px;display:block}
+@media(max-width:850px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .overlay.show{display:block}
+  .main{margin-left:0;padding:12px;padding-bottom:20px}
+  .cards{grid-template-columns:1fr 1fr}
+  .hamburger{display:block}
+  .bottomnav{display:grid}
+  .user{margin-left:10px}
+  .top h2{font-size:18px}
+  .pill{font-size:10px}
+}
+@media(max-width:480px){ .cards{grid-template-columns:1fr} .msg{padding:11px} }
 </style></head>
 <body>
 <div id="auth" class="auth"><div class="logo"><div class="t">T</div><h1>TABBY</h1><p>AI & AUTOMOTIVE INTELLIGENCE</p></div>
@@ -38,7 +57,8 @@ button.danger{background:#7a1f2a}
 <p style="font-size:11px;color:#8ea0c3;text-align:center">Customer accounts are created by Owner only.<br>Ultimate Gee Industry</p></div>
 
 <div id="app" style="display:none"><div class="layout">
-<div class="sidebar"><div class="logo"><div class="t">T</div><h1>TABBY</h1><p>AI & AUTOMOTIVE INTELLIGENCE</p><p id="who" style="color:#7ee2a8;margin-top:8px"></p></div>
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+<div class="sidebar" id="sidebar"><div class="logo"><div class="t">T</div><h1>TABBY</h1><p>AI & AUTOMOTIVE INTELLIGENCE</p><p id="who" style="color:#7ee2a8;margin-top:8px"></p></div>
 <div class="nav"><small>MAIN MENU</small>
 <button id="btnDash" onclick="show('dash')" class="active">🏠 Main Dashboard</button>
 <button id="btnAI" onclick="show('ai')">✦ Tabby AI</button>
@@ -48,9 +68,8 @@ button.danger{background:#7a1f2a}
 <button onclick="logout()">🚪 Logout</button></div></div>
 
 <div class="main">
-<div class="top"><h2 id="title">Main Dashboard</h2><span class="pill">● SYSTEM ONLINE • LIVE + AUTO-LEARN</span></div>
+<div class="top"><button class="hamburger" onclick="toggleSidebar()">☰</button><h2 id="title">Main Dashboard</h2><span class="pill">● ONLINE • LIVE + AUTO-LEARN</span></div>
 
-<!-- DASHBOARD -->
 <div id="view-dash">
 <div class="cards"><div class="card"><small>TOTAL BIKES</small><br><b id="cBikes">0</b></div><div class="card"><small>CUSTOMERS</small><br><b id="cCust">0</b></div><div class="card"><small>YOUR ROLE</small><br><b id="cRole">-</b></div><div class="card"><small>SYSTEM</small><br><b style="color:#7ee2a8">LIVE</b></div></div>
 <div class="panel"><h3>All Bikes - GPS • BMS • Anti-Theft</h3><div id="dashBikes"></div></div>
@@ -60,30 +79,34 @@ button.danger{background:#7a1f2a}
 <button class="primary" onclick="createCust()">Create Customer + Bike</button><p id="cuMsg" style="font-size:12px"></p></div>
 </div>
 
-<!-- TABBY AI - OWNER ONLY, SINGLE CHAT -->
 <div id="view-ai" style="display:none">
-<div class="panel"><div style="display:flex;gap:8px;align-items:center"><span style="background:#2b6cff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900">T</span><div><b>Tabby</b><br><small style="color:#8ea0c3">Your friendly AI • UK English • Auto Live Info</small></div>
-<button class="tool" style="margin-left:auto" onclick="speakLast()">🔊 Speak</button><button class="tool" onclick="toggleVoice()">🎙️ Voice Input</button><button class="tool" onclick="startLiveCall()">📞 Live Call</button></div>
+<div class="panel"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="background:#2b6cff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900">T</span><div><b>Tabby</b><br><small style="color:#8ea0c3">Your friendly AI • UK English • Auto Live Info</small></div>
+<button class="tool" onclick="speakLast()">🔊 Speak</button><button class="tool" onclick="toggleVoice()">🎙️ Voice</button><button class="tool" onclick="startLiveCall()">📞 Live Call</button></div>
 <div id="msgs" style="max-height:55vh;overflow:auto;margin-top:12px"></div>
-<div style="display:flex;gap:8px;margin-top:12px"><input id="inp" placeholder="Message Tabby..." style="flex:1"><button class="primary" onclick="send()">Send ➤</button></div>
-<div><input type="file" id="imgFile" accept="image/*" style="display:none" onchange="sendImage(this)"><button class="tool" onclick="document.getElementById('imgFile').click()">🖼️ Send Image to Analyze</button><button class="tool" onclick="quick('Tell me latest news in Nigeria')">News Nigeria</button><button class="tool" onclick="quick('What is Naira to Dollar rate today?')">Naira Rate</button><button class="tool" onclick="quick('Check my bike')">My Bike</button><button class="tool" onclick="quick('Generate image of a villain, 2D, Hulk size, gray, Bane mask, holding Thanos sword')">Generate Villain</button></div>
-<p style="font-size:11px;color:#8ea0c3">Single chat - everything saved in your account. Tabby speaks with UK voice. Live Call uses your mic.</p></div>
+<div class="chat-input-wrap"><input id="inp" placeholder="Message Tabby..." onkeydown="if(event.key==='Enter')send()"><button class="primary" onclick="send()">Send ➤</button></div>
+<div><input type="file" id="imgFile" accept="image/*" style="display:none" onchange="sendImage(this)"><button class="tool" onclick="document.getElementById('imgFile').click()">🖼️ Analyze Image</button><button class="tool" onclick="quick('Tell me latest news in Nigeria')">News Nigeria</button><button class="tool" onclick="quick('What is Naira to Dollar rate today?')">Naira Rate</button><button class="tool" onclick="quick('Check my bike')">My Bike</button><button class="tool" onclick="quick('Generate image of a villain, 2D, Hulk size, gray, Bane mask, holding Thanos sword')">Generate Villain</button></div>
+<p style="font-size:11px;color:#8ea0c3">Single chat - everything saved. Tabby speaks with UK voice.</p></div>
 </div>
 
-<!-- MY BIKE -->
 <div id="view-mybike" style="display:none"><div class="panel"><h3>My Bike - BMS • GPS • Predictive Maintenance</h3><div id="myBikeList"></div></div></div>
+<div id="view-cust" style="display:none"><div class="panel"><h3>Customer Bikes - Owner Only</h3><p style="color:#8ea0c3;font-size:13px">Track all bikes, GPS, battery, lock, payment status. If payment overdue &gt;7 days, bike goes to Restricted Mode.</p><div id="custBikeList"></div><button class="tool" onclick="checkOverdue()">Check Overdue + Restrict</button><button class="tool" onclick="remindPayments()">Send Reminders</button><p id="payMsg" style="font-size:12px"></p></div></div>
 
-<!-- CUSTOMER BIKES - OWNER ONLY -->
-<div id="view-cust" style="display:none"><div class="panel"><h3>Customer Bikes - Owner Only</h3><p style="color:#8ea0c3;font-size:13px">Track all bikes, GPS, battery, lock, payment status. If payment overdue >7 days, bike goes to Restricted Mode.</p><div id="custBikeList"></div><button class="tool" onclick="checkOverdue()">Check Overdue + Restrict</button><button class="tool" onclick="remindPayments()">Send Reminders</button><p id="payMsg" style="font-size:12px"></p></div></div>
-
-</div></div></div>
+</div></div>
+<div class="bottomnav" id="bottomnav">
+<button onclick="show('dash')" data-nav="dash" class="active"><span>🏠</span>Dashboard</button>
+<button onclick="show('ai')" data-nav="ai" id="bnAI"><span>✦</span>Tabby AI</button>
+<button onclick="show('mybike')" data-nav="mybike"><span>🏍️</span>My Bike</button>
+<button onclick="show('cust')" data-nav="cust" id="bnCust"><span>👥</span>Customers</button>
+</div>
+</div>
 <script>
 let token=localStorage.getItem('tabby_token')||'', user=null, lastReply='', recognition=null, liveCallOn=false;
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show');}
 function api(p,o={}){let h={}; if(token)h.Authorization='Bearer '+token; if(o.body)h['Content-Type']='application/json'; return fetch(p,{method:o.method||'GET',headers:h,body:o.body}).then(r=>r.json());}
 async function login(){let e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value; let d=await api('/api/login',{method:'POST',body:JSON.stringify({email:e,password:pw})}); if(!d.success){document.getElementById('st').textContent=d.error;return;} token=d.token; user=d.user; localStorage.setItem('tabby_token',token); afterLogin();}
 function logout(){localStorage.removeItem('tabby_token'); location.reload();}
-function afterLogin(){document.getElementById('auth').style.display='none'; document.getElementById('app').style.display='block'; document.getElementById('who').textContent=user.name+' • '+user.role.toUpperCase(); document.getElementById('cRole').textContent=user.role.toUpperCase(); if(user.role!=='owner'){document.getElementById('btnAI').style.display='none'; document.getElementById('btnCust').style.display='none'; document.getElementById('createWrap').style.display='none'; document.getElementById('dashCustWrap').style.display='none';} loadDash(); if(user.role==='owner') loadHistory();}
-function show(v){['dash','ai','mybike','cust'].forEach(x=>document.getElementById('view-'+x).style.display=(x===v?'block':'none')); document.getElementById('title').textContent=v==='dash'?'Main Dashboard':v==='ai'?'Tabby AI':v==='mybike'?'My Bike':'Customer Bikes'; if(v==='mybike'||v==='cust'||v==='dash') loadDash();}
+function afterLogin(){document.getElementById('auth').style.display='none'; document.getElementById('app').style.display='block'; document.getElementById('who').textContent=user.name+' • '+user.role.toUpperCase(); document.getElementById('cRole').textContent=user.role.toUpperCase(); if(user.role!=='owner'){document.getElementById('btnAI').style.display='none'; document.getElementById('btnCust').style.display='none'; document.getElementById('bnAI').style.display='none'; document.getElementById('bnCust').style.display='none'; document.getElementById('createWrap').style.display='none'; document.getElementById('dashCustWrap').style.display='none';} loadDash(); if(user.role==='owner') loadHistory();}
+function show(v){['dash','ai','mybike','cust'].forEach(x=>document.getElementById('view-'+x).style.display=(x===v?'block':'none')); document.getElementById('title').textContent=v==='dash'?'Main Dashboard':v==='ai'?'Tabby AI':v==='mybike'?'My Bike':'Customer Bikes'; document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.bottomnav button').forEach(b=>b.classList.toggle('active',b.dataset.nav===v)); if(window.innerWidth<=850) {document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show');} if(v==='mybike'||v==='cust'||v==='dash') loadDash();}
 async function loadDash(){let d=await api('/api/dashboard'); if(!d.success)return; let bikes=d.bikes||[]; document.getElementById('cBikes').textContent=bikes.length; document.getElementById('cCust').textContent=(d.customers||[]).length||bikes.length;
 document.getElementById('dashBikes').innerHTML=bikes.map(b=>bikeCard(b)).join('')||'No bikes yet. Create a customer.';
 document.getElementById('myBikeList').innerHTML=bikes.map(b=>bikeCard(b)).join('')||'No bike assigned yet.';
