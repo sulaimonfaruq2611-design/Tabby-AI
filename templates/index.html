@@ -22,9 +22,14 @@
 .msg{padding:13px 15px;border-radius:14px;margin:10px 0;white-space:pre-wrap;line-height:1.55;word-break:break-word}
 .user{background:#2b4aa5;margin-left:20px}.ai{background:#141f38;border:1px solid #1e2d4d}
 .msg img{width:100%;max-width:620px;border-radius:12px;margin-top:10px;display:block}
+.msg .speakBtn{background:#1a2a4d;color:#fff;border:none;padding:7px 12px;border-radius:20px;cursor:pointer;margin-top:10px;font-size:12px}
+.msg .speakBtn.playing{background:#2b6cff}
 input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #34435f;background:#0b1427;color:#fff;margin:6px 0;font-size:16px}
 button.primary{background:#2b6cff;color:#fff;border:none;padding:12px 18px;border-radius:20px;cursor:pointer}
 button.tool{background:#1a2a4d;color:#fff;border:none;padding:10px 14px;border-radius:20px;cursor:pointer;margin:4px}
+button.tool.rec{background:#e11d48;animation:pulse 1s infinite}
+button.tool.live{background:#e11d48}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(225,29,72,.5)}100%{box-shadow:0 0 0 10px rgba(225,29,72,0)}}
 .auth{max-width:420px;margin:60px auto;background:#0f1a30;border:1px solid #26365e;border-radius:16px;padding:24px}
 .bike{border:1px solid #1e2d4d;border-radius:12px;padding:14px;margin:8px 0;background:#0f1a30}
 .bar{height:10px;background:#1e293b;border-radius:10px;overflow:hidden}.bar i{display:block;height:100%;background:#22c55e}
@@ -32,6 +37,8 @@ button.tool{background:#1a2a4d;color:#fff;border:none;padding:10px 14px;border-r
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40}
 .chat-input-wrap{position:sticky;bottom:70px;background:#0a1122;padding:10px;border-radius:14px;border:1px solid #1e2d4d;display:flex;gap:8px}
 .chat-input-wrap input{margin:0;flex:1}
+#callBar{display:none;padding:8px 12px;background:#1e1a2a;border:1px solid #e11d48;border-radius:10px;margin:10px 0;font-size:13px;color:#fda4af;text-align:center}
+#callBar.show{display:block}
 .bottomnav{display:none;position:fixed;bottom:0;left:0;right:0;background:#070b16;border-top:1px solid #1e2d4d;z-index:60;grid-template-columns:repeat(4,1fr);padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
 .bottomnav button{background:none;border:none;color:#8ea0c3;padding:8px 4px;font-size:11px;cursor:pointer}
 .bottomnav button.active{color:#fff}
@@ -81,11 +88,12 @@ button.tool{background:#1a2a4d;color:#fff;border:none;padding:10px 14px;border-r
 
 <div id="view-ai" style="display:none">
 <div class="panel"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="background:#2b6cff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900">T</span><div><b>Tabby</b><br><small style="color:#8ea0c3">Your friendly AI • UK English • Auto Live Info</small></div>
-<button class="tool" onclick="speakLast()">🔊 Speak</button><button class="tool" onclick="toggleVoice()">🎙️ Voice</button><button class="tool" onclick="startLiveCall()">📞 Live Call</button></div>
+<button class="tool" id="speakLastBtn" onclick="speakLast()">🔊 Speak</button><button class="tool" id="micBtn" onclick="toggleVoiceNote()">🎙️ Voice</button><button class="tool" id="callBtn" onclick="toggleLiveCall()">📞 Live Call</button></div>
+<div id="callBar"><span id="callStatus">Live call - Tabby dey listen...</span></div>
 <div id="msgs" style="max-height:55vh;overflow:auto;margin-top:12px"></div>
 <div class="chat-input-wrap"><input id="inp" placeholder="Message Tabby..." onkeydown="if(event.key==='Enter')send()"><button class="primary" onclick="send()">Send ➤</button></div>
 <div><input type="file" id="imgFile" accept="image/*" style="display:none" onchange="sendImage(this)"><button class="tool" onclick="document.getElementById('imgFile').click()">🖼️ Analyze Image</button><button class="tool" onclick="quick('Tell me latest news in Nigeria')">News Nigeria</button><button class="tool" onclick="quick('What is Naira to Dollar rate today?')">Naira Rate</button><button class="tool" onclick="quick('Check my bike')">My Bike</button><button class="tool" onclick="quick('Generate image of a villain, 2D, Hulk size, gray, Bane mask, holding Thanos sword')">Generate Villain</button></div>
-<p style="font-size:11px;color:#8ea0c3">Single chat - everything saved. Tabby speaks with UK voice.</p></div>
+<p style="font-size:11px;color:#8ea0c3">Single chat - everything saved. Tabby speaks with male voice.</p></div>
 </div>
 
 <div id="view-mybike" style="display:none"><div class="panel"><h3>My Bike - BMS • GPS • Predictive Maintenance</h3><div id="myBikeList"></div></div></div>
@@ -100,7 +108,7 @@ button.tool{background:#1a2a4d;color:#fff;border:none;padding:10px 14px;border-r
 </div>
 </div>
 <script>
-let token=localStorage.getItem('tabby_token')||'', user=null, lastReply='', recognition=null, liveCallOn=false;
+let token=localStorage.getItem('tabby_token')||'', user=null, lastReply='', currentAudio=null, mediaRecorder=null, audioChunks=[], isRecording=false, isLiveCall=false, liveCallId=null, liveCallShouldContinue=false;
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show');}
 function api(p,o={}){let h={}; if(token)h.Authorization='Bearer '+token; if(o.body)h['Content-Type']='application/json'; return fetch(p,{method:o.method||'GET',headers:h,body:o.body}).then(r=>r.json());}
 async function login(){let e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value; let d=await api('/api/login',{method:'POST',body:JSON.stringify({email:e,password:pw})}); if(!d.success){document.getElementById('st').textContent=d.error;return;} token=d.token; user=d.user; localStorage.setItem('tabby_token',token); afterLogin();}
@@ -118,13 +126,23 @@ async function createCust(){let body={name:document.getElementById('cuName').val
 async function checkOverdue(){let d=await api('/api/payments/overdue-check',{method:'POST'}); document.getElementById('payMsg').textContent='Overdue checked: '+(d.overdue||0)+' plans. Restricted mode applied if >7 days.'; loadDash();}
 async function remindPayments(){let d=await api('/api/payments/remind',{method:'POST'}); document.getElementById('payMsg').textContent=(d.due_soon||[]).length+' customers due soon.';}
 async function loadHistory(){let s=await api('/api/chat/history'); (s.messages||[]).forEach(m=>addMsg(m.role,m.content));}
-function addMsg(role,text,img){let box=document.getElementById('msgs'); let d=document.createElement('div'); d.className='msg '+(role==='user'?'user':'ai'); d.textContent=text||''; if(img){let im=document.createElement('img'); im.src=img; d.appendChild(im);} box.appendChild(d); box.scrollTop=box.scrollHeight; if(role==='assistant')lastReply=text;}
-async function send(){let v=document.getElementById('inp').value.trim(); if(!v)return; document.getElementById('inp').value=''; addMsg('user',v); let d=await api('/api/chat',{method:'POST',body:JSON.stringify({message:v})}); addMsg('assistant',d.reply||'Done.',d.image); if(d.reply) speak(d.reply);}
+function addMsg(role,text,img){let box=document.getElementById('msgs'); let d=document.createElement('div'); d.className='msg '+(role==='user'?'user':'ai'); let span=document.createElement('div'); span.textContent=text||''; d.appendChild(span); if(img){let im=document.createElement('img'); im.src=img; d.appendChild(im);} if(role==='assistant' && text){ let b=document.createElement('button'); b.className='speakBtn'; b.textContent='🔊 Speak'; b.onclick=()=>speakText(text,b); d.appendChild(b); } box.appendChild(d); box.scrollTop=box.scrollHeight; if(role==='assistant')lastReply=text;}
+async function send(){let v=document.getElementById('inp').value.trim(); if(!v)return; document.getElementById('inp').value=''; addMsg('user',v); let d=await api('/api/chat',{method:'POST',body:JSON.stringify({message:v})}); addMsg('assistant',d.reply||'Done.',d.image); }
 function quick(t){document.getElementById('inp').value=t; send();}
-async function sendImage(inp){let f=inp.files[0]; if(!f)return; let rd=new FileReader(); rd.onload=async()=>{let b64=rd.result; let prompt=document.getElementById('inp').value||'Describe this image in detail'; addMsg('user',prompt+' [image]'); let d=await api('/api/chat',{method:'POST',body:JSON.stringify({message:prompt,image:b64})}); addMsg('assistant',d.reply); speak(d.reply);}; rd.readAsDataURL(f);}
-function speak(text){try{let u=new SpeechSynthesisUtterance(text); let voices=speechSynthesis.getVoices(); let uk=voices.find(v=>v.lang.includes('en-GB')&&v.name.includes('Female'))||voices.find(v=>v.lang.includes('en-GB'))||voices.find(v=>v.lang.includes('en')); if(uk)u.voice=uk; u.lang='en-GB'; u.rate=1; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch(e){}}
-function speakLast(){if(lastReply)speak(lastReply);}
-function toggleVoice(){try{let SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){alert('Voice not supported in this browser');return;} if(recognition){recognition.stop(); recognition=null; return;} recognition=new SR(); recognition.lang='en-GB'; recognition.onresult=e=>{document.getElementById('inp').value=e.results[0][0].transcript; send();}; recognition.start();}catch(e){alert(e.message)}}
-function startLiveCall(){liveCallOn=!liveCallOn; if(liveCallOn){speak('Hello Boss, Tabby is live. How can I help you?'); toggleVoice();}else{speak('Live call ended, Boss.');}}
+async function sendImage(inp){let f=inp.files[0]; if(!f)return; let rd=new FileReader(); rd.onload=async()=>{let b64=rd.result; let prompt=document.getElementById('inp').value||'Describe this image in detail, what do you see? If it is a bike, check condition, battery, give honest feedback.'; addMsg('user',prompt+' [image]'); let d=await api('/api/chat',{method:'POST',body:JSON.stringify({message:prompt,image:b64})}); addMsg('assistant',d.reply); if(d.reply) speakText(d.reply);}; rd.readAsDataURL(f);}
+// ---------- VOICE - OpenRouter only ----------
+function stopAudio(){ if(currentAudio){ currentAudio.pause(); currentAudio=null; } document.querySelectorAll('.speakBtn.playing').forEach(b=>{b.classList.remove('playing'); b.textContent='🔊 Speak';}); }
+function playAudioDataUrl(dataUrl, onEnd){ stopAudio(); if(!dataUrl){ if(onEnd) onEnd(); return; } currentAudio=new Audio(dataUrl); currentAudio.onended=()=>{currentAudio=null; if(onEnd) onEnd();}; currentAudio.onerror=()=>{currentAudio=null; if(onEnd) onEnd();}; currentAudio.play().catch(()=>{ if(onEnd) onEnd(); }); }
+async function speakText(text, btn){ if(btn && btn.classList.contains('playing')){ stopAudio(); return; } if(btn){ btn.classList.add('playing'); btn.textContent='⏸️ Stop'; } try{ let d=await api('/api/voice/speak',{method:'POST',body:JSON.stringify({text:text})}); if(d.audio){ playAudioDataUrl(d.audio, ()=>{ if(btn){btn.classList.remove('playing'); btn.textContent='🔊 Speak';} }); } else { alert(d.error||'Voice failed - check OpenRouter credits'); if(btn){btn.classList.remove('playing'); btn.textContent='🔊 Speak';} } }catch(e){ if(btn){btn.classList.remove('playing'); btn.textContent='🔊 Speak';} } }
+function speakLast(){ if(lastReply) speakText(lastReply); }
+async function toggleVoiceNote(){ if(isRecording) stopRecording(); else startRecording(); }
+async function startRecording(){ try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); mediaRecorder=new MediaRecorder(stream,{mimeType: MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':''}); audioChunks=[]; mediaRecorder.ondataavailable=e=>{if(e.data.size>0) audioChunks.push(e.data);}; mediaRecorder.onstop=()=>{ stream.getTracks().forEach(t=>t.stop()); handleVoiceBlob(); }; mediaRecorder.start(); isRecording=true; document.getElementById('micBtn').classList.add('rec'); document.getElementById('micBtn').textContent='⏹️ Stop'; }catch(e){ alert('Allow microphone to send voice note.'); } }
+function stopRecording(){ if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop(); isRecording=false; document.getElementById('micBtn').classList.remove('rec'); document.getElementById('micBtn').textContent='🎙️ Voice'; }
+async function handleVoiceBlob(){ if(!audioChunks.length) return; const blob=new Blob(audioChunks,{type:'audio/webm'}); const fd=new FormData(); fd.append('audio',blob,'voice.webm'); addMsg('user','🎤 Voice note...'); try{ let r=await fetch('/api/voice/chat',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd}); let j=await r.json(); if(j.text) { /* transcribed */ } addMsg('assistant', j.reply||'...', j.image); if(j.audio) playAudioDataUrl(j.audio, ()=>{ if(isLiveCall) liveCallLoop(); }); else if(isLiveCall) liveCallLoop(); }catch(e){ addMsg('assistant','Voice failed, try again Boss.'); if(isLiveCall) liveCallLoop(); } }
+// ---------- LIVE CALL ----------
+async function toggleLiveCall(){ if(isLiveCall) endCall(); else startCall(); }
+async function startCall(){ try{ let d=await api('/api/call/start',{method:'POST',body:JSON.stringify({})}); liveCallId=d.call_id; isLiveCall=true; liveCallShouldContinue=true; document.getElementById('callBtn').classList.add('live'); document.getElementById('callBtn').textContent='📵 End Call'; document.getElementById('callBar').classList.add('show'); document.getElementById('callStatus').textContent='Live call - Tabby dey listen... Talk now'; addMsg('assistant','📞 Live call started - talk now, Boss, Tabby dey listen'); liveCallLoop(); }catch(e){ alert('Call failed to start'); } }
+async function endCall(){ isLiveCall=false; liveCallShouldContinue=false; if(isRecording) stopRecording(); stopAudio(); document.getElementById('callBtn').classList.remove('live'); document.getElementById('callBtn').textContent='📞 Live Call'; document.getElementById('callBar').classList.remove('show'); addMsg('assistant','📞 Call ended. See you soon, Boss.'); try{ await api('/api/call/end',{method:'POST',body:JSON.stringify({call_id:liveCallId})}); }catch(e){} }
+async function liveCallLoop(){ if(!liveCallShouldContinue) return; document.getElementById('callStatus').textContent='Listening... talk now (5 sec)'; try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const rec=new MediaRecorder(stream,{mimeType: MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':''}); let chunks=[]; rec.ondataavailable=e=>{if(e.data.size>0) chunks.push(e.data);}; rec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); if(!liveCallShouldContinue) return; if(!chunks.length){ liveCallLoop(); return; } const blob=new Blob(chunks,{type:'audio/webm'}); const fd=new FormData(); fd.append('audio',blob,'voice.webm'); document.getElementById('callStatus').textContent='Tabby dey think...'; try{ let r=await fetch('/api/voice/chat',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd}); let j=await r.json(); if(j.reply){ addMsg('user','🎤 '+(j.text||'...')); addMsg('assistant',j.reply); if(j.audio){ document.getElementById('callStatus').textContent='Tabby dey talk...'; playAudioDataUrl(j.audio, ()=>{ if(liveCallShouldContinue) liveCallLoop(); }); } else liveCallLoop(); } else liveCallLoop(); }catch(e){ if(liveCallShouldContinue) liveCallLoop(); } }; rec.start(); setTimeout(()=>{ if(rec.state!=='inactive') rec.stop(); },5000); }catch(e){ document.getElementById('callStatus').textContent='Allow mic for live call'; setTimeout(()=>{ if(liveCallShouldContinue) liveCallLoop(); },2000); } }
 if(token){api('/api/me').then(d=>{if(d.success){user=d.user; afterLogin();}});}
 </script></body></html>
