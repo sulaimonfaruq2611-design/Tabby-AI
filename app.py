@@ -26,12 +26,37 @@ CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
 DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tabby.db")
 _lock = threading.Lock()
 
+TABLES_SQL = [
+"""CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'customer', created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, "userId" INTEGER, role TEXT, content TEXT, conversationid INTEGER DEFAULT 1, "conversationId" INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS memories(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, "userId" INTEGER, content TEXT, created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS motorcycles(id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id INTEGER, "ownerId" INTEGER, assigned_user_id INTEGER, "assignedUserId" INTEGER, name TEXT, model TEXT DEFAULT 'Tabby EV', reg TEXT, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS bike_status(motorcycle_id INTEGER PRIMARY KEY, battery_health REAL DEFAULT 100, battery_level REAL DEFAULT 100, range_km REAL DEFAULT 125, total_trip REAL DEFAULT 0, total_distance REAL DEFAULT 0, co2_saved REAL DEFAULT 0, lock_status TEXT DEFAULT 'locked', access_mode TEXT DEFAULT 'full', cell_temp REAL DEFAULT 32, motor_temp REAL DEFAULT 35, last_seen TEXT)""",
+"""CREATE TABLE IF NOT EXISTS telemetry(id INTEGER PRIMARY KEY AUTOINCREMENT, motorcycle_id INTEGER, latitude REAL, longitude REAL, speed REAL, battery_level REAL, engine_temp REAL, created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS payment_plans(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, motorcycle_id INTEGER, total_amount REAL, deposit REAL DEFAULT 0, installment_amount REAL, installments_paid INTEGER DEFAULT 0, installments_total INTEGER, next_due_date TEXT, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS payments(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, motorcycle_id INTEGER, amount REAL, status TEXT DEFAULT 'pending', reference TEXT UNIQUE, created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS house_devices(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, room TEXT DEFAULT 'living', type TEXT, status TEXT DEFAULT 'off', created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS auto_learned(id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT, content TEXT, created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS bike_commands(id INTEGER PRIMARY KEY AUTOINCREMENT, motorcycle_id INTEGER, command TEXT, issued_by INTEGER, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS call_sessions(id TEXT PRIMARY KEY, user_id INTEGER, status TEXT DEFAULT 'live', started_at TEXT DEFAULT (datetime('now')), ended_at TEXT)""",
+]
+
+def ensure_tables(cur):
+    for s in TABLES_SQL:
+        cur.execute(s)
+
 class DB:
     def __enter__(self):
         _lock.acquire()
         self.c = sqlite3.connect(DB_FILE, timeout=30, check_same_thread=False)
         self.c.row_factory = sqlite3.Row
         self.cur = self.c.cursor()
+        # FIX: Create tables on EVERY connection, not only at startup
+        try:
+            ensure_tables(self.cur)
+            self.c.commit()
+        except Exception as e:
+            print("ensure_tables fail", e)
         return self
     def __exit__(self, *a):
         try: self.c.commit()
@@ -70,18 +95,6 @@ class DB:
 def init_db():
     try:
         with DB() as db:
-            db.q("""CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'customer', created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, "userId" INTEGER, role TEXT, content TEXT, conversationid INTEGER DEFAULT 1, "conversationId" INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS memories(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, "userId" INTEGER, content TEXT, created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS motorcycles(id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id INTEGER, "ownerId" INTEGER, assigned_user_id INTEGER, "assignedUserId" INTEGER, name TEXT, model TEXT DEFAULT 'Tabby EV', reg TEXT, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS bike_status(motorcycle_id INTEGER PRIMARY KEY, battery_health REAL DEFAULT 100, battery_level REAL DEFAULT 100, range_km REAL DEFAULT 125, total_trip REAL DEFAULT 0, total_distance REAL DEFAULT 0, co2_saved REAL DEFAULT 0, lock_status TEXT DEFAULT 'locked', access_mode TEXT DEFAULT 'full', cell_temp REAL DEFAULT 32, motor_temp REAL DEFAULT 35, last_seen TEXT)""")
-            db.q("""CREATE TABLE IF NOT EXISTS telemetry(id INTEGER PRIMARY KEY AUTOINCREMENT, motorcycle_id INTEGER, latitude REAL, longitude REAL, speed REAL, battery_level REAL, engine_temp REAL, created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS payment_plans(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, motorcycle_id INTEGER, total_amount REAL, deposit REAL DEFAULT 0, installment_amount REAL, installments_paid INTEGER DEFAULT 0, installments_total INTEGER, next_due_date TEXT, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS payments(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, motorcycle_id INTEGER, amount REAL, status TEXT DEFAULT 'pending', reference TEXT UNIQUE, created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS house_devices(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, room TEXT DEFAULT 'living', type TEXT, status TEXT DEFAULT 'off', created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS auto_learned(id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT, content TEXT, created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS bike_commands(id INTEGER PRIMARY KEY AUTOINCREMENT, motorcycle_id INTEGER, command TEXT, issued_by INTEGER, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')))""")
-            db.q("""CREATE TABLE IF NOT EXISTS call_sessions(id TEXT PRIMARY KEY, user_id INTEGER, status TEXT DEFAULT 'live', started_at TEXT DEFAULT (datetime('now')), ended_at TEXT)""")
             if OWNER_EMAIL:
                 db.q("UPDATE users SET role='owner' WHERE lower(email)=?", (OWNER_EMAIL,))
     except Exception as e: print("DB init", e)
@@ -283,7 +296,6 @@ def home(): return render_template("index.html")
 @app.route("/health")
 def health(): return jsonify({"success": True, "version": "tabby-20-voice-sqlite", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", [])), "voice": {"stt": OPENROUTER_STT_MODEL, "tts": OPENROUTER_TTS_MODEL, "tts_voice": OPENROUTER_TTS_VOICE}})
 
-# ---------- REGISTER / SIGNUP - PUBLIC FOR FIRST OWNER ONLY ----------
 @app.route("/api/signup", methods=["POST"])
 def signup():
     d = request.get_json() or {}
