@@ -59,8 +59,12 @@ button.tool.live{background:#e11d48}
 </style></head>
 <body>
 <div id="auth" class="auth"><div class="logo"><div class="t">T</div><h1>TABBY</h1><p>AI & AUTOMOTIVE INTELLIGENCE</p></div>
+<input id="regName" placeholder="Your Name - for Register only" style="display:none">
 <input id="email" placeholder="Email"><input id="pass" type="password" placeholder="Password">
-<button class="primary" style="width:100%" onclick="login()">Sign In</button><p id="st" style="font-size:12px;color:#fca5a5"></p>
+<button class="primary" id="signInBtn" style="width:100%" onclick="login()">Sign In</button>
+<button class="primary" id="signUpBtn" style="width:100%;display:none;background:#00c853;margin-top:8px" onclick="doSignup()">Create Owner Account</button>
+<p id="st" style="font-size:12px;color:#fca5a5"></p>
+<p style="font-size:13px;text-align:center;margin:10px 0 0"><a href="#" id="toggleLink" onclick="toggleAuth(event)" style="color:#4da3ff;text-decoration:none">No account yet? Register as Owner</a></p>
 <p style="font-size:11px;color:#8ea0c3;text-align:center">Customer accounts are created by Owner only.<br>Ultimate Gee Industry</p></div>
 
 <div id="app" style="display:none"><div class="layout">
@@ -108,9 +112,12 @@ button.tool.live{background:#e11d48}
 </div>
 </div>
 <script>
-let token=localStorage.getItem('tabby_token')||'', user=null, lastReply='', currentAudio=null, mediaRecorder=null, audioChunks=[], isRecording=false, isLiveCall=false, liveCallId=null, liveCallShouldContinue=false;
+let token=localStorage.getItem('tabby_token')||'', user=null, lastReply='', currentAudio=null, mediaRecorder=null, audioChunks=[], isRecording=false, isLiveCall=false, liveCallId=null, liveCallShouldContinue=false, isRegister=false;
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show');}
 function api(p,o={}){let h={}; if(token)h.Authorization='Bearer '+token; if(o.body)h['Content-Type']='application/json'; return fetch(p,{method:o.method||'GET',headers:h,body:o.body}).then(r=>r.json());}
+// --- REGISTER / LOGIN TOGGLE ---
+function toggleAuth(e){ if(e) e.preventDefault(); isRegister=!isRegister; document.getElementById('regName').style.display=isRegister?'block':'none'; document.getElementById('signInBtn').style.display=isRegister?'none':'block'; document.getElementById('signUpBtn').style.display=isRegister?'block':'none'; document.getElementById('toggleLink').textContent=isRegister?'Already have account? Sign In':'No account yet? Register as Owner'; document.getElementById('st').textContent=''; }
+async function doSignup(){ let name=document.getElementById('regName').value.trim()||'Faruq Sulaimon'; let e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value; if(!e||!pw){document.getElementById('st').textContent='Email + password required';return;} let d=await api('/api/signup',{method:'POST',body:JSON.stringify({name:name,email:e,password:pw})}); if(!d.success){document.getElementById('st').textContent=d.error;return;} document.getElementById('st').style.color='#7ee2a8'; document.getElementById('st').textContent=d.message||'Owner created. Now Sign In.'; toggleAuth(); document.getElementById('st').style.color='#fca5a5'; }
 async function login(){let e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value; let d=await api('/api/login',{method:'POST',body:JSON.stringify({email:e,password:pw})}); if(!d.success){document.getElementById('st').textContent=d.error;return;} token=d.token; user=d.user; localStorage.setItem('tabby_token',token); afterLogin();}
 function logout(){localStorage.removeItem('tabby_token'); location.reload();}
 function afterLogin(){document.getElementById('auth').style.display='none'; document.getElementById('app').style.display='block'; document.getElementById('who').textContent=user.name+' • '+user.role.toUpperCase(); document.getElementById('cRole').textContent=user.role.toUpperCase(); if(user.role!=='owner'){document.getElementById('btnAI').style.display='none'; document.getElementById('btnCust').style.display='none'; document.getElementById('bnAI').style.display='none'; document.getElementById('bnCust').style.display='none'; document.getElementById('createWrap').style.display='none'; document.getElementById('dashCustWrap').style.display='none';} loadDash(); if(user.role==='owner') loadHistory();}
