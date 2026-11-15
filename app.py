@@ -86,6 +86,21 @@ def init_db():
                     db.q(f'UPDATE {table} SET user_id = COALESCE(user_id, "userId") WHERE user_id IS NULL')
                     db.q(f'UPDATE {table} SET "userId" = COALESCE("userId", user_id) WHERE "userId" IS NULL')
                 except Exception as e: print(f"migrate {table}", e)
+            # --- FIX FOR DASHBOARD ERROR: bs.battery_level does not exist ---
+            # Old Supabase bike_status table no get these columns, add them without deleting data
+            try:
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS battery_health DOUBLE PRECISION DEFAULT 100')
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS battery_level DOUBLE PRECISION DEFAULT 100')
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS range_km DOUBLE PRECISION DEFAULT 125')
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS total_trip DOUBLE PRECISION DEFAULT 0')
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS total_distance DOUBLE PRECISION DEFAULT 0')
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS co2_saved DOUBLE PRECISION DEFAULT 0')
+                db.q("ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS lock_status TEXT DEFAULT 'locked'")
+                db.q("ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS access_mode TEXT DEFAULT 'full'")
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS cell_temp DOUBLE PRECISION DEFAULT 32')
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS motor_temp DOUBLE PRECISION DEFAULT 35')
+                db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS last_seen TEXT')
+            except Exception as e: print("migrate bike_status", e)
             try:
                 db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS assigned_user_id INT')
                 db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS "assignedUserId" INT')
@@ -164,7 +179,8 @@ threading.Thread(target=auto_study, daemon=True).start()
 def call_openrouter(msgs, temp=0.7):
     if not OPENROUTER_KEY: raise RuntimeError("no openrouter - set OPENROUTER_API_KEY")
     models = []
-    for m in [OPENROUTER_MODEL, "deepseek/deepseek-v4.1-flash", "meta-llama/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "openrouter/free", "meta-llama/llama-3.1-8b-instruct:free"]:
+    # FIX: Try TRUE free models FIRST, old deepseek-v4.1-flash don die (400)
+    for m in ["meta-llama/llama-3.1-8b-instruct:free", "google/gemma-2-9b-it:free", "deepseek/deepseek-chat-v3-0324:free", OPENROUTER_MODEL, "deepseek/deepseek-chat", "openrouter/free"]:
         if m and m not in models: models.append(m)
     last_err = ""
     for model in models:
@@ -201,7 +217,7 @@ def speak_text_to_audio(text, voice=None):
     if not text or not text.strip(): raise RuntimeError("empty text")
     text = text[:1200]
     v = voice or OPENROUTER_TTS_VOICE
-    for model in [OPENROUTER_TTS_MODEL, "openai/gpt-4o-mini-tts", "openai/tts-1"]:
+    for model in [OPENROUTER_TTS_MODEL, "openai/gpt-4o-mini-tts", "openai/tts-1", "openai/tts-1-hd"]:
         try:
             r = requests.post("https://openrouter.ai/api/v1/audio/speech", headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"}, json={"model": model, "input": text, "voice": v, "response_format": "mp3"}, timeout=90)
             if r.status_code == 200 and len(r.content) > 1000:
