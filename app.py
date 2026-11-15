@@ -91,20 +91,55 @@ def init_db():
             CREATE TABLE IF NOT EXISTS bike_commands(id SERIAL PRIMARY KEY, motorcycle_id INT, command TEXT, issued_by INT, status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT NOW());
             CREATE TABLE IF NOT EXISTS call_sessions(id TEXT PRIMARY KEY, user_id INT, status TEXT DEFAULT 'live', started_at TIMESTAMPTZ DEFAULT NOW(), ended_at TIMESTAMPTZ);
             """)
+            try: db.c.commit()
+            except: pass
             for table in ["messages", "memories"]:
                 try:
                     db.q(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS user_id INT')
+                    try: db.c.commit()
+                    except: pass
                     db.q(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS "userId" INT')
+                    try: db.c.commit()
+                    except: pass
                     # --- FIX ONLY FOR TABBY ERROR, NO DELETE ---
                     # Make conversationid exist but allow NULL, so old messages stay
+                    # --- EDIT: commit after each DROP NOT NULL so Render restart no go roll am back ---
                     if table == "messages":
                         db.q('ALTER TABLE messages ADD COLUMN IF NOT EXISTS conversationid INT')
+                        try: db.c.commit()
+                        except: pass
                         db.q('ALTER TABLE messages ALTER COLUMN conversationid DROP NOT NULL')
+                        try: db.c.commit()
+                        except: pass
                         db.q('ALTER TABLE messages ADD COLUMN IF NOT EXISTS "conversationId" INT')
+                        try: db.c.commit()
+                        except: pass
                         db.q('ALTER TABLE messages ALTER COLUMN "conversationId" DROP NOT NULL')
+                        try: db.c.commit()
+                        except: pass
+                        # Extra safety: make default 1 so even old code wey no send value no go fail
+                        try:
+                            db.q('ALTER TABLE messages ALTER COLUMN conversationid SET DEFAULT 1')
+                            db.c.commit()
+                        except:
+                            try: db.c.rollback()
+                            except: pass
+                        try:
+                            db.q('ALTER TABLE messages ALTER COLUMN "conversationId" SET DEFAULT 1')
+                            db.c.commit()
+                        except:
+                            try: db.c.rollback()
+                            except: pass
                     db.q(f'UPDATE {table} SET user_id = COALESCE(user_id, "userId") WHERE user_id IS NULL')
+                    try: db.c.commit()
+                    except: pass
                     db.q(f'UPDATE {table} SET "userId" = COALESCE("userId", user_id) WHERE "userId" IS NULL')
-                except Exception as e: print(f"migrate {table}", e)
+                    try: db.c.commit()
+                    except: pass
+                except Exception as e:
+                    print(f"migrate {table}", e)
+                    try: db.c.rollback()
+                    except: pass
             # --- FIX FOR DASHBOARD ERROR: bs.battery_level does not exist ---
             # Old Supabase bike_status table no get these columns, add them without deleting data
             try:
@@ -119,17 +154,23 @@ def init_db():
                 db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS cell_temp DOUBLE PRECISION DEFAULT 32')
                 db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS motor_temp DOUBLE PRECISION DEFAULT 35')
                 db.q('ALTER TABLE bike_status ADD COLUMN IF NOT EXISTS last_seen TEXT')
+                try: db.c.commit()
+                except: pass
             except Exception as e: print("migrate bike_status", e)
             try:
                 db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS assigned_user_id INT')
                 db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS "assignedUserId" INT')
                 db.q('UPDATE motorcycles SET assigned_user_id = COALESCE(assigned_user_id, "assignedUserId") WHERE assigned_user_id IS NULL')
                 db.q('UPDATE motorcycles SET "assignedUserId" = COALESCE("assignedUserId", assigned_user_id) WHERE "assignedUserId" IS NULL')
+                try: db.c.commit()
+                except: pass
             except Exception as e: print("migrate motorcycles", e)
             try:
                 db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS owner_id INT')
                 db.q('ALTER TABLE motorcycles ADD COLUMN IF NOT EXISTS "ownerId" INT')
                 db.q('UPDATE motorcycles SET owner_id = COALESCE(owner_id, "ownerId") WHERE owner_id IS NULL')
+                try: db.c.commit()
+                except: pass
             except Exception as e: print("migrate owner", e)
             if OWNER_EMAIL:
                 db.q("UPDATE users SET role='owner' WHERE lower(email)=%s", (OWNER_EMAIL,))
@@ -305,8 +346,16 @@ def bike_ctx(user):
         return f"Bike: {b} Status: {st} Plan: {pl}"
 
 def save_msg(user_id, role, content):
+    # --- EDIT: PERMANENT FIX FOR conversationid ERROR - NO DELETE ---
+    # Always send 1 for conversationid / conversationId, never null again
+    # Even if Supabase still get NOT NULL, this go pass. Fallback if column no exist.
     with DB() as db:
-        db.q('INSERT INTO messages (user_id, "userId", role, content) VALUES (%s,%s,%s,%s)', (user_id, user_id, role, content))
+        try:
+            db.q('INSERT INTO messages (user_id, "userId", role, content, conversationid, "conversationId") VALUES (%s,%s,%s,%s,1,1)', (user_id, user_id, role, content))
+        except Exception:
+            try: db.c.rollback()
+            except: pass
+            db.q('INSERT INTO messages (user_id, "userId", role, content) VALUES (%s,%s,%s,%s)', (user_id, user_id, role, content))
 
 def handle_bike_or_house_command(u, low, msg):
     """Shared for text + voice - returns reply or None if no command"""
