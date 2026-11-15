@@ -76,6 +76,13 @@ def init_db():
                 try:
                     db.q(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS user_id INT')
                     db.q(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS "userId" INT')
+                    # --- FIX ONLY FOR TABBY ERROR, NO DELETE ---
+                    # Make conversationid exist but allow NULL, so old messages stay
+                    if table == "messages":
+                        db.q('ALTER TABLE messages ADD COLUMN IF NOT EXISTS conversationid INT')
+                        db.q('ALTER TABLE messages ALTER COLUMN conversationid DROP NOT NULL')
+                        db.q('ALTER TABLE messages ADD COLUMN IF NOT EXISTS "conversationId" INT')
+                        db.q('ALTER TABLE messages ALTER COLUMN "conversationId" DROP NOT NULL')
                     db.q(f'UPDATE {table} SET user_id = COALESCE(user_id, "userId") WHERE user_id IS NULL')
                     db.q(f'UPDATE {table} SET "userId" = COALESCE("userId", user_id) WHERE "userId" IS NULL')
                 except Exception as e: print(f"migrate {table}", e)
