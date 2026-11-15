@@ -22,7 +22,7 @@ OPENROUTER_TTS_VOICE = os.getenv("OPENROUTER_TTS_VOICE", "onyx").strip()
 CLOUDFLARE_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
 CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
 
-# --- SQLITE - NO SUPABASE AGAIN ---
+# --- SQLITE - NO SUPABASE ---
 DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tabby.db")
 _lock = threading.Lock()
 
@@ -46,13 +46,10 @@ class DB:
         except: pass
         return False
     def q(self, sql, p=()):
-        # Convert Postgres %s -> SQLite ?
         if "%s" in sql:
             sql = sql.replace("%s", "?")
-        # Postgres NOW() -> SQLite datetime
         sql = sql.replace("NOW()", "datetime('now')")
         params = tuple(p) if isinstance(p, (list, tuple)) else (p,)
-        # Fix empty params
         if params == ((),): params = ()
         self.cur.execute(sql, params)
         return self.cur
@@ -63,11 +60,9 @@ class DB:
     def ins(self, sql, p=()):
         sql2 = sql
         if "RETURNING" not in sql2.upper(): sql2 += " RETURNING id"
-        # SQLite RETURNING works, but fallback to lastrowid
         try:
             self.q(sql2, p); r = self.cur.fetchone(); return r["id"] if r else self.cur.lastrowid
         except Exception:
-            # If RETURNING fails, retry without
             sql3 = sql.replace("%s", "?") if "%s" in sql else sql
             self.cur.execute(sql3, tuple(p) if isinstance(p, (list, tuple)) else (p,))
             return self.cur.lastrowid
@@ -287,6 +282,24 @@ def handle_bike_or_house_command(u, low, msg):
 def home(): return render_template("index.html")
 @app.route("/health")
 def health(): return jsonify({"success": True, "version": "tabby-20-voice-sqlite", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", [])), "voice": {"stt": OPENROUTER_STT_MODEL, "tts": OPENROUTER_TTS_MODEL, "tts_voice": OPENROUTER_TTS_VOICE}})
+
+# ---------- REGISTER / SIGNUP - PUBLIC FOR FIRST OWNER ONLY ----------
+@app.route("/api/signup", methods=["POST"])
+def signup():
+    d = request.get_json() or {}
+    name = clean(d.get("name") or "Faruq Sulaimon")
+    email = str(d.get("email","")).lower().strip()
+    pw = str(d.get("password",""))
+    if not email or not pw:
+        return jsonify({"success": False, "error": "Email + password required"}), 400
+    with DB() as db:
+        total = db.one("SELECT COUNT(*) as c FROM users")["c"]
+        if total > 0:
+            return jsonify({"success": False, "error": "Owner already exists. Please Sign In. Customer accounts are created by Owner only."}), 403
+        uid = db.ins("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,'owner')", (name, email, generate_password_hash(pw)))
+        bid = db.ins('INSERT INTO motorcycles (owner_id, "ownerId", assigned_user_id, "assignedUserId", name) VALUES (?,?,?,?,?)', (uid, uid, uid, uid, "Tabby EV 1"))
+        db.q("INSERT INTO bike_status (motorcycle_id) VALUES (?) ON CONFLICT (motorcycle_id) DO NOTHING", (bid,))
+    return jsonify({"success": True, "message": "Owner account created. Now Sign In."})
 
 @app.route("/api/register", methods=["POST"])
 @owner_only
