@@ -35,12 +35,31 @@ def pool():
 class DB:
     def __enter__(self):
         self.c = pool().getconn(); self.c.autocommit = False
+        # --- EDIT: FIX "connection already closed" - NO DELETE ---
+        # Test connection, if dead, throwaway and take new one
+        try:
+            cur_test = self.c.cursor()
+            cur_test.execute("SELECT 1")
+            cur_test.close()
+        except Exception:
+            try: pool().putconn(self.c, close=True)
+            except: pass
+            self.c = pool().getconn(); self.c.autocommit = False
         self.cur = self.c.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         return self
     def __exit__(self, *a):
         try: self.c.commit()
-        except: self.c.rollback()
-        try: self.cur.close(); pool().putconn(self.c)
+        except:
+            try: self.c.rollback()
+            except: pass
+        try:
+            # If connection don close, close am for pool, no reuse dead one
+            if getattr(self.c, "closed", 0) == 0:
+                try: self.cur.close()
+                except: pass
+                pool().putconn(self.c)
+            else:
+                pool().putconn(self.c, close=True)
         except: pass
         return False
     def q(self, sql, p=()):
