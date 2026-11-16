@@ -21,33 +21,12 @@ OPENROUTER_TTS_MODEL = os.getenv("OPENROUTER_TTS_MODEL", "openai/gpt-4o-mini-tts
 OPENROUTER_TTS_VOICE = os.getenv("OPENROUTER_TTS_VOICE", "onyx").strip()
 CLOUDFLARE_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
 CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tabby.db")
 _lock = threading.Lock()
 _NEWS_CACHE = {"time": 0, "data": []}
-IS_PG = bool(DATABASE_URL.startswith("postgres"))
 
 def tables_sql():
-    if IS_PG:
-        return [
-        "CREATE TABLE IF NOT EXISTS users(id SERIAL PRIMARY KEY, name TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'customer', created_at TEXT DEFAULT (NOW()::text))",
-        "CREATE TABLE IF NOT EXISTS conversations(id SERIAL PRIMARY KEY, user_id INTEGER, title TEXT DEFAULT 'New Chat', summary TEXT DEFAULT '', created_at TEXT DEFAULT (NOW()::text), updated_at TEXT DEFAULT (NOW()::text))",
-        'CREATE TABLE IF NOT EXISTS messages(id SERIAL PRIMARY KEY, user_id INTEGER, "userId" INTEGER, role TEXT, content TEXT, conversationid INTEGER DEFAULT 1, created_at TEXT DEFAULT (NOW()::text))',
-        'CREATE TABLE IF NOT EXISTS memories(id SERIAL PRIMARY KEY, user_id INTEGER, "userId" INTEGER, content TEXT, created_at TEXT DEFAULT (NOW()::text))',
-        'CREATE TABLE IF NOT EXISTS motorcycles(id SERIAL PRIMARY KEY, owner_id INTEGER, "ownerId" INTEGER, assigned_user_id INTEGER, "assignedUserId" INTEGER, name TEXT, model TEXT DEFAULT \'Tabby EV\', reg TEXT, status TEXT DEFAULT \'active\', created_at TEXT DEFAULT (datetime(\'now\')))',
-        "CREATE TABLE IF NOT EXISTS bike_status(motorcycle_id INTEGER PRIMARY KEY, battery_health REAL DEFAULT 100, battery_level REAL DEFAULT 100, range_km REAL DEFAULT 125, total_trip REAL DEFAULT 0, total_distance REAL DEFAULT 0, co2_saved REAL DEFAULT 0, lock_status TEXT DEFAULT 'locked', access_mode TEXT DEFAULT 'full', cell_temp REAL DEFAULT 32, motor_temp REAL DEFAULT 35, last_seen TEXT)",
-        "CREATE TABLE IF NOT EXISTS telemetry(id SERIAL PRIMARY KEY, motorcycle_id INTEGER, latitude REAL, longitude REAL, speed REAL, battery_level REAL, engine_temp REAL, created_at TEXT DEFAULT (NOW()::text))",
-        "CREATE TABLE IF NOT EXISTS payment_plans(id SERIAL PRIMARY KEY, user_id INTEGER, motorcycle_id INTEGER, total_amount REAL, deposit REAL DEFAULT 0, installment_amount REAL, installments_paid INTEGER DEFAULT 0, installments_total INTEGER, next_due_date TEXT, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (NOW()::text))",
-        "CREATE TABLE IF NOT EXISTS payments(id SERIAL PRIMARY KEY, user_id INTEGER, motorcycle_id INTEGER, amount REAL, status TEXT DEFAULT 'pending', reference TEXT UNIQUE, created_at TEXT DEFAULT (NOW()::text))",
-        "CREATE TABLE IF NOT EXISTS house_devices(id SERIAL PRIMARY KEY, user_id INTEGER, name TEXT, room TEXT DEFAULT 'living', type TEXT, status TEXT DEFAULT 'off', created_at TEXT DEFAULT (NOW()::text))",
-        "CREATE TABLE IF NOT EXISTS auto_learned(id SERIAL PRIMARY KEY, topic TEXT, content TEXT, created_at TEXT DEFAULT (NOW()::text))",
-        "CREATE TABLE IF NOT EXISTS bike_commands(id SERIAL PRIMARY KEY, motorcycle_id INTEGER, command TEXT, issued_by INTEGER, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (NOW()::text))",
-        "CREATE TABLE IF NOT EXISTS call_sessions(id TEXT PRIMARY KEY, user_id INTEGER, status TEXT DEFAULT 'live', started_at TEXT DEFAULT (NOW()::text), ended_at TEXT)",
-        "CREATE INDEX IF NOT EXISTS idx_msg_user_conv ON messages(user_id, conversationid, id)",
-        "CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(user_id, updated_at)",
-        "CREATE INDEX IF NOT EXISTS idx_mem_user ON memories(user_id)",
-        ]
     return [
     "CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'customer', created_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS conversations(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, title TEXT DEFAULT 'New Chat', summary TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))",
@@ -73,43 +52,14 @@ def ensure_tables(cur):
             cur.execute(s)
         except Exception as e:
             print("ensure_tables skip", e)
-    if IS_PG:
-        fixes = [
-            'ALTER TABLE messages ALTER COLUMN conversationid SET DEFAULT 1',
-            'ALTER TABLE messages ALTER COLUMN conversationid DROP NOT NULL',
-            'ALTER TABLE messages ALTER COLUMN user_id DROP NOT NULL',
-            'ALTER TABLE messages ALTER COLUMN "userId" DROP NOT NULL',
-            'ALTER TABLE messages ALTER COLUMN role DROP NOT NULL',
-            'ALTER TABLE messages ALTER COLUMN content DROP NOT NULL',
-            'ALTER TABLE memories ALTER COLUMN user_id DROP NOT NULL',
-            'ALTER TABLE memories ALTER COLUMN "userId" DROP NOT NULL',
-            'ALTER TABLE conversations ALTER COLUMN user_id DROP NOT NULL',
-        ]
-        for f in fixes:
-            try:
-                cur.execute(f)
-            except Exception:
-                try:
-                    cur.connection.rollback()
-                except Exception:
-                    pass
-                pass
 
 class DB:
     def __enter__(self):
         _lock.acquire()
-        self.is_pg = IS_PG
-        if self.is_pg:
-            import psycopg2
-            import psycopg2.extras
-            self.c = psycopg2.connect(DATABASE_URL, sslmode="require")
-            self.c.autocommit = False
-            self.cur = self.c.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        else:
-            import sqlite3
-            self.c = sqlite3.connect(DB_FILE, timeout=30, check_same_thread=False)
-            self.c.row_factory = sqlite3.Row
-            self.cur = self.c.cursor()
+        import sqlite3
+        self.c = sqlite3.connect(DB_FILE, timeout=30, check_same_thread=False)
+        self.c.row_factory = sqlite3.Row
+        self.cur = self.c.cursor()
         try:
             ensure_tables(self.cur)
             self.c.commit()
@@ -141,23 +91,11 @@ class DB:
         except Exception:
             pass
         return False
-    def _conv(self, sql):
-        if self.is_pg:
-            sql = sql.replace("?", "%s")
-            sql = sql.replace("datetime('now')", "NOW()::text")
-            sql = sql.replace('datetime("now")', "NOW()::text")
-            return sql
-        else:
-            sql = sql.replace("%s", "?")
-            sql = sql.replace("NOW()", "datetime('now')")
-            sql = sql.replace("NOW()::text", "datetime('now')")
-            return sql
     def q(self, sql, p=()):
-        sql2 = self._conv(sql)
         params = tuple(p) if isinstance(p, (list, tuple)) else (p,)
         if params == ((),):
             params = ()
-        self.cur.execute(sql2, params)
+        self.cur.execute(sql, params)
         return self.cur
     def one(self, sql, p=()):
         self.q(sql, p)
@@ -169,31 +107,14 @@ class DB:
         self.q(sql, p)
         return [dict(r) for r in self.cur.fetchall()]
     def ins(self, sql, p=()):
-        sql2 = sql
-        if "RETURNING" not in sql2.upper():
-            sql2 = sql2 + " RETURNING id"
-        try:
-            self.q(sql2, p)
-            r = self.cur.fetchone()
-            if r:
-                return r["id"]
-            return self.cur.lastrowid
-        except Exception:
-            try:
-                self.c.rollback()
-            except Exception:
-                pass
-            self.q(sql, p)
-            try:
-                return self.cur.lastrowid
-            except Exception:
-                return None
+        self.q(sql, p)
+        return self.cur.lastrowid
 
 def init_db():
     try:
         with DB() as db:
             if OWNER_EMAIL:
-                db.q("UPDATE users SET role='owner' WHERE lower(email)=%s", (OWNER_EMAIL,))
+                db.q("UPDATE users SET role='owner' WHERE lower(email)=?", (OWNER_EMAIL,))
     except Exception as e:
         print("DB init", e)
 init_db()
@@ -213,16 +134,16 @@ def get_or_create_conversation(user_id, conv_id=None, first_msg=""):
     with DB() as db:
         if conv_id:
             try:
-                c = db.one("SELECT * FROM conversations WHERE id=%s AND user_id=%s", (int(conv_id), user_id))
+                c = db.one("SELECT * FROM conversations WHERE id=? AND user_id=?", (int(conv_id), user_id))
                 if c:
                     return c["id"]
             except Exception:
                 pass
-        latest = db.one("SELECT * FROM conversations WHERE user_id=%s ORDER BY updated_at DESC, id DESC LIMIT 1", (user_id,))
+        latest = db.one("SELECT * FROM conversations WHERE user_id=? ORDER BY updated_at DESC, id DESC LIMIT 1", (user_id,))
         if latest and not conv_id:
             return latest["id"]
         title = (first_msg[:40] or "New Chat") if first_msg else "New Chat"
-        nid = db.ins("INSERT INTO conversations (user_id, title) VALUES (%s,%s)", (user_id, title))
+        nid = db.ins("INSERT INTO conversations (user_id, title) VALUES (?,?)", (user_id, title))
         if not nid:
             return 1
         return nid
@@ -232,19 +153,19 @@ def auto_title_conversation(conv_id, first_msg):
         return
     title = clean(first_msg)[:40]
     with DB() as db:
-        c = db.one("SELECT title FROM conversations WHERE id=%s", (conv_id,))
+        c = db.one("SELECT title FROM conversations WHERE id=?", (conv_id,))
         if c and c["title"] in ("New Chat", "", None):
-            db.q("UPDATE conversations SET title=%s, updated_at=NOW() WHERE id=%s", (title, conv_id))
+            db.q("UPDATE conversations SET title=?, updated_at=datetime('now') WHERE id=?", (title, conv_id))
 
 def prune_and_summarise(user_id, conv_id):
     try:
         if not conv_id:
             conv_id = 1
         with DB() as db:
-            cnt = db.one("SELECT COUNT(*) as c FROM messages WHERE user_id=%s AND conversationid=%s", (user_id, conv_id))["c"]
+            cnt = db.one("SELECT COUNT(*) as c FROM messages WHERE user_id=? AND conversationid=?", (user_id, conv_id))["c"]
             if cnt < 60:
                 return
-            old = db.all("SELECT role, content FROM messages WHERE user_id=%s AND conversationid=%s ORDER BY id ASC LIMIT 30", (user_id, conv_id))
+            old = db.all("SELECT role, content FROM messages WHERE user_id=? AND conversationid=? ORDER BY id ASC LIMIT 30", (user_id, conv_id))
             if not old:
                 return
             txt = "\n".join([str(r["role"]) + ": " + str(r["content"])[:300] for r in old])
@@ -252,11 +173,11 @@ def prune_and_summarise(user_id, conv_id):
                 summary = call_openrouter([{"role": "system", "content": "Summarise this conversation in 5 bullet lines, keep names, decisions, numbers, ideas. No asterisks."}, {"role": "user", "content": txt}], temp=0.3)
             except Exception:
                 summary = "Summary: " + txt[:500]
-            db.q('INSERT INTO memories (user_id, "userId", content) VALUES (%s,%s,%s)', (user_id, user_id, "[Chat " + str(conv_id) + " Summary] " + summary[:1000]))
-            ids = db.all("SELECT id FROM messages WHERE user_id=%s AND conversationid=%s ORDER BY id ASC LIMIT 30", (user_id, conv_id))
+            db.q('INSERT INTO memories (user_id, "userId", content) VALUES (?,?,?)', (user_id, user_id, "[Chat " + str(conv_id) + " Summary] " + summary[:1000]))
+            ids = db.all("SELECT id FROM messages WHERE user_id=? AND conversationid=? ORDER BY id ASC LIMIT 30", (user_id, conv_id))
             for r in ids:
-                db.q("DELETE FROM messages WHERE id=%s", (r["id"],))
-            db.q("UPDATE conversations SET summary=%s WHERE id=%s", (summary[:1000], conv_id))
+                db.q("DELETE FROM messages WHERE id=?", (r["id"],))
+            db.q("UPDATE conversations SET summary=? WHERE id=?", (summary[:1000], conv_id))
     except Exception as e:
         print("prune fail", e)
 
@@ -322,9 +243,9 @@ def auto_study():
             AUTO["last"] = datetime.now(timezone.utc).isoformat()
             with DB() as db:
                 for n in all_n[:8]:
-                    exists = db.one("SELECT id FROM auto_learned WHERE content=%s", (n[:1000],))
+                    exists = db.one("SELECT id FROM auto_learned WHERE content=?", (n[:1000],))
                     if not exists:
-                        db.q("INSERT INTO auto_learned (topic, content) VALUES (%s,%s)", ("auto", n[:1000]))
+                        db.q("INSERT INTO auto_learned (topic, content) VALUES (?,?)", ("auto", n[:1000]))
                 db.q("DELETE FROM auto_learned WHERE id NOT IN (SELECT id FROM auto_learned ORDER BY id DESC LIMIT 100)")
         except Exception as e:
             print("Auto", e)
@@ -425,7 +346,7 @@ def get_user():
     try:
         d = serializer.loads(a.split(" ", 1)[1], max_age=60*60*24*30)
         with DB() as db:
-            return db.one("SELECT * FROM users WHERE id=%s", (d["user_id"],))
+            return db.one("SELECT * FROM users WHERE id=?", (d["user_id"],))
     except Exception:
         return None
 
@@ -453,11 +374,11 @@ def bike_ctx(user):
         if user["role"] == "owner":
             c = db.one("SELECT COUNT(*) as c FROM motorcycles")["c"]
             return "Owner fleet: " + str(c) + " bikes. Owner can see all."
-        b = db.one('SELECT * FROM motorcycles WHERE COALESCE(assigned_user_id, "assignedUserId")=%s ORDER BY id DESC LIMIT 1', (user["id"],))
+        b = db.one('SELECT * FROM motorcycles WHERE COALESCE(assigned_user_id, "assignedUserId")=? ORDER BY id DESC LIMIT 1', (user["id"],))
         if not b:
             return "No bike assigned."
-        st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=%s", (b["id"],))
-        pl = db.one("SELECT * FROM payment_plans WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (b["id"],))
+        st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=?", (b["id"],))
+        pl = db.one("SELECT * FROM payment_plans WHERE motorcycle_id=? ORDER BY id DESC LIMIT 1", (b["id"],))
         return "Bike: " + str(b) + " Status: " + str(st) + " Plan: " + str(pl)
 
 def save_msg(user_id, role, content, conv_id=1):
@@ -468,8 +389,8 @@ def save_msg(user_id, role, content, conv_id=1):
     except Exception:
         conv_id = 1
     with DB() as db:
-        db.q('INSERT INTO messages (user_id, "userId", role, content, conversationid) VALUES (%s,%s,%s,%s,%s)', (user_id, user_id, role, content, conv_id))
-        db.q("UPDATE conversations SET updated_at=NOW() WHERE id=%s", (conv_id,))
+        db.q('INSERT INTO messages (user_id, "userId", role, content, conversationid) VALUES (?,?,?,?,?)', (user_id, user_id, role, content, conv_id))
+        db.q("UPDATE conversations SET updated_at=datetime('now') WHERE id=?", (conv_id,))
 
 def handle_bike_or_house_command(u, low, msg, conv_id=1):
     if not conv_id:
@@ -478,15 +399,15 @@ def handle_bike_or_house_command(u, low, msg, conv_id=1):
         if "bike" in low and any(w in low for w in ["lock", "unlock", "check", "battery", "locate", "status"]):
             bike = db.one("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1")
             if bike:
-                st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bike["id"],))
+                st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=?", (bike["id"],))
                 if "unlock" in low:
-                    db.q("UPDATE bike_status SET lock_status='unlocked' WHERE motorcycle_id=%s", (bike["id"],))
+                    db.q("UPDATE bike_status SET lock_status='unlocked' WHERE motorcycle_id=?", (bike["id"],))
                     reply = "Done, Boss. Your bike " + str(bike["name"]) + " is unlocked."
                 elif "lock" in low:
-                    db.q("UPDATE bike_status SET lock_status='locked' WHERE motorcycle_id=%s", (bike["id"],))
+                    db.q("UPDATE bike_status SET lock_status='locked' WHERE motorcycle_id=?", (bike["id"],))
                     reply = "Done, Boss. Your bike " + str(bike["name"]) + " is locked."
                 elif "locate" in low:
-                    tel = db.one("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bike["id"],))
+                    tel = db.one("SELECT * FROM telemetry WHERE motorcycle_id=? ORDER BY id DESC LIMIT 1", (bike["id"],))
                     reply = "Boss, your bike is at " + str(tel) + "."
                 else:
                     reply = "Boss, your bike " + str(bike["name"]) + " - Lock: " + str(st.get("lock_status") if st else "locked") + ", Battery: " + str(st.get("battery_level") if st else 100) + "%, Health: " + str(st.get("battery_health") if st else 100) + "%, Range: " + str(st.get("range_km") if st else 125) + "km. It is ready."
@@ -497,7 +418,7 @@ def handle_bike_or_house_command(u, low, msg, conv_id=1):
             act = "on" if any(w in low for w in ["turn on", "switch on", "open", "start"]) else "off" if any(w in low for w in ["turn off", "switch off", "close", "stop"]) else None
             if act:
                 dev = next((w for w in ["light", "fan", "ac", "tv", "generator"] if w in low), "light")
-                db.q("INSERT INTO house_devices (user_id,name,room,type,status) VALUES (%s,%s,%s,%s,%s)", (u["id"], dev, "living", dev, act))
+                db.q("INSERT INTO house_devices (user_id,name,room,type,status) VALUES (?,?,?,?,?)", (u["id"], dev, "living", dev, act))
                 reply = "Done, Boss. Living " + dev + " is now " + act + "."
                 save_msg(u["id"], "user", msg, conv_id)
                 save_msg(u["id"], "assistant", reply, conv_id)
@@ -512,7 +433,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return jsonify({"success": True, "version": "tabby-24-supabase-fixed", "db": "postgres" if IS_PG else "sqlite", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", [])), "voice": {"stt": OPENROUTER_STT_MODEL, "tts": OPENROUTER_TTS_MODEL, "tts_voice": OPENROUTER_TTS_VOICE}})
+    return jsonify({"success": True, "version": "tabby-25-no-supabase", "db": "sqlite", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", [])), "voice": {"stt": OPENROUTER_STT_MODEL, "tts": OPENROUTER_TTS_MODEL, "tts_voice": OPENROUTER_TTS_VOICE}})
 
 @app.route("/api/signup", methods=["POST"])
 def signup():
@@ -526,10 +447,10 @@ def signup():
         total = db.one("SELECT COUNT(*) as c FROM users")["c"]
         if total > 0:
             return jsonify({"success": False, "error": "Owner already exists. Please Sign In."}), 403
-        uid = db.ins("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,'owner')", (name, email, generate_password_hash(pw)))
-        bid = db.ins('INSERT INTO motorcycles (owner_id, "ownerId", assigned_user_id, "assignedUserId", name) VALUES (%s,%s,%s,%s,%s)', (uid, uid, uid, uid, "Tabby EV 1"))
-        db.q("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bid,))
-        db.q("INSERT INTO conversations (user_id, title) VALUES (%s,%s)", (uid, "First Chat"))
+        uid = db.ins("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,'owner')", (name, email, generate_password_hash(pw)))
+        bid = db.ins('INSERT INTO motorcycles (owner_id, "ownerId", assigned_user_id, "assignedUserId", name) VALUES (?,?,?,?,?)', (uid, uid, uid, uid, "Tabby EV 1"))
+        db.q("INSERT INTO bike_status (motorcycle_id) VALUES (?)", (bid,))
+        db.q("INSERT INTO conversations (user_id, title) VALUES (?,?)", (uid, "First Chat"))
     return jsonify({"success": True, "message": "Owner account created. Now Sign In."})
 
 @app.route("/api/register", methods=["POST"])
@@ -543,13 +464,13 @@ def create_customer():
     if not name or not email:
         return jsonify({"success": False, "error": "Name + email required"}), 400
     with DB() as db:
-        if db.one("SELECT id FROM users WHERE email=%s", (email,)):
+        if db.one("SELECT id FROM users WHERE email=?", (email,)):
             return jsonify({"success": False, "error": "Customer already exists"}), 409
-        uid = db.ins("INSERT INTO users (name,email,password_hash,role) VALUES (%s,%s,%s,'customer')", (name, email, generate_password_hash(pw)))
-        bid = db.ins('INSERT INTO motorcycles (owner_id, "ownerId", assigned_user_id, "assignedUserId", name) VALUES (%s,%s,%s,%s,%s)', (request.user["id"], request.user["id"], uid, uid, bike_name))
-        db.q("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bid,))
+        uid = db.ins("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,'customer')", (name, email, generate_password_hash(pw)))
+        bid = db.ins('INSERT INTO motorcycles (owner_id, "ownerId", assigned_user_id, "assignedUserId", name) VALUES (?,?,?,?,?)', (request.user["id"], request.user["id"], uid, uid, bike_name))
+        db.q("INSERT INTO bike_status (motorcycle_id) VALUES (?)", (bid,))
         if d.get("total_amount"):
-            db.q("INSERT INTO payment_plans (user_id,motorcycle_id,total_amount,deposit,installment_amount,installments_total,next_due_date) VALUES (%s,%s,%s,%s,%s,%s,%s)", (uid, bid, float(d.get("total_amount")), float(d.get("deposit") or 0), float(d.get("installment_amount") or 0), int(d.get("installments_total") or 1), str(d.get("next_due_date") or "")))
+            db.q("INSERT INTO payment_plans (user_id,motorcycle_id,total_amount,deposit,installment_amount,installments_total,next_due_date) VALUES (?,?,?,?,?,?,?)", (uid, bid, float(d.get("total_amount")), float(d.get("deposit") or 0), float(d.get("installment_amount") or 0), int(d.get("installments_total") or 1), str(d.get("next_due_date") or "")))
     return jsonify({"success": True, "user_id": uid, "bike_id": bid, "message": "Customer " + name + " created. Password: " + pw}), 201
 
 @app.route("/api/login", methods=["POST"])
@@ -558,7 +479,7 @@ def login():
     email = str(d.get("email", "")).lower().strip()
     pw = str(d.get("password", ""))
     with DB() as db:
-        u = db.one("SELECT * FROM users WHERE email=%s", (email,))
+        u = db.one("SELECT * FROM users WHERE email=?", (email,))
     if not u or not check_password_hash(u["password_hash"], pw):
         return jsonify({"success": False, "error": "Invalid email or password"}), 401
     return jsonify({"success": True, "token": serializer.dumps({"user_id": u["id"]}), "user": {"id": u["id"], "name": u["name"], "email": u["email"], "role": u["role"]}})
@@ -572,7 +493,7 @@ def me():
 @owner_only
 def list_conversations():
     with DB() as db:
-        rows = db.all("SELECT c.*, (SELECT COUNT(*) FROM messages m WHERE m.conversationid=c.id) as msg_count, (SELECT content FROM messages m WHERE m.conversationid=c.id ORDER BY id DESC LIMIT 1) as last_msg FROM conversations c WHERE c.user_id=%s ORDER BY updated_at DESC, id DESC", (request.user["id"],))
+        rows = db.all("SELECT c.*, (SELECT COUNT(*) FROM messages m WHERE m.conversationid=c.id) as msg_count, (SELECT content FROM messages m WHERE m.conversationid=c.id ORDER BY id DESC LIMIT 1) as last_msg FROM conversations c WHERE c.user_id=? ORDER BY updated_at DESC, id DESC", (request.user["id"],))
     return jsonify({"success": True, "conversations": rows})
 
 @app.route("/api/conversations", methods=["POST"])
@@ -581,25 +502,25 @@ def create_conversation():
     d = request.get_json() or {}
     title = clean(d.get("title") or "New Chat")[:60]
     with DB() as db:
-        nid = db.ins("INSERT INTO conversations (user_id, title) VALUES (%s,%s)", (request.user["id"], title))
+        nid = db.ins("INSERT INTO conversations (user_id, title) VALUES (?,?)", (request.user["id"], title))
     return jsonify({"success": True, "conversation_id": nid, "title": title}), 201
 
 @app.route("/api/conversations/<int:cid>", methods=["GET"])
 @owner_only
 def get_conversation(cid):
     with DB() as db:
-        conv = db.one("SELECT * FROM conversations WHERE id=%s AND user_id=%s", (cid, request.user["id"]))
+        conv = db.one("SELECT * FROM conversations WHERE id=? AND user_id=?", (cid, request.user["id"]))
         if not conv:
             return jsonify({"success": False, "error": "Chat not found"}), 404
-        msgs = db.all("SELECT role, content, created_at FROM messages WHERE user_id=%s AND conversationid=%s ORDER BY id ASC", (request.user["id"], cid))
+        msgs = db.all("SELECT role, content, created_at FROM messages WHERE user_id=? AND conversationid=? ORDER BY id ASC", (request.user["id"], cid))
     return jsonify({"success": True, "conversation": conv, "messages": msgs})
 
 @app.route("/api/conversations/<int:cid>", methods=["DELETE"])
 @owner_only
 def delete_conversation(cid):
     with DB() as db:
-        db.q("DELETE FROM messages WHERE user_id=%s AND conversationid=%s", (request.user["id"], cid))
-        db.q("DELETE FROM conversations WHERE id=%s AND user_id=%s", (cid, request.user["id"]))
+        db.q("DELETE FROM messages WHERE user_id=? AND conversationid=?", (request.user["id"], cid))
+        db.q("DELETE FROM conversations WHERE id=? AND user_id=?", (cid, request.user["id"]))
     return jsonify({"success": True, "message": "Chat deleted"})
 
 @app.route("/api/dashboard")
@@ -613,8 +534,8 @@ def dashboard():
             total = db.one("SELECT COUNT(*) as c FROM motorcycles")["c"]
             return jsonify({"success": True, "role": "owner", "total_bikes": total, "bikes": bikes, "customers": customers})
         else:
-            bikes = db.all('SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE COALESCE(m.assigned_user_id, m."assignedUserId")=%s', (u["id"],))
-            plans = db.all("SELECT * FROM payment_plans WHERE user_id=%s", (u["id"],))
+            bikes = db.all('SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE COALESCE(m.assigned_user_id, m."assignedUserId")=?', (u["id"],))
+            plans = db.all("SELECT * FROM payment_plans WHERE user_id=?", (u["id"],))
             return jsonify({"success": True, "role": "customer", "bikes": bikes, "plans": plans})
 
 @app.route("/api/bikes", methods=["GET"])
@@ -625,7 +546,7 @@ def list_bikes():
         if u["role"] == "owner":
             rows = db.all("SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id ORDER BY m.id DESC")
         else:
-            rows = db.all('SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE COALESCE(m.assigned_user_id, m."assignedUserId")=%s', (u["id"],))
+            rows = db.all('SELECT m.*, bs.* FROM motorcycles m LEFT JOIN bike_status bs ON bs.motorcycle_id=m.id WHERE COALESCE(m.assigned_user_id, m."assignedUserId")=?', (u["id"],))
     return jsonify({"success": True, "bikes": rows})
 
 @app.route("/api/bike/<int:bid>/command", methods=["POST"])
@@ -634,20 +555,20 @@ def bike_cmd(bid):
     u = request.user
     cmd = str((request.get_json() or {}).get("command", "")).lower()
     with DB() as db:
-        bike = db.one("SELECT * FROM motorcycles WHERE id=%s", (bid,))
+        bike = db.one("SELECT * FROM motorcycles WHERE id=?", (bid,))
         if not bike:
             return jsonify({"success": False, "error": "Bike not found"}), 404
         assigned = bike.get("assigned_user_id") or bike.get("assignedUserId")
         if u["role"] != "owner" and assigned != u["id"]:
             return jsonify({"success": False, "error": "Not your bike"}), 403
-        st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=%s", (bid,))
+        st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=?", (bid,))
         if st and st.get("access_mode") == "restricted" and cmd in ("unlock", "start"):
             return jsonify({"success": False, "error": "Bike in restricted mode - payment overdue. Contact Ultimate Gee Industry."}), 403
-        db.q("INSERT INTO bike_commands (motorcycle_id, command, issued_by) VALUES (%s,%s,%s)", (bid, cmd, u["id"]))
+        db.q("INSERT INTO bike_commands (motorcycle_id, command, issued_by) VALUES (?,?,?)", (bid, cmd, u["id"]))
         if cmd in ("lock", "unlock"):
-            db.q("UPDATE bike_status SET lock_status=%s WHERE motorcycle_id=%s", ("locked" if cmd == "lock" else "unlocked", bid))
+            db.q("UPDATE bike_status SET lock_status=? WHERE motorcycle_id=?", ("locked" if cmd == "lock" else "unlocked", bid))
         if cmd == "locate":
-            tel = db.one("SELECT * FROM telemetry WHERE motorcycle_id=%s ORDER BY id DESC LIMIT 1", (bid,))
+            tel = db.one("SELECT * FROM telemetry WHERE motorcycle_id=? ORDER BY id DESC LIMIT 1", (bid,))
             return jsonify({"success": True, "message": "Bike location", "telemetry": tel})
     return jsonify({"success": True, "message": "Bike " + cmd + " done, Boss."})
 
@@ -655,29 +576,29 @@ def bike_cmd(bid):
 def telemetry(bid):
     d = request.get_json() or {}
     with DB() as db:
-        db.q("INSERT INTO telemetry (motorcycle_id, latitude, longitude, speed, battery_level, engine_temp) VALUES (%s,%s,%s,%s,%s,%s)", (bid, d.get("latitude"), d.get("longitude"), d.get("speed"), d.get("battery_level"), d.get("engine_temp")))
-        db.q("INSERT INTO bike_status (motorcycle_id) VALUES (%s) ON CONFLICT (motorcycle_id) DO NOTHING", (bid,))
-        db.q("UPDATE bike_status SET battery_level=COALESCE(%s,battery_level), last_seen=%s WHERE motorcycle_id=%s", (d.get("battery_level"), datetime.now(timezone.utc).isoformat(), bid))
+        db.q("INSERT INTO telemetry (motorcycle_id, latitude, longitude, speed, battery_level, engine_temp) VALUES (?,?,?,?,?,?)", (bid, d.get("latitude"), d.get("longitude"), d.get("speed"), d.get("battery_level"), d.get("engine_temp")))
+        db.q("INSERT OR IGNORE INTO bike_status (motorcycle_id) VALUES (?)", (bid,))
+        db.q("UPDATE bike_status SET battery_level=COALESCE(?,battery_level), last_seen=? WHERE motorcycle_id=?", (d.get("battery_level"), datetime.now(timezone.utc).isoformat(), bid))
     return jsonify({"success": True})
 
 @app.route("/api/payments/remind", methods=["POST"])
 @owner_only
 def remind():
     with DB() as db:
-        due = db.all("SELECT pp.*, u.name, u.email FROM payment_plans pp JOIN users u ON u.id=pp.user_id WHERE pp.status='active' AND pp.next_due_date <= %s", ((datetime.now(timezone.utc) + timedelta(days=3)).date().isoformat(),))
+        due = db.all("SELECT pp.*, u.name, u.email FROM payment_plans pp JOIN users u ON u.id=pp.user_id WHERE pp.status='active' AND pp.next_due_date <= ?", ((datetime.now(timezone.utc) + timedelta(days=3)).date().isoformat(),))
     return jsonify({"success": True, "due_soon": due, "message": str(len(due)) + " customers due soon."})
 
 @app.route("/api/payments/overdue-check", methods=["POST"])
 @owner_only
 def overdue():
     with DB() as db:
-        overdue_plans = db.all("SELECT * FROM payment_plans WHERE status='active' AND next_due_date < %s", (datetime.now(timezone.utc).date().isoformat(),))
+        overdue_plans = db.all("SELECT * FROM payment_plans WHERE status='active' AND next_due_date < ?", (datetime.now(timezone.utc).date().isoformat(),))
         for p in overdue_plans:
             try:
                 due = datetime.fromisoformat(p["next_due_date"]).date()
                 if (datetime.now(timezone.utc).date() - due).days > 7:
-                    db.q("UPDATE bike_status SET access_mode='restricted' WHERE motorcycle_id=%s", (p["motorcycle_id"],))
-                    db.q("UPDATE payment_plans SET status='overdue' WHERE id=%s", (p["id"],))
+                    db.q("UPDATE bike_status SET access_mode='restricted' WHERE motorcycle_id=?", (p["motorcycle_id"],))
+                    db.q("UPDATE payment_plans SET status='overdue' WHERE id=?", (p["id"],))
             except Exception:
                 pass
     return jsonify({"success": True, "overdue": len(overdue_plans)})
@@ -742,8 +663,8 @@ def voice_chat():
                 audio = None
             return jsonify({"success": True, "text": user_text, "reply": cmd_reply, "audio": audio, "audio_url": audio, "conversation_id": conv_id})
         with DB() as db:
-            mems = db.all('SELECT content FROM memories WHERE COALESCE(user_id, "userId")=%s ORDER BY id DESC LIMIT 8', (u["id"],))
-            hist = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=%s AND conversationid=%s ORDER BY id DESC LIMIT 6', (u["id"], conv_id))
+            mems = db.all('SELECT content FROM memories WHERE COALESCE(user_id, "userId")=? ORDER BY id DESC LIMIT 8', (u["id"],))
+            hist = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=? AND conversationid=? ORDER BY id DESC LIMIT 6', (u["id"], conv_id))
         mem_txt = "\n".join([m["content"] for m in mems]) or "No memories yet. Boss is Faruq Sulaimon, owner of Ultimate Gee Industry, creator of Tabby."
         search = live_search(user_text, 4) if needs_live_search(user_text) else []
         system = GEE_SYSTEM + "\nMEMORIES: " + mem_txt + "\nBIKE CONTEXT: " + bike_ctx(u)
@@ -768,7 +689,7 @@ def voice_chat():
 def call_start():
     sid = str(uuid.uuid4())[:8]
     with DB() as db:
-        db.q("INSERT INTO call_sessions (id, user_id, status) VALUES (%s,%s, 'live')", (sid, request.user["id"]))
+        db.q("INSERT INTO call_sessions (id, user_id, status) VALUES (?,?,'live')", (sid, request.user["id"]))
     return jsonify({"success": True, "call_id": sid, "message": "Live call started. Tabby dey listen, Boss.", "voice": OPENROUTER_TTS_VOICE})
 
 @app.route("/api/call/end", methods=["POST"])
@@ -777,7 +698,7 @@ def call_end():
     d = request.get_json() or {}
     sid = d.get("call_id")
     with DB() as db:
-        db.q("UPDATE call_sessions SET status='ended', ended_at=NOW() WHERE id=%s AND user_id=%s", (sid, request.user["id"]))
+        db.q("UPDATE call_sessions SET status='ended', ended_at=datetime('now') WHERE id=? AND user_id=?", (sid, request.user["id"]))
     return jsonify({"success": True, "message": "Call ended. See you soon, Boss."})
 
 @app.route("/api/chat/history")
@@ -786,9 +707,9 @@ def hist():
     conv_id = request.args.get("conversation_id", type=int)
     with DB() as db:
         if conv_id:
-            rows = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=%s AND conversationid=%s ORDER BY id ASC', (request.user["id"], conv_id))
+            rows = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=? AND conversationid=? ORDER BY id ASC', (request.user["id"], conv_id))
         else:
-            rows = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=%s ORDER BY id ASC', (request.user["id"],))
+            rows = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=? ORDER BY id ASC', (request.user["id"],))
     return jsonify({"success": True, "messages": rows, "conversation_id": conv_id})
 
 @app.route("/api/chat", methods=["POST"])
@@ -807,7 +728,7 @@ def chat():
     conv_id = d.get("conversation_id") or d.get("conversationId")
     if d.get("new_chat"):
         with DB() as db:
-            conv_id = db.ins("INSERT INTO conversations (user_id, title) VALUES (%s,%s)", (u["id"], clean(msg)[:40] or "New Chat"))
+            conv_id = db.ins("INSERT INTO conversations (user_id, title) VALUES (?,?)", (u["id"], clean(msg)[:40] or "New Chat"))
             if not conv_id:
                 conv_id = 1
     else:
@@ -849,12 +770,12 @@ def chat():
             return jsonify({"success": True, "reply": "Image service busy small, Boss. Check Cloudflare keys. Detail: " + clean(str(e))[:200], "conversation_id": conv_id})
     try:
         with DB() as db:
-            mems = db.all('SELECT content FROM memories WHERE COALESCE(user_id, "userId")=%s ORDER BY id DESC LIMIT 8', (u["id"],))
-            hist = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=%s AND conversationid=%s ORDER BY id DESC LIMIT 6', (u["id"], conv_id))
+            mems = db.all('SELECT content FROM memories WHERE COALESCE(user_id, "userId")=? ORDER BY id DESC LIMIT 8', (u["id"],))
+            hist = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=? AND conversationid=? ORDER BY id DESC LIMIT 6', (u["id"], conv_id))
         mem_txt = "\n".join([m["content"] for m in mems]) or "No memories yet. Boss is Faruq Sulaimon, owner of Ultimate Gee Industry, creator of Tabby."
         if "remember" in low:
             with DB() as db:
-                db.q('INSERT INTO memories (user_id, "userId", content) VALUES (%s,%s,%s)', (u["id"], u["id"], msg))
+                db.q('INSERT INTO memories (user_id, "userId", content) VALUES (?,?,?)', (u["id"], u["id"], msg))
         search = live_search(msg, 5) if needs_live_search(msg) else []
         system = GEE_SYSTEM + "\nMEMORIES: " + mem_txt + "\nBIKE CONTEXT: " + bike_ctx(u) + " You manage Tabby EV bikes: Intelligent BMS, GPS tracking, anti-theft, journey assistant, predictive maintenance, remote security, installment payments."
         if search:
