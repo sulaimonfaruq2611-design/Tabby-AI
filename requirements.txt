@@ -1,6 +1,6 @@
-Flask==3.0.0
-flask-cors==4.0.0
+Flask==3.0.3
+Flask-Cors==4.0.1
 requests==2.31.0
-itsdangerous==2.1.2
-Werkzeug==3.0.1
-gunicorn==22.0.0
+Werkzeug==3.0.3
+PyJWT==2.8.0
+gunicorn==21.2.0
