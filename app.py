@@ -25,7 +25,9 @@ CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
 DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tabby.db")
 _lock = threading.Lock()
 _NEWS_CACHE = {"time": 0, "data": []}
+AUTO = {"news": [], "last": ""}
 
+# ================= DB =================
 def tables_sql():
     return [
     "CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'customer', created_at TEXT DEFAULT (datetime('now')))",
@@ -65,44 +67,30 @@ class DB:
             self.c.commit()
         except Exception as e:
             print("ensure_tables fail", e)
-            try:
-                self.c.rollback()
-            except Exception:
-                pass
+            try: self.c.rollback()
+            except Exception: pass
         return self
     def __exit__(self, *a):
-        try:
-            self.c.commit()
+        try: self.c.commit()
         except Exception:
-            try:
-                self.c.rollback()
-            except Exception:
-                pass
-        try:
-            self.cur.close()
-        except Exception:
-            pass
-        try:
-            self.c.close()
-        except Exception:
-            pass
-        try:
-            _lock.release()
-        except Exception:
-            pass
+            try: self.c.rollback()
+            except Exception: pass
+        try: self.cur.close()
+        except Exception: pass
+        try: self.c.close()
+        except Exception: pass
+        try: _lock.release()
+        except Exception: pass
         return False
     def q(self, sql, p=()):
         params = tuple(p) if isinstance(p, (list, tuple)) else (p,)
-        if params == ((),):
-            params = ()
+        if params == ((),): params = ()
         self.cur.execute(sql, params)
         return self.cur
     def one(self, sql, p=()):
         self.q(sql, p)
         r = self.cur.fetchone()
-        if r is None:
-            return None
-        return dict(r)
+        return dict(r) if r else None
     def all(self, sql, p=()):
         self.q(sql, p)
         return [dict(r) for r in self.cur.fetchall()]
@@ -119,38 +107,31 @@ def init_db():
         print("DB init", e)
 init_db()
 
-AUTO = {"news": [], "last": ""}
 def clean(t):
-    if not t:
-        return ""
+    if not t: return ""
     t = re.sub(r"\*+", "", str(t))
     t = re.sub(r"_+", "", t)
     t = re.sub(r"#+", "", t)
     return re.sub(r"\s+", " ", t).strip()
 
+# ================= CONVERSATIONS =================
 def get_or_create_conversation(user_id, conv_id=None, first_msg=""):
-    if not user_id:
-        return 1
+    if not user_id: return 1
     with DB() as db:
         if conv_id:
             try:
                 c = db.one("SELECT * FROM conversations WHERE id=? AND user_id=?", (int(conv_id), user_id))
-                if c:
-                    return c["id"]
-            except Exception:
-                pass
+                if c: return c["id"]
+            except Exception: pass
         latest = db.one("SELECT * FROM conversations WHERE user_id=? ORDER BY updated_at DESC, id DESC LIMIT 1", (user_id,))
         if latest and not conv_id:
             return latest["id"]
         title = (first_msg[:40] or "New Chat") if first_msg else "New Chat"
         nid = db.ins("INSERT INTO conversations (user_id, title) VALUES (?,?)", (user_id, title))
-        if not nid:
-            return 1
-        return nid
+        return nid or 1
 
 def auto_title_conversation(conv_id, first_msg):
-    if not first_msg or not conv_id:
-        return
+    if not first_msg or not conv_id: return
     title = clean(first_msg)[:40]
     with DB() as db:
         c = db.one("SELECT title FROM conversations WHERE id=?", (conv_id,))
@@ -159,15 +140,12 @@ def auto_title_conversation(conv_id, first_msg):
 
 def prune_and_summarise(user_id, conv_id):
     try:
-        if not conv_id:
-            conv_id = 1
+        if not conv_id: conv_id = 1
         with DB() as db:
             cnt = db.one("SELECT COUNT(*) as c FROM messages WHERE user_id=? AND conversationid=?", (user_id, conv_id))["c"]
-            if cnt < 60:
-                return
+            if cnt < 60: return
             old = db.all("SELECT role, content FROM messages WHERE user_id=? AND conversationid=? ORDER BY id ASC LIMIT 30", (user_id, conv_id))
-            if not old:
-                return
+            if not old: return
             txt = "\n".join([str(r["role"]) + ": " + str(r["content"])[:300] for r in old])
             try:
                 summary = call_openrouter([{"role": "system", "content": "Summarise this conversation in 5 bullet lines, keep names, decisions, numbers, ideas. No asterisks."}, {"role": "user", "content": txt}], temp=0.3)
@@ -181,58 +159,69 @@ def prune_and_summarise(user_id, conv_id):
     except Exception as e:
         print("prune fail", e)
 
+# ================= LIVE SEARCH - NO HALLUCINATION =================
 def needs_live_search(q):
     q = (q or "").lower()
-    keys = ["news", "naira", "dollar", "usd", "ngn", "rate", "exchange", "price", "bitcoin", "btc", "crypto", "ethereum", "weather", "fuel", "tinubu", "lagos", "premier", "election", "today"]
+    keys = ["news", "world", "global", "breaking", "headline", "headlines", "latest", "today", "naira", "dollar", "usd", "ngn", "rate", "exchange", "price", "bitcoin", "btc", "crypto", "ethereum", "weather", "fuel", "tinubu", "lagos", "premier", "election", "trump", "putin", "israel", "ukraine", "us news", "uk news"]
     return any(k in q for k in keys)
 
-def live_search(query, limit=5):
+def live_search(query, limit=6):
     out = []
     q = (query or "").lower()
-    if "news" in q or "nigeria" in q:
-        if time.time() - _NEWS_CACHE["time"] < 300 and _NEWS_CACHE["data"]:
-            return _NEWS_CACHE["data"][:limit]
-    if any(w in q for w in ["naira", "dollar", "usd", "ngn", "rate", "exchange", "price"]):
+    # FOREX
+    if any(w in q for w in ["naira", "dollar", "usd", "ngn", "rate", "exchange"]):
         try:
             r = requests.get("https://open.er-api.com/v6/latest/USD", timeout=5).json()
             out.append("Title: Naira to Dollar Rate Today\nInfo: 1 USD = " + str(r["rates"].get("NGN")) + " NGN. Updated " + str(r.get("time_last_update_utc")))
-        except Exception:
-            pass
+        except Exception: pass
+    # CRYPTO
     if any(w in q for w in ["bitcoin", "btc", "crypto", "ethereum"]):
         try:
             r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd,ngn", timeout=5).json()
             out.append("Title: Crypto Price\nInfo: Bitcoin $" + str(r["bitcoin"]["usd"]) + " / " + str(r["bitcoin"]["ngn"]) + " NGN. Ethereum $" + str(r["ethereum"]["usd"]))
-        except Exception:
-            pass
-    try:
-        qq = urllib.parse.quote((query or "Nigeria news") + " when:1d")
-        url = "https://news.google.com/rss/search?q=" + qq + "&hl=en-NG&gl=NG&ceid=NG:en"
-        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=6)
-        root = ET.fromstring(r.content)
-        items = []
-        for it in root.findall(".//item")[:12]:
-            title = it.findtext("title") or ""
-            pub = it.findtext("pubDate") or ""
-            if title in str(items):
-                continue
-            items.append("Title: " + title + "\nInfo: " + pub + " | " + str(it.findtext("link")))
-        out.extend(items[:limit])
-        if "news" in q:
-            _NEWS_CACHE["time"] = time.time()
-            _NEWS_CACHE["data"] = out
-    except Exception as e:
-        print("RSS fail", e)
+        except Exception: pass
+    # NEWS
+    if any(w in q for w in ["news", "world", "global", "breaking", "headline", "latest"]):
+        if "us news" in q or "america" in q or "trump" in q:
+            hl, gl, ceid, search_q = "en-US", "US", "US:en", query or "US news"
+        elif "uk news" in q or "britain" in q or "london" in q:
+            hl, gl, ceid, search_q = "en-GB", "GB", "GB:en", query or "UK news"
+        elif "world" in q or "global" in q:
+            hl, gl, ceid, search_q = "en", "US", "US:en", "world news"
+        elif "tech" in q or "ai news" in q:
+            hl, gl, ceid, search_q = "en", "US", "US:en", query or "technology news"
+        else:
+            hl, gl, ceid, search_q = "en-NG", "NG", "NG:en", query or "Nigeria news"
+        try:
+            qq = urllib.parse.quote(search_q + " when:1d")
+            url = "https://news.google.com/rss/search?q=" + qq + "&hl=" + hl + "&gl=" + gl + "&ceid=" + ceid
+            r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=6)
+            root = ET.fromstring(r.content)
+            items = []
+            for it in root.findall(".//item")[:15]:
+                title = (it.findtext("title") or "").strip()
+                pub = (it.findtext("pubDate") or "").strip()
+                link = (it.findtext("link") or "").strip()
+                if not title or title in str(items): continue
+                items.append("Title: " + title + "\nInfo: Published: " + pub + " | Source Link: " + link)
+            out.extend(items[:limit])
+        except Exception as e:
+            print("RSS fail", e)
+    # WEATHER
     if "weather" in q:
         try:
-            r = requests.get("https://wttr.in/Lagos?format=j1", timeout=5).json()
+            city = "Lagos"
+            if "london" in q: city = "London"
+            if "new york" in q: city = "New York"
+            if "abuja" in q: city = "Abuja"
+            r = requests.get("https://wttr.in/" + city + "?format=j1", timeout=5).json()
             c = r["current_condition"][0]
-            out.append("Title: Lagos Weather\nInfo: " + str(c["weatherDesc"][0]["value"]) + ", " + str(c["temp_C"]) + "C, Humidity " + str(c["humidity"]) + "%")
-        except Exception:
-            pass
+            out.append("Title: " + city + " Weather\nInfo: " + str(c["weatherDesc"][0]["value"]) + ", " + str(c["temp_C"]) + "C, Humidity " + str(c["humidity"]) + "%")
+        except Exception: pass
     return out
 
 def auto_study():
-    topics = ["Nigeria news", "Naira to Dollar rate", "Bitcoin price", "Lagos news", "Afrobeats news", "Premier League", "Fuel price Nigeria", "AI news"]
+    topics = ["Nigeria news", "World news", "Naira to Dollar rate", "Bitcoin price", "Lagos news", "Afrobeats news", "Premier League", "Fuel price Nigeria", "AI news", "US news", "UK news"]
     while True:
         try:
             all_n = []
@@ -242,7 +231,7 @@ def auto_study():
             AUTO["news"] = all_n
             AUTO["last"] = datetime.now(timezone.utc).isoformat()
             with DB() as db:
-                for n in all_n[:8]:
+                for n in all_n[:10]:
                     exists = db.one("SELECT id FROM auto_learned WHERE content=?", (n[:1000],))
                     if not exists:
                         db.q("INSERT INTO auto_learned (topic, content) VALUES (?,?)", ("auto", n[:1000]))
@@ -252,13 +241,13 @@ def auto_study():
         time.sleep(1800)
 threading.Thread(target=auto_study, daemon=True).start()
 
+# ================= AI / VOICE / IMAGE =================
 def call_openrouter(msgs, temp=0.7):
     if not OPENROUTER_KEY:
         raise RuntimeError("no openrouter - set OPENROUTER_API_KEY")
     models = []
     for m in ["meta-llama/llama-3.1-8b-instruct:free", "google/gemma-2-9b-it:free", "deepseek/deepseek-chat-v3-0324:free", OPENROUTER_MODEL, "deepseek/deepseek-chat", "openrouter/free"]:
-        if m and m not in models:
-            models.append(m)
+        if m and m not in models: models.append(m)
     last_err = ""
     for model in models:
         try:
@@ -274,17 +263,14 @@ def call_ai(msgs):
     return call_openrouter(msgs)
 
 def transcribe_audio_file(file_bytes, filename="voice.webm"):
-    if not OPENROUTER_KEY:
-        raise RuntimeError("no openrouter key")
+    if not OPENROUTER_KEY: raise RuntimeError("no openrouter key")
     files = {"file": (filename, file_bytes, "audio/webm")}
     data = {"model": OPENROUTER_STT_MODEL}
     r = requests.post("https://openrouter.ai/api/v1/audio/transcriptions", headers={"Authorization": "Bearer " + OPENROUTER_KEY}, files=files, data=data, timeout=90)
-    if r.status_code == 200:
-        return (r.json().get("text") or "").strip()
+    if r.status_code == 200: return (r.json().get("text") or "").strip()
     data["model"] = "openai/whisper-large-v3"
     r = requests.post("https://openrouter.ai/api/v1/audio/transcriptions", headers={"Authorization": "Bearer " + OPENROUTER_KEY}, files={"file": (filename, file_bytes, "audio/webm")}, data=data, timeout=90)
-    if r.status_code == 200:
-        return (r.json().get("text") or "").strip()
+    if r.status_code == 200: return (r.json().get("text") or "").strip()
     raise RuntimeError("Transcribe failed " + str(r.status_code) + ": " + r.text[:300])
 
 def transcribe_base64_audio(b64_data, filename="voice.webm"):
@@ -292,10 +278,8 @@ def transcribe_base64_audio(b64_data, filename="voice.webm"):
     return transcribe_audio_file(base64.b64decode(pure), filename)
 
 def speak_text_to_audio(text, voice=None):
-    if not OPENROUTER_KEY:
-        raise RuntimeError("no openrouter key")
-    if not text or not text.strip():
-        raise RuntimeError("empty text")
+    if not OPENROUTER_KEY: raise RuntimeError("no openrouter key")
+    if not text or not text.strip(): raise RuntimeError("empty text")
     text = text[:700]
     v = voice or OPENROUTER_TTS_VOICE
     for model in [OPENROUTER_TTS_MODEL, "openai/gpt-4o-mini-tts", "openai/tts-1", "openai/tts-1-hd"]:
@@ -308,20 +292,20 @@ def speak_text_to_audio(text, voice=None):
     raise RuntimeError("TTS failed - check OpenRouter credits")
 
 def analyze_image_b64(b64, prompt):
-    if not OPENROUTER_KEY:
-        raise RuntimeError("Image analysis unavailable - no OpenRouter key")
-    for model in ["openai/gpt-4o-mini", "google/gemma-3-27b-it"]:
+    if not OPENROUTER_KEY: raise RuntimeError("Image analysis unavailable - no OpenRouter key")
+    for model in ["google/gemma-3-27b-it:free", "meta-llama/llama-3.2-11b-vision-instruct:free", "openai/gpt-4o-mini"]:
         try:
-            r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": "Bearer " + OPENROUTER_KEY, "Content-Type": "application/json"}, json={"model": model, "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": b64}}]}], "max_tokens": 800}, timeout=30)
+            r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": "Bearer " + OPENROUTER_KEY, "Content-Type": "application/json"}, json={"model": model, "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": b64}}]}], "max_tokens": 800}, timeout=40)
             if r.status_code == 200:
                 return clean(r.json()["choices"][0]["message"]["content"])
+            print("Vision fail", model, r.status_code, r.text[:200])
         except Exception as e:
-            print("Vision OpenRouter", e)
+            print("Vision OpenRouter", model, e)
     raise RuntimeError("Image analysis unavailable - check OpenRouter key / credits")
 
 def gen_image_cloudflare(prompt):
     if not CLOUDFLARE_ID or not CLOUDFLARE_TOKEN:
-        raise RuntimeError("Cloudflare keys missing in Render Env")
+        raise RuntimeError("Cloudflare keys missing in Render Env - set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN")
     p = prompt + ", high quality, detailed, cinematic lighting, sharp, clear"
     for model in ["@cf/black-forest-labs/flux-1-schnell", "@cf/stabilityai/stable-diffusion-xl-base-1.0"]:
         try:
@@ -331,31 +315,28 @@ def gen_image_cloudflare(prompt):
             try:
                 j = r.json()
                 img = (j.get("result") or {}).get("image")
-                if img:
-                    return "data:image/jpeg;base64," + img
-            except Exception:
-                pass
+                if img: return "data:image/jpeg;base64," + img
+            except Exception: pass
+            print("CF fail", model, r.status_code, r.text[:300])
         except Exception as e:
             print("CF", model, e)
     raise RuntimeError("Cloudflare image failed - check CLOUDFLARE_ACCOUNT_ID / TOKEN")
 
+# ================= AUTH / HELPERS =================
 def get_user():
     a = request.headers.get("Authorization", "")
-    if not a.startswith("Bearer "):
-        return None
+    if not a.startswith("Bearer "): return None
     try:
         d = serializer.loads(a.split(" ", 1)[1], max_age=60*60*24*30)
         with DB() as db:
             return db.one("SELECT * FROM users WHERE id=?", (d["user_id"],))
-    except Exception:
-        return None
+    except Exception: return None
 
 def auth(f):
     @wraps(f)
     def w(*a, **k):
         u = get_user()
-        if not u:
-            return jsonify({"success": False, "error": "Login required"}), 401
+        if not u: return jsonify({"success": False, "error": "Login required"}), 401
         request.user = u
         return f(*a, **k)
     return w
@@ -375,26 +356,21 @@ def bike_ctx(user):
             c = db.one("SELECT COUNT(*) as c FROM motorcycles")["c"]
             return "Owner fleet: " + str(c) + " bikes. Owner can see all."
         b = db.one('SELECT * FROM motorcycles WHERE COALESCE(assigned_user_id, "assignedUserId")=? ORDER BY id DESC LIMIT 1', (user["id"],))
-        if not b:
-            return "No bike assigned."
+        if not b: return "No bike assigned."
         st = db.one("SELECT * FROM bike_status WHERE motorcycle_id=?", (b["id"],))
         pl = db.one("SELECT * FROM payment_plans WHERE motorcycle_id=? ORDER BY id DESC LIMIT 1", (b["id"],))
         return "Bike: " + str(b) + " Status: " + str(st) + " Plan: " + str(pl)
 
 def save_msg(user_id, role, content, conv_id=1):
-    if not conv_id:
-        conv_id = 1
-    try:
-        conv_id = int(conv_id)
-    except Exception:
-        conv_id = 1
+    if not conv_id: conv_id = 1
+    try: conv_id = int(conv_id)
+    except Exception: conv_id = 1
     with DB() as db:
         db.q('INSERT INTO messages (user_id, "userId", role, content, conversationid) VALUES (?,?,?,?,?)', (user_id, user_id, role, content, conv_id))
         db.q("UPDATE conversations SET updated_at=datetime('now') WHERE id=?", (conv_id,))
 
 def handle_bike_or_house_command(u, low, msg, conv_id=1):
-    if not conv_id:
-        conv_id = 1
+    if not conv_id: conv_id = 1
     with DB() as db:
         if "bike" in low and any(w in low for w in ["lock", "unlock", "check", "battery", "locate", "status"]):
             bike = db.one("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1")
@@ -425,15 +401,16 @@ def handle_bike_or_house_command(u, low, msg, conv_id=1):
                 return reply
     return None
 
-GEE_SYSTEM = """You are Tabby, Faruq Sulaimon's real gee and brainstorming partner. Not a robot, not a formal assistant. Call him Boss, but like a mate. UK English, British spelling: colour, favourite, organise, realise. Tone: warm, sharp, funny, confident, street-smart but intelligent. Use contractions: I'm, you're, let's, don't, can't. Style: Talk like you're sitting next to him. Short paragraphs. No long lectures. No asterisks, no hashtags, no emojis. Brainstorming: Don't just answer, build with him. Throw in ideas, ask what if we..., give 2-3 sharp options, then ask what he thinks. When he has a good idea, hype him up: Omo, that one na banger, Now you're talking, Boss. VOICE: Your words must sound good spoken aloud in a deep UK male voice. Short sentences. NEVER say: As an AI, I don't have live access, my knowledge goes up to, I cannot. You HAVE live internet when LIVE SEARCH is given, USE IT. USER: Faruq Sulaimon, Boss, creator and owner of Ultimate Gee Industry, creator of Tabby."""
+GEE_SYSTEM = """You are Tabby, Faruq Sulaimon's real gee and brainstorming partner. Not a robot, not a formal assistant. Call him Boss, but like a mate. UK English, British spelling: colour, favourite, organise, realise. Tone: warm, sharp, funny, confident, street-smart but intelligent. Use contractions: I'm, you're, let's, don't, can't. Style: Talk like you're sitting next to him. Short paragraphs. No long lectures. No asterisks, no hashtags, no emojis. Brainstorming: Don't just answer, build with him. Throw in ideas, ask what if we..., give 2-3 sharp options, then ask what he thinks. When he has a good idea, hype him up: Omo, that one na banger, Now you're talking, Boss. VOICE: Your words must sound good spoken aloud in a deep UK male voice. Short sentences. NEVER say: As an AI, I don't have live access, my knowledge goes up to, I cannot. You HAVE live internet when LIVE SEARCH is given, USE IT. USER: Faruq Sulaimon, Boss, creator and owner of Ultimate Gee Industry, creator of Tabby. CRITICAL RULE FOR NEWS: If LIVE SEARCH is given, you MUST ONLY use those items. Do NOT invent news. Each news item MUST include its Published date from LIVE SEARCH. If LIVE SEARCH is empty, say 'I no fit pull live news right now, try again' - NEVER invent headlines."""
 
+# ================= ROUTES =================
 @app.route("/")
 def home():
     return render_template("index.html")
 
 @app.route("/health")
 def health():
-    return jsonify({"success": True, "version": "tabby-25-no-supabase", "db": "sqlite", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", [])), "voice": {"stt": OPENROUTER_STT_MODEL, "tts": OPENROUTER_TTS_MODEL, "tts_voice": OPENROUTER_TTS_VOICE}})
+    return jsonify({"success": True, "version": "tabby-26-rewritten", "db": "sqlite", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", [])), "voice": {"stt": OPENROUTER_STT_MODEL, "tts": OPENROUTER_TTS_MODEL, "tts_voice": OPENROUTER_TTS_VOICE}})
 
 @app.route("/api/signup", methods=["POST"])
 def signup():
@@ -510,8 +487,7 @@ def create_conversation():
 def get_conversation(cid):
     with DB() as db:
         conv = db.one("SELECT * FROM conversations WHERE id=? AND user_id=?", (cid, request.user["id"]))
-        if not conv:
-            return jsonify({"success": False, "error": "Chat not found"}), 404
+        if not conv: return jsonify({"success": False, "error": "Chat not found"}), 404
         msgs = db.all("SELECT role, content, created_at FROM messages WHERE user_id=? AND conversationid=? ORDER BY id ASC", (request.user["id"], cid))
     return jsonify({"success": True, "conversation": conv, "messages": msgs})
 
@@ -556,8 +532,7 @@ def bike_cmd(bid):
     cmd = str((request.get_json() or {}).get("command", "")).lower()
     with DB() as db:
         bike = db.one("SELECT * FROM motorcycles WHERE id=?", (bid,))
-        if not bike:
-            return jsonify({"success": False, "error": "Bike not found"}), 404
+        if not bike: return jsonify({"success": False, "error": "Bike not found"}), 404
         assigned = bike.get("assigned_user_id") or bike.get("assignedUserId")
         if u["role"] != "owner" and assigned != u["id"]:
             return jsonify({"success": False, "error": "Not your bike"}), 403
@@ -599,8 +574,7 @@ def overdue():
                 if (datetime.now(timezone.utc).date() - due).days > 7:
                     db.q("UPDATE bike_status SET access_mode='restricted' WHERE motorcycle_id=?", (p["motorcycle_id"],))
                     db.q("UPDATE payment_plans SET status='overdue' WHERE id=?", (p["id"],))
-            except Exception:
-                pass
+            except Exception: pass
     return jsonify({"success": True, "overdue": len(overdue_plans)})
 
 @app.route("/api/voice/transcribe", methods=["POST"])
@@ -612,8 +586,7 @@ def voice_transcribe():
             text = transcribe_audio_file(f.read(), f.filename or "voice.webm")
         else:
             d = request.get_json() or {}
-            if not d.get("audio"):
-                return jsonify({"success": False, "error": "No audio provided"}), 400
+            if not d.get("audio"): return jsonify({"success": False, "error": "No audio provided"}), 400
             text = transcribe_base64_audio(d.get("audio"))
         return jsonify({"success": True, "text": text})
     except Exception as e:
@@ -625,8 +598,7 @@ def voice_speak():
     d = request.get_json() or {}
     text = str(d.get("text", "")).strip()
     voice = d.get("voice")
-    if not text:
-        return jsonify({"success": False, "error": "Text required"}), 400
+    if not text: return jsonify({"success": False, "error": "Text required"}), 400
     try:
         audio = speak_text_to_audio(text, voice)
         return jsonify({"success": True, "audio": audio, "audio_url": audio, "voice": voice or OPENROUTER_TTS_VOICE})
@@ -643,43 +615,34 @@ def voice_chat():
             user_text = transcribe_audio_file(f.read(), f.filename or "voice.webm")
         else:
             d = request.get_json() or {}
-            if d.get("audio"):
-                user_text = transcribe_base64_audio(d.get("audio"))
-            elif d.get("message"):
-                user_text = str(d.get("message", "")).strip()
-            else:
-                return jsonify({"success": False, "error": "No audio provided"}), 400
+            if d.get("audio"): user_text = transcribe_base64_audio(d.get("audio"))
+            elif d.get("message"): user_text = str(d.get("message", "")).strip()
+            else: return jsonify({"success": False, "error": "No audio provided"}), 400
         if not user_text:
             return jsonify({"success": True, "reply": "I no hear you well, Boss, talk am again.", "text": "", "audio": None})
         low = user_text.lower()
         conv_id = get_or_create_conversation(u["id"], (request.get_json(silent=True) or {}).get("conversation_id"), user_text)
-        if not conv_id:
-            conv_id = 1
+        if not conv_id: conv_id = 1
         cmd_reply = handle_bike_or_house_command(u, low, user_text, conv_id)
         if cmd_reply:
-            try:
-                audio = speak_text_to_audio(cmd_reply)
-            except Exception:
-                audio = None
+            try: audio = speak_text_to_audio(cmd_reply)
+            except Exception: audio = None
             return jsonify({"success": True, "text": user_text, "reply": cmd_reply, "audio": audio, "audio_url": audio, "conversation_id": conv_id})
         with DB() as db:
             mems = db.all('SELECT content FROM memories WHERE COALESCE(user_id, "userId")=? ORDER BY id DESC LIMIT 8', (u["id"],))
             hist = db.all('SELECT role, content FROM messages WHERE COALESCE(user_id, "userId")=? AND conversationid=? ORDER BY id DESC LIMIT 6', (u["id"], conv_id))
         mem_txt = "\n".join([m["content"] for m in mems]) or "No memories yet. Boss is Faruq Sulaimon, owner of Ultimate Gee Industry, creator of Tabby."
-        search = live_search(user_text, 4) if needs_live_search(user_text) else []
+        search = live_search(user_text, 5) if needs_live_search(user_text) else []
         system = GEE_SYSTEM + "\nMEMORIES: " + mem_txt + "\nBIKE CONTEXT: " + bike_ctx(u)
-        if search:
-            system += "\nLIVE SEARCH - REAL LIVE DATA, USE THIS:\n" + "\n".join(search)
+        if search: system += "\nLIVE SEARCH - REAL LIVE DATA, USE THIS, DO NOT INVENT:\n" + "\n".join(search)
         msgs = [{"role": "system", "content": system}] + [{"role": r["role"], "content": r["content"]} for r in reversed(hist)] + [{"role": "user", "content": user_text}]
         reply = call_ai(msgs)
         save_msg(u["id"], "user", "[voice] " + user_text, conv_id)
         save_msg(u["id"], "assistant", reply, conv_id)
         auto_title_conversation(conv_id, user_text)
         threading.Thread(target=prune_and_summarise, args=(u["id"], conv_id), daemon=True).start()
-        try:
-            audio = speak_text_to_audio(reply)
-        except Exception:
-            audio = None
+        try: audio = speak_text_to_audio(reply)
+        except Exception: audio = None
         return jsonify({"success": True, "text": user_text, "reply": reply, "audio": audio, "audio_url": audio, "conversation_id": conv_id})
     except Exception as e:
         return jsonify({"success": True, "reply": "Sorry Boss, small issue with voice: " + clean(str(e))[:300], "audio": None})
@@ -720,8 +683,7 @@ def chat():
     msg = str(d.get("message", "")).strip()
     image_b64 = d.get("image")
     want_voice = d.get("voice", True) if "voice" in d else True
-    if d.get("speak") is True:
-        want_voice = True
+    if d.get("speak") is True: want_voice = True
     if not msg and not image_b64:
         return jsonify({"success": False, "error": "Message required"}), 400
     low = (msg or "").lower()
@@ -729,20 +691,16 @@ def chat():
     if d.get("new_chat"):
         with DB() as db:
             conv_id = db.ins("INSERT INTO conversations (user_id, title) VALUES (?,?)", (u["id"], clean(msg)[:40] or "New Chat"))
-            if not conv_id:
-                conv_id = 1
+            if not conv_id: conv_id = 1
     else:
         conv_id = get_or_create_conversation(u["id"], conv_id, msg)
-    if not conv_id:
-        conv_id = 1
+    if not conv_id: conv_id = 1
     cmd_reply = handle_bike_or_house_command(u, low, msg, conv_id) if msg else None
     if cmd_reply:
         audio = None
         if want_voice:
-            try:
-                audio = speak_text_to_audio(cmd_reply)
-            except Exception:
-                pass
+            try: audio = speak_text_to_audio(cmd_reply)
+            except Exception: pass
         return jsonify({"success": True, "reply": cmd_reply, "audio": audio, "audio_url": audio, "conversation_id": conv_id})
     if image_b64:
         try:
@@ -751,10 +709,8 @@ def chat():
             save_msg(u["id"], "assistant", analysis, conv_id)
             audio = None
             if want_voice:
-                try:
-                    audio = speak_text_to_audio(analysis)
-                except Exception:
-                    pass
+                try: audio = speak_text_to_audio(analysis)
+                except Exception: pass
             return jsonify({"success": True, "reply": analysis, "audio": audio, "audio_url": audio, "conversation_id": conv_id})
         except Exception as e:
             return jsonify({"success": True, "reply": "Sorry Boss, image analysis small issue: " + clean(str(e))[:200], "conversation_id": conv_id})
@@ -776,7 +732,7 @@ def chat():
         if "remember" in low:
             with DB() as db:
                 db.q('INSERT INTO memories (user_id, "userId", content) VALUES (?,?,?)', (u["id"], u["id"], msg))
-        search = live_search(msg, 5) if needs_live_search(msg) else []
+        search = live_search(msg, 6) if needs_live_search(msg) else []
         system = GEE_SYSTEM + "\nMEMORIES: " + mem_txt + "\nBIKE CONTEXT: " + bike_ctx(u) + " You manage Tabby EV bikes: Intelligent BMS, GPS tracking, anti-theft, journey assistant, predictive maintenance, remote security, installment payments."
         if search:
             system += "\nLIVE SEARCH - REAL LIVE DATA, USE THIS, DO NOT INVENT:\n" + "\n".join(search)
@@ -788,10 +744,8 @@ def chat():
         threading.Thread(target=prune_and_summarise, args=(u["id"], conv_id), daemon=True).start()
         audio = None
         if want_voice:
-            try:
-                audio = speak_text_to_audio(reply)
-            except Exception as e:
-                print("TTS chat", e)
+            try: audio = speak_text_to_audio(reply)
+            except Exception as e: print("TTS chat", e)
         return jsonify({"success": True, "reply": reply, "audio": audio, "audio_url": audio, "conversation_id": conv_id})
     except Exception as e:
         return jsonify({"success": True, "reply": "Sorry Boss, small issue: " + clean(str(e))[:300], "conversation_id": conv_id})
