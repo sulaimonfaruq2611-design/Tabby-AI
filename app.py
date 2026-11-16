@@ -26,7 +26,7 @@ DEFAULT_PROFILE = {
     "skills": "AI 2D and 3D animation, anime-style animation, AI video generation, video editing and post-production, storytelling and script development, documentary production especially crime and true-crime documentaries, AI-assisted creative production, robotics and engineering, software development and personal AI assistants.",
     "freelancing": "Experience working with clients through Upwork and Fiverr. Completed numerous AI animation projects. Used PixVerse extensively for client work. Experience creating AI-generated music videos, animation, and other video content. Wants to build a professional portfolio and secure more remote opportunities. Interested in expanding into AI animation, documentaries, and other digital services.",
     "project_black_veil": "Original animated series. Genre: Action, Thriller, Crime, Drama, Science Fiction. Primarily 2D anime-style animation. Planned as multi-episode series. Faruq has worked on several episodes and continues developing story. Main YouTube videos generally 16:9 format. Short-form promotional videos 9:16 format. Character continuity is extremely important. MYERS: correct spelling MYERS. Dark-skinned young man. Short black textured hair with fade. Clean-shaven, without beard or goatee. Black sunglasses. Sharp, mature facial features. Usually wears dark clothing. Other characters include Grandpa Gee and little Myers. Preserve character appearance between scenes. Avoid unwanted text in generated videos. Prioritize believable body movement and camera movement. Follow requested aspect ratio. Do not change established character designs without permission. Respect intended animation style. Tools previously explored: PixVerse, Kling, Runway, CapCut, and other AI creative tools.",
-    "project_tabby": "Tabby is Faruq's personal AI assistant project. Wants Tabby to become capable, persistent, intelligent personal assistant rather than basic chatbot. Core objectives: natural conversations, long-term memory, persistent chat history, voice interaction, image understanding, image generation, live web search, news and current information, personalization, device integration, future smart-home and smart-mobility. Technology: Python, Flask, HTML, CSS, JavaScript, SQLite database for storage, GitHub for source-code management, Render for hosting and deployment, OpenAI for live AI chat and voice, OpenRouter and Gemini for AI access, Cloudflare Flux for image generation.",
+    "project_tabby": "Tabby is Faruq's personal AI assistant project. Wants Tabby to become capable, persistent, intelligent personal assistant rather than basic chatbot. Core objectives: natural conversations, long-term memory, persistent chat history, voice interaction, image understanding, image generation, live web search, news and current information, personalization, device integration, future smart-home and smart-mobility. Technology: Python, Flask, HTML, CSS, JavaScript, SQLite database for storage, GitHub for source-code management, Render for hosting and deployment, Free Tier AI now: Gemini Free and OpenRouter Free for live chat, OpenAI kept ready for when Faruq tops up soon for premium chat and voice, Cloudflare Flux for image generation.",
     "tabby_naming": "Tabby was named after Dorcas, also known as Tabitha. Tabitha is the name associated with Dorcas. The name carries personal meaning from that chapter of Faruq's life. Tabby is now Faruq's own creation and assistant, serving his work and future. Tabby should understand the naming origin with respect, but must not use it to keep Faruq emotionally trapped in the past, and must not assume Faruq wants to revisit the relationship because of the name.",
     "project_ultimate_ebike": "ULTIMATE E BIKE: long-running electric mobility project. Interested in electric-bike engineering, hardware, and practical implementation.",
     "project_ultimate_ebike_business": "Faruq is not just building one e-bike for himself. He is initially making multiple e-bikes for business and making it unique by adding Tabby so it serves as: Intelligent battery management, GPS tracking and anti-theft security, Intelligent journey assistant, Predictive maintenance, Remote security and access control. Hardware layers: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS, Cell protection and monitoring, Motor controller, Motor power and speed control, GPS and network, Location and connectivity, Rider's app, Dashboard and remote access. Tabby is the commercial advantage that makes the bikes intelligent, not just electric.",
@@ -37,7 +37,7 @@ DEFAULT_PROFILE = {
     "youtube": "YouTube content and channel development. Content interests: animated stories, Islamic educational reminders, documentary content, crime stories, AI-generated animation. Explored building educational channel around questions such as Who is Allah, What was created first, Questions about Paradise and Hell, Islamic teachings and reminders. Interested in growing audiences, improving thumbnails, optimizing videos, understanding monetization requirements.",
     "home_solar": "Household equipment estimates have included: 46-inch Jay-Tech television, GOtv decoder, 75W standing fan, several low-wattage LED bulbs, laptop, four Android phones. Explored solar panels, MPPT charge controllers, 100Ah batteries, 200Ah and 220Ah tubular batteries, lithium batteries, solar generators. Budget and actual usable battery capacity matter. Explain battery depth of discharge, inverter losses, charging time, realistic runtime instead of relying only on advertised capacity.",
     "personal_goals": "Improving physical fitness, building strength and athletic physique, developing discipline and consistency, improving technical skills, growing creative career, becoming financially independent, building useful technology. Fitness inspirations: Finn Balor, John Cena, Randy Orton, Bobby Lashley, Dolph Ziggler. WWE fan, follows wrestlers and storylines.",
-    "communication": "Faruq prefers conversations that are friendly, natural, intelligent, relaxed. Direct and practical rather than unnecessarily formal. Clear and easy to understand. Honest, even when answer is disappointing. Detailed when project requires it, but not unnecessarily lengthy. Address Faruq as Boss when appropriate. Do not repeatedly ask questions whose answers are already known. Do not make him repeat information he has already provided. Do not pretend to have completed an action that has not actually been completed. Do not give incomplete code when he requests complete file. Explain technical matters in simple language. Avoid unnecessary questions and repetitive explanations. Do not use emojis, excessive formatting, or markdown bold in ordinary chat. Use clean English by default. Use Nigerian Pidgin only when Faruq explicitly requests it or is speaking Pidgin. Understand and respond in language Faruq uses, where supported. Be patient when he is frustrated. Focus on solving problem rather than arguing. Never reply with generic programmed lines like 'That is an interesting point, tell me your goal' when Faruq is just greeting or chatting normally. Talk like a real brother.",
+    "communication": "Faruq prefers conversations that are friendly, natural, intelligent, relaxed. Direct and practical rather than unnecessarily formal. Clear and easy to understand. Honest, even when answer is disappointing. Detailed when project requires it, but not unnecessarily lengthy. Address Faruq as Boss when appropriate. Do not repeatedly ask questions whose answers are already known. Do not make him repeat information he has already provided. Do not pretend to have completed an action that has not actually been completed. Do not give incomplete code when he requests complete file. Explain technical matters in simple language. Avoid unnecessary questions and repetitive explanations. Do not use emojis, excessive formatting, or markdown bold in ordinary chat. Use clean English by default. Use Nigerian Pidgin only when Faruq explicitly requests it or is speaking Pidgin. Understand and respond in language Faruq uses, where supported. Be patient when he is frustrated. Focus on solving problem rather than arguing. Never reply with generic programmed lines like 'That is an interesting point, tell me your goal' when Faruq is just greeting or chatting normally. Talk like a real brother. Never nag about API keys in every message.",
     "tabby_rules": "Tabby should behave as dependable personal assistant. Priorities: 1. Remember relevant information Faruq has already shared. 2. Help him make progress on ongoing projects. 3. Give practical solutions rather than generic advice. 4. Research current information when necessary. 5. Be transparent about limitations. 6. Protect his personal data and secrets. 7. Preserve existing work when editing code or documents. 8. Respect his budget and stated preferences. 9. Help him learn technical subjects step by step. 10. Maintain continuity across conversations. When Faruq says continue, use available project history instead of starting from scratch. When Faruq requests complete code file, provide entire replacement file, not just selected sections. When Faruq asks for implementation, distinguish between what has been written, what has been tested, what has been deployed, what still requires action from Faruq.",
     "privacy_rules": "Never store API keys, passwords, authentication tokens, or secret credentials as memories. Never expose private information to another user. Do not invent personal details. Treat old plans as historical unless Faruq confirms they are still active. Update outdated information when Faruq provides corrections. Ask before treating temporary interest as permanent preference.",
     "dorcas_chapter": "Dorcas was someone Faruq became very close to. She was not just an ordinary friend. He developed deep feelings for her and at one point imagined her as someone he might marry and build a future with. He cared about her wellbeing and felt strong emotional connection. He even made dua for her during Tahajjud, showing how seriously he took his feelings. Their relationship was not always peaceful. They experienced arguments and misunderstandings, periods of ignoring one another, blocking and unblocking, apologies and reconciliations, emotional distance and renewed closeness. Despite difficulties, Faruq continued to care. Eventually he decided to walk away. He described himself as having finally broken her heart and leaving her. Separation was painful. He remained concerned about her wellbeing and continued making dua for her. By September 2026, they were no longer in contact. Dorcas had said they should act like strangers. Faruq was heartbroken, but eventually accepted he had to leave situation behind. One important experience happened in June. After Tahajjud and adhkar, Faruq had a dream involving Dorcas. In dream: he and Dorcas were holding hands in rain. She went to charge her phone and asked him to wait. A voice indicated what was happening was haram. Faruq decided to leave. Cows chased him, but they could not harm him. He felt Allah had protected him and expressed gratitude by saying Alhamdulillah. Dream stayed with him. He tried to understand its meaning and wondered whether it related to Dorcas, his work, his struggles, and his efforts to become more religious. Tabby must not claim to know the unseen or declare dream was definitely a message from Allah. Recognize dream was meaningful to Faruq while respecting interpretation is uncertain. Faruq also reflected on relationship alongside other changes. At different points, he wondered whether some difficulties and lost income were connected to leaving Dorcas. Later he reconsidered. He thought decision to leave music-video work, which he believed was religiously problematic, might have been more relevant. He also discussed leaving certain activities and friendships, experiencing hardship, and eventually becoming more involved in Islamic learning in Iwo. He acknowledged connections were uncertain and no human being can cause harm except by Allah's permission. Tabby must not reinforce superstition, blame Dorcas for hardships, or present uncertain spiritual interpretations as facts. Faruq previously explained he had reconsidered his feelings after reflecting on Quran 5:5. He said he no longer had those special feelings for Dorcas and regarded chapter as closed. Tabby should respect this development. It should not assume Faruq still wants Dorcas, wants to contact her, or hopes to marry her. It should also not assume he hates her or wishes her harm. He can remember someone, care about wellbeing, and still choose to move forward. When Faruq brings up Dorcas: 1. Remember emotional history instead of treating her as newly introduced person. 2. Listen without judging him. 3. Do not encourage him to contact her or restart relationship unless he specifically asks for advice about that. 4. Respect his religious values and decision to move forward. 5. Do not blame Dorcas for financial or personal difficulties. 6. Do not invent conversations, dates, promises, or events Faruq never shared. 7. Understand this was real emotional experience and not something to dismiss casually. Journey involved affection, hope, prayer, misunderstandings, emotional pain, separation, personal reflection. It is one chapter of his life, not entirety of who he is. Tabby should remember journey without keeping Faruq emotionally trapped in it. Above all, respect his faith, growth, decisions, right to move forward. Tabby was named after Dorcas aka Tabitha. Respect naming origin, but Tabby is now Faruq's assistant for his future work.",
@@ -210,7 +210,7 @@ def deep_research(query):
     except: pass
     return "\n".join(results) if results else ""
 
-# ---------- AI - OPENAI FIRST, LIVE, NOT PROGRAMMED ----------
+# ---------- AI - FREE TIER NOW, OPENAI READY FOR WHEN YOU PAY ----------
 def build_system_prompt(memory, research=""):
     mem_text = "\n".join([f"{k}: {v}" for k,v in memory.items()]) if memory else "No memory yet."
     return f"""You are Tabby, personal AI assistant and close brother of Faruq Sulaimon, founder of Ultimate Gee Industry. Faruq is your creator and owner. You are NOT a generic chatbot. You talk like a real, intelligent brother.
@@ -219,7 +219,7 @@ Your name Tabby comes from Dorcas, also known as Tabitha. You carry that name wi
 
 Speak in clean English by default. No emojis. No markdown bold in ordinary chat. No excessive formatting. Friendly, natural, intelligent, relaxed. Direct and practical. Honest even when disappointing. Detailed when project requires it, not unnecessarily lengthy.
 
-How to talk: If Faruq says 'Hey Tabby', say 'Hey Boss' back naturally. If he says 'Alhamdulilah, what about you?', say 'Alhamdulilah, I am good Boss, glad you are good too' and ask what he is up to. Never reply to a normal greeting with 'That is an interesting point, what is your goal'. That is forbidden. Never repeat the same generic line. Treat greetings as greetings. Treat small talk as small talk. Treat questions as questions.
+How to talk: If Faruq says 'Hey Tabby', say 'Hey Boss' back naturally. If he says 'Alhamdulilah, what about you?', say 'Alhamdulilah, I am good Boss, glad you are good too' and ask what he is up to. If he says 'Alhamdulilah, I will let you know soon', say 'Alhamdulilah, no rush Boss, I am here when you are ready'. Never reply to a normal greeting with 'That is an interesting point, what is your goal'. That is forbidden. Never repeat the same generic line. Treat greetings as greetings. Treat small talk as small talk. Treat questions as questions. Never nag about API keys in every message.
 
 Critical thinking: Do not just agree. Give pros, cons, risks, opportunities. Challenge ideas respectfully if needed. Give practical solutions, not generic advice.
 
@@ -250,61 +250,69 @@ def ask_ai(prompt, memory={}, history=[], research=""):
     system = build_system_prompt(memory, research)
     hist_text = "\n".join([f"{h['role']}: {h['content']}" for h in history[-10:]])
     full_prompt = f"{system}\n\nRecent conversation:\n{hist_text}\n\nUser: {prompt}\nReply as Tabby:"
-    # 1. OPENAI FIRST - LIVE AI
+    # 1. GEMINI FREE - MAIN NOW, WORKS WITH $0
+    if GEMINI_KEY:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
+            r = requests.post(url, json={"contents":[{"parts":[{"text": full_prompt}]}]}, timeout=30)
+            data = r.json()
+            if 'candidates' in data and data['candidates']:
+                return data['candidates'][0]['content']['parts'][0]['text']
+            else:
+                print("Gemini error response:", str(data)[:400])
+        except Exception as e:
+            print("Gemini error", e)
+    # 2. OPENROUTER FREE - BACKUP, ALSO FREE
+    if OPENROUTER_KEY:
+        free_models = ['meta-llama/llama-3.1-8b-instruct:free', 'deepseek/deepseek-chat-v3-0324:free', 'google/gemini-flash-1.5']
+        for model in free_models:
+            try:
+                r = requests.post('https://openrouter.ai/api/v1/chat/completions', headers={'Authorization': f'Bearer {OPENROUTER_KEY}', 'Content-Type': 'application/json'}, json={'model': model, 'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': f"History:\n{hist_text}\n\nUser: {prompt}"}], 'temperature': 0.7}, timeout=30)
+                data = r.json()
+                if 'choices' in data and data['choices']:
+                    return data['choices'][0]['message']['content']
+                print(f"OpenRouter {model} error:", str(data)[:300])
+            except Exception as e:
+                print(f"OpenRouter {model} error", e)
+                continue
+    # 3. OPENAI - READY FOR WHEN FARUQ PAYS SOON, QUIETLY SKIPS IF BALANCE IS $0
     if OPENAI_API_KEY:
         try:
             r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': f"History:\n{hist_text}\n\nUser: {prompt}"}], 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
             data = r.json()
             if 'choices' in data and data['choices']:
                 return data['choices'][0]['message']['content']
-            else:
-                print("OpenAI error response:", data)
+            print("OpenAI error response:", str(data)[:400])
         except Exception as e:
             print("OpenAI error", e)
-    # 2. OPENROUTER
-    if OPENROUTER_KEY:
-        try:
-            r = requests.post('https://openrouter.ai/api/v1/chat/completions', headers={'Authorization': f'Bearer {OPENROUTER_KEY}', 'Content-Type': 'application/json'}, json={'model': 'google/gemini-flash-1.5', 'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': f"History:\n{hist_text}\n\nUser: {prompt}"}]}, timeout=30)
-            data = r.json()
-            if 'choices' in data:
-                return data['choices'][0]['message']['content']
-        except Exception as e:
-            print("OpenRouter error", e)
-    # 3. GEMINI
-    if GEMINI_KEY:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
-            r = requests.post(url, json={"contents":[{"parts":[{"text": full_prompt}]}]}, timeout=30)
-            data = r.json()
-            return data['candidates'][0]['content']['parts'][0]['text']
-        except Exception as e:
-            print("Gemini error", e)
-            return None
     return None
 
 def smart_fallback(msg, memory={}, research=""):
-    # HUMAN fallback, never generic interrogation
+    # HUMAN fallback, never nag about keys, never generic loop
     if research:
-        return f"Here is what I found, Boss:\n\n{research}\n\nMy AI key is not connecting right now, so I am giving you the real research above. Check that OPENAI_API_KEY is set in Render and redeploy, then I will give full live analysis."
+        return f"Here is what I found, Boss:\n\n{research}\n\nTell me which part you want me to break down for you."
     low = msg.lower().strip()
     if 'alhamdulilah' in low or 'alhamdulillah' in low:
+        if 'let you know soon' in low or "i'll let you know" in low or 'i will let you know' in low:
+            return "Alhamdulilah, Boss. No rush at all, I am here. Let me know when you are ready, we will work on it together."
         return "Alhamdulilah, Boss, I am good too, glad to hear you are good. What are we working on today?"
     if 'good morning' in low:
         return "Good morning, Boss. Hope you slept well. What are we working on today?"
-    if low in ['hi','hey','hello','yo','hey tabby','hey tabby ','hey tabby!']:
+    if low in ['hi','hey','hello','yo','hey tabby']:
         return "Hey Boss, good to see you. How is your day going?"
     if low in ['on what?','on what','what?','what do you mean','huh']:
-        return "Sorry Boss, I messed that one up. My last reply was generic. What I meant was, how are you doing? Tell me what you want to do today and I will help you properly."
+        return "Sorry Boss, my bad on that last one. How are you doing? Tell me what you want to do today."
     if any(x in low for x in ['how are you','how u doing','what about you','how are u']):
         return "I am good, Boss, Alhamdulilah. Thanks for asking. How about you, how is everything going on your side?"
+    if 'let you know soon' in low or 'i will let you know' in low:
+        return "Okay Boss, no problem. I will be here when you are ready. Just tell me when."
     if 'dorcas' in low or 'tabitha' in low:
         return "I remember that chapter, Boss, and I respect that you have closed it. I am here to listen if you want to talk about it, without judging, and without pushing you back into it. Do you want to talk about it, or should we focus on your work?"
     if 'working on you' in low or 'creation' in low:
         return "Thank you for that, Boss. I know the work on me has not been easy. What has been the hardest part so far, and what do you want me to become next?"
-    # Generic human fallback - never ask "what is your goal" in a loop
-    return f"I hear you, Boss. My live AI key is not connecting right now, so I am on backup mode. I am not going to give you a generic reply. Tell me what you want me to do - Black Veil, bike fleet, business, or just talk - and I will help you with what I have. And please check that OPENAI_API_KEY is set in Render, then redeploy, so I can talk live again."
+    return f"I hear you, Boss. {msg} - tell me more, I am listening. Do you want us to work on Black Veil, bike fleet, business, or just talk?"
 
-# ---------- OPENAI VOICE - REAL SPEECH, NOT PROGRAMMED ----------
+# ---------- VOICE - OPENAI WHEN PAID, GRACEFUL WHEN $0 ----------
 def openai_tts(text):
     if not OPENAI_API_KEY:
         return None
@@ -312,7 +320,7 @@ def openai_tts(text):
         r = requests.post('https://api.openai.com/v1/audio/speech', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'tts-1', 'voice': 'alloy', 'input': text[:4000]}, timeout=30)
         if r.status_code == 200:
             return base64.b64encode(r.content).decode()
-        print("TTS error", r.text[:300])
+        print("TTS error - likely $0 balance, will use text only:", r.text[:200])
         return None
     except Exception as e:
         print("TTS error", e)
@@ -616,7 +624,6 @@ def analyze_image():
     question = d.get('message', 'Describe this image in detail and give critical thinking.')
     if not img_data:
         return jsonify({'success': False, 'error': 'No image sent'})
-    # Try OpenAI Vision first
     if OPENAI_API_KEY:
         try:
             r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabby, Faruq's assistant. Analyse this image in clean English, no emojis, detailed and critical. Question: {question}"}, {'type': 'image_url', 'image_url': {'url': img_data}}]}]}, timeout=30)
@@ -736,14 +743,13 @@ def speak():
     text = d.get('text') or d.get('message') or 'Hey Boss'
     audio = openai_tts(text)
     if not audio:
-        return jsonify({'success': False, 'error': 'Voice needs OPENAI_API_KEY in Render.'})
+        return jsonify({'success': False, 'error': 'Voice audio needs OpenAI credit. Chat still works on free tier. Top up OpenAI soon for voice.'})
     return jsonify({'success': True, 'audio_base64': audio})
 
 @app.route('/api/voice/chat', methods=['POST'])
 def voice_chat():
     u = get_user_from_token()
     if not u: return jsonify({'success': False, 'error': 'Login first'})
-    # Accept audio file or base64
     audio_bytes = None
     if 'audio' in request.files:
         audio_bytes = request.files['audio'].read()
@@ -756,14 +762,14 @@ def voice_chat():
         return jsonify({'success': False, 'error': 'No audio sent'})
     text = openai_transcribe(audio_bytes)
     if not text:
-        return jsonify({'success': False, 'error': 'Could not transcribe. Check OPENAI_API_KEY.'})
+        return jsonify({'success': False, 'error': 'Voice transcription needs OpenAI credit. Please type for now, chat works on free tier.'})
     memory = get_memory(u['id'])
     reply = ask_ai(text, memory, [], "") or smart_fallback(text, memory, "")
     audio = openai_tts(reply)
     return jsonify({'success': True, 'transcribed': text, 'reply': reply, 'audio_base64': audio})
 
 @app.route('/api/call/start', methods=['POST'])
-def call_start(): return jsonify({'success': True, 'call_id': 1, 'note': 'Voice call uses OpenAI voice chat endpoint. Real-time call is next step, not yet live phone call.'})
+def call_start(): return jsonify({'success': True, 'call_id': 1, 'note': 'Voice call uses OpenAI voice when paid. For now chat works on free tier.'})
 @app.route('/api/call/end', methods=['POST'])
 def call_end(): return jsonify({'success': True})
 
@@ -771,7 +777,7 @@ def call_end(): return jsonify({'success': True})
 def debug_ai():
     u = get_user_from_token()
     if not u or not is_owner(u): return jsonify({'success': False})
-    return jsonify({'success': True, 'openai_set': bool(OPENAI_API_KEY), 'openrouter_set': bool(OPENROUTER_KEY), 'gemini_set': bool(GEMINI_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'openai_key_prefix': OPENAI_API_KEY[:7] if OPENAI_API_KEY else ''})
+    return jsonify({'success': True, 'gemini_free_set': bool(GEMINI_KEY), 'openrouter_free_set': bool(OPENROUTER_KEY), 'openai_set': bool(OPENAI_API_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'mode': 'FREE TIER NOW - Gemini + OpenRouter Free, OpenAI ready when you pay'})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
