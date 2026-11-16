@@ -1,234 +1,502 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Tabby AI - Ultimate Gee Industry</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#070b16">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tabby">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+
 <style>
-*{box-sizing:border-box} body{margin:0;background:#04070f;color:#e6edff;font:15px system-ui,sans-serif;padding-bottom:70px}
-.layout{display:flex;min-height:100vh}
-.sidebar{width:260px;background:#070b16;border-right:1px solid #1e2d4d;padding:18px;position:fixed;top:0;bottom:0;left:0;overflow:auto;z-index:50;transition:transform .3s}
-.logo{text-align:center;padding:10px 0 16px;border-bottom:1px solid #1e2d4d;margin-bottom:16px}
-.logo .t{width:58px;height:58px;background:#2b6cff;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;margin:0 auto;box-shadow:0 0 24px #2b6cff88}
-.logo h1{margin:10px 0 2px;letter-spacing:3px;font-size:22px}
-.logo p{margin:0;color:#8ea0c3;font-size:10px;letter-spacing:2px}
-.nav button{width:100%;text-align:left;padding:12px 14px;margin:4px 0;border:none;border-radius:10px;background:transparent;color:#cbd5e1;cursor:pointer;font-size:14px}
-.nav button.active,.nav button:hover{background:#1a2a4d;color:#fff}
-.nav small{color:#64748b;font-size:10px;letter-spacing:1px;padding:10px 14px;display:block}
-.newchat-btn{width:100%;text-align:left;padding:12px 14px;margin:4px 0 10px;border:none;border-radius:12px;background:#2b6cff;color:#fff;cursor:pointer;font-size:14px;font-weight:700}
-.newchat-btn:hover{background:#1d4ed8}
-.chatlist{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
-.chatlist button{width:100%;text-align:left;padding:10px 12px;border:none;border-radius:10px;background:#0f1a30;color:#cbd5e1;cursor:pointer;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;justify-content:space-between;align-items:center;gap:6px}
-.chatlist button:hover{background:#1a2a4d;color:#fff}
-.chatlist button.active{background:#1a2a4d;color:#fff;border:1px solid #2b6cff}
-.chatlist .del{flex-shrink:0;background:transparent;border:none;color:#64748b;cursor:pointer;font-size:13px;padding:0 2px}
-.chatlist .del:hover{color:#f87171}
-.main{margin-left:260px;flex:1;padding:20px;max-width:1100px;width:100%}
-.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.pill{background:#0f3d2a;color:#7ee2a8;padding:6px 12px;border-radius:20px;font-size:12px}
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
-.card{background:#0f1a30;border:1px solid #1e2d4d;border-radius:14px;padding:16px}
-.card small{color:#8ea0c3}.card b{font-size:22px}
-.panel{background:#0a1122;border:1px solid #1e2d4d;border-radius:16px;padding:16px;margin:14px 0}
-.msg{padding:13px 15px;border-radius:14px;margin:10px 0;white-space:pre-wrap;line-height:1.55;word-break:break-word}
-.user{background:#2b4aa5;margin-left:20px}.ai{background:#141f38;border:1px solid #1e2d4d}
-.msg img{width:100%;max-width:620px;border-radius:12px;margin-top:10px;display:block}
-.msg .speakBtn{background:#1a2a4d;color:#fff;border:none;padding:7px 12px;border-radius:20px;cursor:pointer;margin-top:10px;font-size:12px}
-.msg .speakBtn.playing{background:#2b6cff}
-input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #34435f;background:#0b1427;color:#fff;margin:6px 0;font-size:16px}
-button.primary{background:#2b6cff;color:#fff;border:none;padding:12px 18px;border-radius:20px;cursor:pointer}
-button.tool{background:#1a2a4d;color:#fff;border:none;padding:10px 14px;border-radius:20px;cursor:pointer;margin:4px}
-button.tool.rec{background:#e11d48;animation:pulse 1s infinite}
-button.tool.live{background:#e11d48}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(225,29,72,.5)}100%{box-shadow:0 0 0 10px rgba(225,29,72,0)}}
-.auth{max-width:420px;margin:60px auto;background:#0f1a30;border:1px solid #26365e;border-radius:16px;padding:24px}
-.bike{border:1px solid #1e2d4d;border-radius:12px;padding:14px;margin:8px 0;background:#0f1a30}
-.bar{height:10px;background:#1e293b;border-radius:10px;overflow:hidden}.bar i{display:block;height:100%;background:#22c55e}
-.hamburger{display:none;background:#1a2a4d;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-size:18px;cursor:pointer}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40}
-.chat-input-wrap{position:sticky;bottom:70px;background:#0a1122;padding:10px;border-radius:14px;border:1px solid #1e2d4d;display:flex;gap:8px}
-.chat-input-wrap input{margin:0;flex:1}
-#callBar{display:none;padding:8px 12px;background:#1e1a2a;border:1px solid #e11d48;border-radius:10px;margin:10px 0;font-size:13px;color:#fda4af;text-align:center}
-#callBar.show{display:block}
-.bottomnav{display:none;position:fixed;bottom:0;left:0;right:0;background:#070b16;border-top:1px solid #1e2d4d;z-index:60;grid-template-columns:repeat(4,1fr);padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
-.bottomnav button{background:none;border:none;color:#8ea0c3;padding:8px 4px;font-size:11px;cursor:pointer}
-.bottomnav button.active{color:#fff}
-.bottomnav button span{font-size:20px;display:block}
-@media(max-width:850px){
-  .sidebar{transform:translateX(-100%)}
-  .sidebar.open{transform:translateX(0)}
-  .overlay.show{display:block}
-  .main{margin-left:0;padding:12px;padding-bottom:20px}
-  .cards{grid-template-columns:1fr 1fr}
-  .hamburger{display:block}
-  .bottomnav{display:grid}
-  .user{margin-left:10px}
-  .top h2{font-size:18px}
-  .pill{font-size:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#04070f;--panel:#0a0f1e;--card:#111827;--line:#1f2937;--blue:#2563eb;--blue2:#3b82f6;--text:#f9fafb;--muted:#9ca3af;--green:#22c55e;--red:#ef4444}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;height:100vh;height:100dvh;overflow:hidden}
+a{color:var(--blue2)}
+button{cursor:pointer;border:none;font-family:inherit}
+input,textarea{font-family:inherit;outline:none}
+
+/* LAYOUT */
+.app{display:flex;height:100vh;height:100dvh}
+.sidebar{width:280px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.topbar{height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 14px}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;flex-shrink:0}
+.logo-text b{font-size:16px}
+.logo-text span{font-size:11px;color:var(--muted);display:block}
+.spacer{flex:1}
+.icon-btn{width:38px;height:38px;border-radius:999px;background:#1f2937;color:white;font-size:16px;display:flex;align-items:center;justify-content:center}
+.icon-btn.live{background:#dc2626;animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}100%{box-shadow:0 0 0 12px rgba(220,38,38,0)}}
+
+/* SIDEBAR */
+.side-head{padding:14px}
+.new-chat{width:100%;padding:12px;background:var(--blue);color:white;border-radius:12px;font-weight:700;font-size:14px}
+.new-chat:active{opacity:.85}
+.search{margin:12px 0 0;width:100%;padding:10px 12px;background:#111827;border:1px solid var(--line);border-radius:10px;color:white;font-size:13px}
+.conv-list{flex:1;overflow-y:auto;padding:0 10px 10px}
+.conv{padding:11px 10px;border-radius:10px;cursor:pointer;display:flex;gap:8px;align-items:flex-start}
+.conv:hover,.conv.active{background:#1f2937}
+.conv b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.conv span{font-size:11px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.conv .del{margin-left:auto;color:#6b7280;font-size:16px;line-height:1;padding:2px 4px;background:transparent}
+.side-foot{border-top:1px solid var(--line);padding:12px}
+.side-foot b{font-size:13px}
+.side-foot p{font-size:11px;color:var(--muted);margin-top:2px}
+.logout{margin-top:10px;width:100%;padding:9px;background:#1f2937;color:white;border-radius:10px;font-size:13px}
+
+/* DASHBOARD */
+.dash{display:none;padding:12px;overflow-y:auto}
+.dash.show{display:block}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.stat b{font-size:20px;display:block}
+.stat span{font-size:11px;color:var(--muted)}
+.bike-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
+.bike-card h3{font-size:14px}
+.bike-card p{font-size:12px;color:var(--muted);margin-top:4px}
+.bike-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.bike-btns button{padding:9px 12px;border-radius:999px;background:#1f2937;color:white;font-size:12px;font-weight:600}
+.bike-btns button.primary{background:var(--blue)}
+
+/* CHAT */
+.chat{flex:1;overflow-y:auto;padding:16px 14px 10px}
+.empty{text-align:center;margin-top:60px;padding:0 20px}
+.empty .big{width:72px;height:72px;border-radius:20px;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:900;margin:0 auto}
+.empty h2{margin-top:14px;font-size:20px}
+.empty p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+.chips button{padding:8px 12px;border-radius:999px;background:#1f2937;color:#e5e7eb;font-size:12px}
+.msg{max-width:85%;padding:11px 13px;border-radius:16px;margin-bottom:10px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg.user{margin-left:auto;background:var(--blue);border-bottom-right-radius:4px}
+.msg.ai{margin-right:auto;background:#111827;border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg img{max-width:100%;border-radius:12px;margin-top:8px;display:block}
+.msg .time{font-size:10px;color:var(--muted);margin-top:6px}
+.typing{display:none;padding:10px 12px;background:#111827;border-radius:14px;width:fit-content;margin-bottom:10px;font-size:13px;color:var(--muted)}
+.typing.show{display:block}
+.call-banner{display:none;background:#7f1d1d;border:1px solid #ef4444;padding:10px 12px;margin:10px 14px 0;border-radius:12px;font-size:13px;align-items:center;gap:10px}
+.call-banner.show{display:flex}
+.call-banner button{margin-left:auto;padding:7px 12px;background:white;color:#7f1d1d;border-radius:999px;font-weight:700;font-size:12px}
+
+/* COMPOSER */
+.composer{border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--panel)}
+.preview{display:none;margin-bottom:8px;position:relative;width:fit-content}
+.preview.show{display:block}
+.preview img{width:110px;height:110px;object-fit:cover;border-radius:12px}
+.preview button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:999px;background:#ef4444;color:white;font-size:13px}
+.row{display:flex;gap:8px;align-items:flex-end}
+.attach{width:44px;height:44px;border-radius:999px;background:#1f2937;color:white;font-size:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.attach input{display:none}
+.input{flex:1;min-height:44px;max-height:120px;padding:12px 14px;background:#111827;border:1px solid var(--line);border-radius:22px;color:white;font-size:14px;resize:none}
+.mic{width:44px;height:44px;border-radius:999px;background:#1f2937;color:white;font-size:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.mic.rec{background:#dc2626;animation:pulse 1s infinite}
+.send{width:44px;height:44px;border-radius:999px;background:var(--blue);color:white;font-size:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.hint{font-size:11px;color:var(--muted);text-align:center;margin-top:6px}
+
+/* AUTH */
+.auth{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.auth.hide{display:none}
+.auth-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px}
+.auth-card h1{font-size:22px;text-align:center}
+.auth-card p{font-size:13px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.5}
+.auth-card input{width:100%;padding:12px 13px;background:#111827;border:1px solid var(--line);border-radius:12px;color:white;font-size:14px;margin-top:10px}
+.auth-card button{width:100%;padding:12px;background:var(--blue);color:white;border-radius:12px;font-weight:700;margin-top:12px;font-size:14px}
+.auth-card .ghost{background:#1f2937}
+.auth-toggle{text-align:center;font-size:12px;color:var(--muted);margin-top:10px;cursor:pointer}
+.auth-toggle b{color:white}
+.err{font-size:12px;color:#fca5a5;text-align:center;margin-top:8px;min-height:16px}
+
+/* MOBILE */
+.menu-btn{display:none}
+@media(max-width:820px){
+  .sidebar{position:fixed;inset:0 auto 0 0;z-index:40;transform:translateX(-100%);transition:.25s;box-shadow:20px 0 60px rgba(0,0,0,.5)}
+  .sidebar.open{transform:none}
+  .menu-btn{display:flex}
+  .dash-grid{grid-template-columns:1fr 1fr}
+  .msg{max-width:92%}
 }
-@media(max-width:480px){ .cards{grid-template-columns:1fr} .msg{padding:11px} }
-</style></head>
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30;display:none}
+.backdrop.show{display:block}
+</style>
+</head>
 <body>
-<div id="auth" class="auth"><div class="logo"><div class="t">T</div><h1>TABBY</h1><p>AI & AUTOMOTIVE INTELLIGENCE</p></div>
-<input id="regName" placeholder="Your Name - for Register only" style="display:none">
-<input id="email" placeholder="Email"><input id="pass" type="password" placeholder="Password">
-<button class="primary" id="signInBtn" style="width:100%" onclick="login()">Sign In</button>
-<button class="primary" id="signUpBtn" style="width:100%;display:none;background:#00c853;margin-top:8px" onclick="doSignup()">Create Owner Account</button>
-<p id="st" style="font-size:12px;color:#fca5a5"></p>
-<p style="font-size:13px;text-align:center;margin:10px 0 0"><a href="#" id="toggleLink" onclick="toggleAuth(event)" style="color:#4da3ff;text-decoration:none">No account yet? Register as Owner</a></p>
-<p style="font-size:11px;color:#8ea0c3;text-align:center">Customer accounts are created by Owner only.<br>Ultimate Gee Industry</p></div>
 
-<div id="app" style="display:none"><div class="layout">
-<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-<div class="sidebar" id="sidebar"><div class="logo"><div class="t">T</div><h1>TABBY</h1><p>AI & AUTOMOTIVE INTELLIGENCE</p><p id="who" style="color:#7ee2a8;margin-top:8px"></p></div>
-<div class="nav"><small>MAIN MENU</small>
-<button id="btnDash" onclick="show('dash')" class="active">🏠 Main Dashboard</button>
-<button id="btnAI" onclick="show('ai')">✦ Tabby AI</button>
-<button id="btnMyBike" onclick="show('mybike')">🏍️ My Bike</button>
-<button id="btnCust" onclick="show('cust')">👥 Customer Bikes</button>
-<small>CHATS</small>
-<button class="newchat-btn" onclick="startNewChat()">➕ New Chat</button>
-<div id="chatList" class="chatlist"></div>
-<small>ACCOUNT</small>
-<button onclick="logout()">🚪 Logout</button></div></div>
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="side-head">
+      <button class="new-chat" onclick="newChat()">＋ New Chat</button>
+      <input class="search" id="convSearch" placeholder="Search chats..." oninput="filterConvs()">
+    </div>
+    <div class="conv-list" id="convList"></div>
+    <div class="side-foot">
+      <b id="userName">Boss</b>
+      <p id="userEmail">Tabby • Ultimate Gee Industry</p>
+      <button class="logout" onclick="logout()">Log out</button>
+    </div>
+  </div>
+  <div class="backdrop" id="backdrop" onclick="toggleSidebar(false)"></div>
 
-<div class="main">
-<div class="top"><button class="hamburger" onclick="toggleSidebar()">☰</button><h2 id="title">Main Dashboard</h2><span class="pill">● ONLINE • LIVE + AUTO-LEARN</span></div>
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <button class="icon-btn menu-btn" onclick="toggleSidebar(true)">☰</button>
+      <div class="logo">T</div>
+      <div class="logo-text"><b>Tabby</b><span>ONLINE • LIVE + AUTO-LEARN</span></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" title="Dashboard" onclick="toggleDash()">📊</button>
+      <button class="icon-btn" id="callBtn" title="Live Call" onclick="toggleCall()">📞</button>
+      <button class="icon-btn" title="Speak last reply" onclick="speakLast()">🔊</button>
+    </div>
 
-<div id="view-dash">
-<div class="cards"><div class="card"><small>TOTAL BIKES</small><br><b id="cBikes">0</b></div><div class="card"><small>CUSTOMERS</small><br><b id="cCust">0</b></div><div class="card"><small>YOUR ROLE</small><br><b id="cRole">-</b></div><div class="card"><small>SYSTEM</small><br><b style="color:#7ee2a8">LIVE</b></div></div>
-<div class="panel"><h3>All Bikes - GPS • BMS • Anti-Theft</h3><div id="dashBikes"></div></div>
-<div class="panel" id="dashCustWrap"><h3>Customers + Installments</h3><div id="dashCust"></div></div>
-<div class="panel" id="createWrap"><h3>Create Customer (Owner Only)</h3>
-<input id="cuName" placeholder="Customer Full Name"><input id="cuEmail" placeholder="Customer Email"><input id="cuPass" placeholder="Temp Password - e.g Tabby1234"><input id="cuBike" placeholder="Bike Name - e.g Tabby EV 1"><input id="cuTotal" type="number" placeholder="Total Amount NGN"><input id="cuDeposit" type="number" placeholder="Deposit NGN"><input id="cuInst" type="number" placeholder="Installment Amount NGN"><input id="cuCount" type="number" placeholder="Installments Total e.g 12"><input id="cuDue" type="date">
-<button class="primary" onclick="createCust()">Create Customer + Bike</button><p id="cuMsg" style="font-size:12px"></p></div>
+    <div class="call-banner" id="callBanner">
+      <span>🔴 Live Call — Tabby dey listen, Boss...</span>
+      <button onclick="toggleCall()">End Call</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="dash" id="dash">
+      <h3 style="font-size:15px">Dashboard</h3>
+      <div class="dash-grid">
+        <div class="stat"><b id="statBikes">—</b><span>Total Bikes</span></div>
+        <div class="stat"><b id="statBattery">—</b><span>Battery</span></div>
+        <div class="stat"><b id="statRange">—</b><span>Range</span></div>
+        <div class="stat"><b id="statLock">—</b><span>Lock Status</span></div>
+      </div>
+      <div id="bikeList"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="quickAsk('Naira to Dollar rate today?')" style="padding:9px 12px;border-radius:999px;background:#1f2937;color:white;font-size:12px">💱 Naira Rate</button>
+        <button onclick="quickAsk('World global news today?')" style="padding:9px 12px;border-radius:999px;background:#1f2937;color:white;font-size:12px">🌍 World News</button>
+        <button onclick="quickAsk('Nigeria news today?')" style="padding:9px 12px;border-radius:999px;background:#1f2937;color:white;font-size:12px">🇳🇬 Nigeria News</button>
+        <button onclick="quickAsk('Lagos weather today?')" style="padding:9px 12px;border-radius:999px;background:#1f2937;color:white;font-size:12px">🌦 Lagos Weather</button>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="chat" id="chat">
+      <div class="empty" id="emptyState">
+        <div class="big">T</div>
+        <h2>Hey Boss, Tabby dey here.</h2>
+        <p>Your friendly AI • UK English • Auto Live Info<br>Ask me about bikes, news, rates, or brainstorm ideas.</p>
+        <div class="chips">
+          <button onclick="quickAsk('Naira to Dollar rate today?')">💱 Naira Rate</button>
+          <button onclick="quickAsk('World global news today?')">🌍 World News</button>
+          <button onclick="quickAsk('Check my bike status')">🏍 Bike Status</button>
+          <button onclick="quickAsk('Give me business ideas for Ultimate Gee Industry')">💡 Business Ideas</button>
+        </div>
+      </div>
+      <div class="typing" id="typing">Tabby dey type...</div>
+    </div>
+
+    <!-- COMPOSER -->
+    <div class="composer">
+      <div class="preview" id="preview"><img id="previewImg"><button onclick="clearImage()">×</button></div>
+      <div class="row">
+        <label class="attach">📎<input type="file" id="fileInput" accept="image/*" onchange="onImage(event)"></label>
+        <textarea class="input" id="msgInput" rows="1" placeholder="Message Tabby..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button class="mic" id="micBtn" onclick="toggleVoice()">🎙️</button>
+        <button class="send" onclick="sendMsg()">➤</button>
+      </div>
+      <div class="hint">Tabby can make mistakes. Check important info. • PWA ready — Add to Home Screen for app</div>
+    </div>
+  </div>
 </div>
 
-<div id="view-ai" style="display:none">
-<div class="panel"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="background:#2b6cff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900">T</span><div><b>Tabby</b><br><small style="color:#8ea0c3">Your friendly AI • UK English • Auto Live Info</small></div>
-<button class="tool" id="speakLastBtn" onclick="speakLast()">🔊 Speak</button><button class="tool" id="micBtn" onclick="toggleVoiceNote()">🎙️ Voice</button><button class="tool" id="callBtn" onclick="toggleLiveCall()">📞 Live Call</button></div>
-<div id="callBar"><span id="callStatus">Live call - Tabby dey listen...</span></div>
-<div id="msgs" style="max-height:55vh;overflow:auto;margin-top:12px"></div>
-<div class="chat-input-wrap"><input id="inp" placeholder="Message Tabby..." onkeydown="if(event.key==='Enter')send()"><button class="primary" onclick="send()">Send ➤</button></div>
-<div><input type="file" id="imgFile" accept="image/*" style="display:none" onchange="sendImage(this)"><button class="tool" onclick="document.getElementById('imgFile').click()">🖼️ Analyze Image</button><button class="tool" onclick="quick('Tell me latest news in Nigeria')">News Nigeria</button><button class="tool" onclick="quick('What is Naira to Dollar rate today?')">Naira Rate</button><button class="tool" onclick="quick('Check my bike')">My Bike</button><button class="tool" onclick="quick('Generate image of a villain, 2D, Hulk size, gray, Bane mask, holding Thanos sword')">Generate Villain</button></div>
-<p style="font-size:11px;color:#8ea0c3">Multiple chats - click New Chat for fresh chat. Everything saved.</p></div>
+<!-- AUTH -->
+<div class="auth" id="auth">
+  <div class="auth-card">
+    <div style="text-align:center"><div class="big" style="width:64px;height:64px;border-radius:18px;background:#2563eb;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;margin:0 auto">T</div></div>
+    <h1>Tabby AI</h1>
+    <p>Your friendly AI • Ultimate Gee Industry<br>UK English • Live Info • Bike + House</p>
+    <input id="authName" placeholder="Your name (Sign Up only)">
+    <input id="authEmail" placeholder="Email" type="email">
+    <input id="authPass" placeholder="Password" type="password">
+    <div class="err" id="authErr"></div>
+    <button onclick="doAuth('login')">Sign In</button>
+    <button class="ghost" onclick="doAuth('signup')">Create Owner Account</button>
+    <div class="auth-toggle">First time? Use <b>Create Owner Account</b> once, then Sign In.</div>
+  </div>
 </div>
 
-<div id="view-mybike" style="display:none"><div class="panel"><h3>My Bike - BMS • GPS • Predictive Maintenance</h3><div id="myBikeList"></div></div></div>
-<div id="view-cust" style="display:none"><div class="panel"><h3>Customer Bikes - Owner Only</h3><p style="color:#8ea0c3;font-size:13px">Track all bikes, GPS, battery, lock, payment status. If payment overdue &gt;7 days, bike goes to Restricted Mode.</p><div id="custBikeList"></div><button class="tool" onclick="checkOverdue()">Check Overdue + Restrict</button><button class="tool" onclick="remindPayments()">Send Reminders</button><p id="payMsg" style="font-size:12px"></p></div></div>
-
-</div></div>
-<div class="bottomnav" id="bottomnav">
-<button onclick="show('dash')" data-nav="dash" class="active"><span>🏠</span>Dashboard</button>
-<button onclick="show('ai')" data-nav="ai" id="bnAI"><span>✦</span>Tabby AI</button>
-<button onclick="show('mybike')" data-nav="mybike"><span>🏍️</span>My Bike</button>
-<button onclick="show('cust')" data-nav="cust" id="bnCust"><span>👥</span>Customers</button>
-</div>
-</div>
 <script>
-let token=localStorage.getItem('tabby_token')||'', user=null, lastReply='', currentAudio=null, mediaRecorder=null, audioChunks=[], isRecording=false, isLiveCall=false, liveCallId=null, liveCallShouldContinue=false, isRegister=false, currentConvId=localStorage.getItem('tabby_conv')||null;
-function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show');}
-function api(p,o={}){let h={}; if(token)h.Authorization='Bearer '+token; if(o.body)h['Content-Type']='application/json'; return fetch(p,{method:o.method||'GET',headers:h,body:o.body}).then(r=>r.json());}
-// --- NEW CHAT / CHAT LIST ---
-async function loadChatList(){
-  if(!token || !user || user.role!=='owner') return;
-  try{
-    let d=await api('/api/conversations');
-    let list=document.getElementById('chatList');
-    if(!list) return;
-    list.innerHTML='';
-    (d.conversations||[]).forEach(c=>{
-      let wrap=document.createElement('div');
-      wrap.style.cssText='display:flex;gap:4px;align-items:center;';
-      let b=document.createElement('button');
-      b.textContent='💬 '+(c.title||'New Chat');
-      b.title=c.title||'New Chat';
-      if(String(c.id)===String(currentConvId)) b.classList.add('active');
-      b.style.flex='1';
-      b.onclick=()=>openConversation(c.id);
-      let del=document.createElement('button');
-      del.className='del'; del.textContent='✕'; del.title='Delete chat';
-      del.onclick=async(e)=>{e.stopPropagation(); if(!confirm('Delete this chat?')) return; await api('/api/conversations/'+c.id,{method:'DELETE'}); if(String(c.id)===String(currentConvId)){ localStorage.removeItem('tabby_conv'); currentConvId=null; document.getElementById('msgs').innerHTML=''; } loadChatList();};
-      wrap.appendChild(b); wrap.appendChild(del);
-      list.appendChild(wrap);
-    });
-  }catch(e){console.log(e);}
+let token = localStorage.getItem('tabby_token') || '';
+let user = null;
+let currentConv = null;
+let convs = [];
+let selectedImage = null;
+let lastReply = '';
+let isLiveCall = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let currentAudio = null;
+
+const $ = id => document.getElementById(id);
+
+function api(path, method='GET', body=null, isForm=false){
+  let opts = {method, headers:{}};
+  if(token) opts.headers['Authorization']='Bearer '+token;
+  if(body && !isForm){ opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body); }
+  if(body && isForm) opts.body=body;
+  return fetch(path, opts).then(r=>r.json());
 }
-async function startNewChat(){
-  try{
-    let d=await api('/api/conversations',{method:'POST',body:JSON.stringify({title:'New Chat'})});
-    if(d.success){
-      currentConvId=d.conversation_id;
-      localStorage.setItem('tabby_conv', String(currentConvId));
-      document.getElementById('msgs').innerHTML='';
-      addMsg('assistant','New chat started, Boss. Wetin we go brainstorm today?');
-      loadChatList();
-      show('ai');
-    }
-  }catch(e){console.log(e);}
+function toggleSidebar(open){
+  $('sidebar').classList.toggle('open', open);
+  $('backdrop').classList.toggle('show', open);
 }
-async function openConversation(cid){
-  currentConvId=cid;
-  localStorage.setItem('tabby_conv', String(cid));
-  document.getElementById('msgs').innerHTML='';
-  try{
-    let d=await api('/api/conversations/'+cid);
-    (d.messages||[]).forEach(m=>addMsg(m.role,m.content));
-    if(!(d.messages||[]).length) addMsg('assistant','Continue this chat, Boss.');
-  }catch(e){}
-  loadChatList();
-  show('ai');
+function toggleDash(){
+  $('dash').classList.toggle('show');
+  if($('dash').classList.contains('show')) loadDashboard();
 }
-// --- REGISTER / LOGIN TOGGLE ---
-function toggleAuth(e){ if(e) e.preventDefault(); isRegister=!isRegister; document.getElementById('regName').style.display=isRegister?'block':'none'; document.getElementById('signInBtn').style.display=isRegister?'none':'block'; document.getElementById('signUpBtn').style.display=isRegister?'block':'none'; document.getElementById('toggleLink').textContent=isRegister?'Already have account? Sign In':'No account yet? Register as Owner'; document.getElementById('st').textContent=''; }
-async function doSignup(){ let name=document.getElementById('regName').value.trim()||'Faruq Sulaimon'; let e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value; if(!e||!pw){document.getElementById('st').textContent='Email + password required';return;} let d=await api('/api/signup',{method:'POST',body:JSON.stringify({name:name,email:e,password:pw})}); if(!d.success){document.getElementById('st').textContent=d.error;return;} document.getElementById('st').style.color='#7ee2a8'; document.getElementById('st').textContent=d.message||'Owner created. Now Sign In.'; toggleAuth(); document.getElementById('st').style.color='#fca5a5'; }
-async function login(){let e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value; let d=await api('/api/login',{method:'POST',body:JSON.stringify({email:e,password:pw})}); if(!d.success){document.getElementById('st').textContent=d.error;return;} token=d.token; user=d.user; localStorage.setItem('tabby_token',token); afterLogin();}
-function logout(){localStorage.removeItem('tabby_token'); localStorage.removeItem('tabby_conv'); location.reload();}
-function afterLogin(){document.getElementById('auth').style.display='none'; document.getElementById('app').style.display='block'; document.getElementById('who').textContent=user.name+' • '+user.role.toUpperCase(); document.getElementById('cRole').textContent=user.role.toUpperCase(); if(user.role!=='owner'){document.getElementById('btnAI').style.display='none'; document.getElementById('btnCust').style.display='none'; document.getElementById('bnAI').style.display='none'; document.getElementById('bnCust').style.display='none'; document.getElementById('createWrap').style.display='none'; document.getElementById('dashCustWrap').style.display='none';} loadDash(); if(user.role==='owner'){ loadChatList(); loadHistory(); } }
-function show(v){['dash','ai','mybike','cust'].forEach(x=>document.getElementById('view-'+x).style.display=(x===v?'block':'none')); document.getElementById('title').textContent=v==='dash'?'Main Dashboard':v==='ai'?'Tabby AI':v==='mybike'?'My Bike':'Customer Bikes'; document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.bottomnav button').forEach(b=>b.classList.toggle('active',b.dataset.nav===v)); if(window.innerWidth<=850) {document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show');} if(v==='mybike'||v==='cust'||v==='dash') loadDash();}
-async function loadDash(){let d=await api('/api/dashboard'); if(!d.success)return; let bikes=d.bikes||[]; document.getElementById('cBikes').textContent=bikes.length; document.getElementById('cCust').textContent=(d.customers||[]).length||bikes.length;
-document.getElementById('dashBikes').innerHTML=bikes.map(b=>bikeCard(b)).join('')||'No bikes yet. Create a customer.';
-document.getElementById('myBikeList').innerHTML=bikes.map(b=>bikeCard(b)).join('')||'No bike assigned yet.';
-document.getElementById('custBikeList').innerHTML=bikes.map(b=>bikeCard(b,true)).join('')||'No customer bikes.';
-document.getElementById('dashCust').innerHTML=(d.customers||[]).map(c=>`<div class="bike"><b>${c.name}</b> - ${c.email}<br>Bike: ${c.bike_name||'-'} | Plan: ${c.plan_status||'-'} | Paid: ${c.installments_paid||0}/${c.installments_total||0} | Next Due: ${c.next_due_date||'-'}</div>`).join('')||'No customers yet.';}
-function bikeCard(b,owner=false){let bat=b.battery_level||100, rng=b.range_km||125; return `<div class="bike"><b>${b.name}</b> ${b.customer_name?'- '+b.customer_name:''} • ${b.model||'Tabby EV'} • Lock: <b>${b.lock_status||'locked'}</b> • Mode: ${b.access_mode||'full'}<br><small>BMS: Battery ${bat}% | Health ${b.battery_health||100}% | Range ${rng}km | Cell ${b.cell_temp||32}°C | Motor ${b.motor_temp||35}°C</small><div class="bar"><i style="width:${bat}%"></i></div><div style="margin-top:8px"><button class="tool" onclick="cmd(${b.id},'unlock')">Unlock</button><button class="tool" onclick="cmd(${b.id},'lock')">Lock</button><button class="tool" onclick="cmd(${b.id},'locate')">Locate GPS</button></div></div>`;}
-async function cmd(id,c){let d=await api('/api/bike/'+id+'/command',{method:'POST',body:JSON.stringify({command:c})}); alert(d.message||d.error||'Done'); loadDash();}
-async function createCust(){let body={name:document.getElementById('cuName').value,email:document.getElementById('cuEmail').value,password:document.getElementById('cuPass').value||'Tabby1234',bike_name:document.getElementById('cuBike').value||'Tabby EV 1',total_amount:document.getElementById('cuTotal').value,deposit:document.getElementById('cuDeposit').value,installment_amount:document.getElementById('cuInst').value,installments_total:document.getElementById('cuCount').value,next_due_date:document.getElementById('cuDue').value}; let d=await api('/api/register',{method:'POST',body:JSON.stringify(body)}); document.getElementById('cuMsg').textContent=d.message||d.error||'Done'; loadDash();}
-async function checkOverdue(){let d=await api('/api/payments/overdue-check',{method:'POST'}); document.getElementById('payMsg').textContent='Overdue checked: '+(d.overdue||0)+' plans. Restricted mode applied if >7 days.'; loadDash();}
-async function remindPayments(){let d=await api('/api/payments/remind',{method:'POST'}); document.getElementById('payMsg').textContent=(d.due_soon||[]).length+' customers due soon.';}
-async function loadHistory(){
-  // If user get saved conv, open am, else load latest via /api/chat/history
-  if(currentConvId){
-    try{
-      let d=await api('/api/conversations/'+currentConvId);
-      if(d.success){ (d.messages||[]).forEach(m=>addMsg(m.role,m.content)); return; }
-    }catch(e){}
+function fmtTime(){ return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+
+async function init(){
+  if(!token){ $('auth').classList.remove('hide'); return; }
+  let me = await api('/api/me');
+  if(!me.success){ localStorage.removeItem('tabby_token'); token=''; $('auth').classList.remove('hide'); return; }
+  user = me.user;
+  $('userName').textContent = user.name || 'Boss';
+  $('userEmail').textContent = user.email + ' • ' + user.role;
+  $('auth').classList.add('hide');
+  loadConvs();
+  loadDashboard();
+}
+
+async function loadConvs(){
+  let r = await api('/api/conversations');
+  if(!r.success) return;
+  convs = r.conversations || [];
+  renderConvs();
+  if(!currentConv && convs.length>0){
+    currentConv = convs[0].id;
+    loadChat(currentConv);
   }
-  let s=await api('/api/chat/history'); (s.messages||[]).forEach(m=>addMsg(m.role,m.content));
-  if(s.conversation_id){ currentConvId=s.conversation_id; localStorage.setItem('tabby_conv', String(s.conversation_id)); }
 }
-function addMsg(role,text,img){let box=document.getElementById('msgs'); let d=document.createElement('div'); d.className='msg '+(role==='user'?'user':'ai'); let span=document.createElement('div'); span.textContent=text||''; d.appendChild(span); if(img){let im=document.createElement('img'); im.src=img; d.appendChild(im);} if(role==='assistant' && text){ let b=document.createElement('button'); b.className='speakBtn'; b.textContent='🔊 Speak'; b.onclick=()=>speakText(text,b); d.appendChild(b); } box.appendChild(d); box.scrollTop=box.scrollHeight; if(role==='assistant')lastReply=text;}
-async function send(){
-  let v=document.getElementById('inp').value.trim(); if(!v)return; document.getElementById('inp').value=''; addMsg('user',v);
-  let body={message:v};
-  if(currentConvId) body.conversation_id=parseInt(currentConvId);
-  let d=await api('/api/chat',{method:'POST',body:JSON.stringify(body)});
-  if(d.conversation_id){ currentConvId=d.conversation_id; localStorage.setItem('tabby_conv', String(d.conversation_id)); }
-  addMsg('assistant',d.reply||'Done.',d.image);
-  loadChatList();
+function renderConvs(){
+  let q = ($('convSearch').value||'').toLowerCase();
+  let list = convs.filter(c=> (c.title||'').toLowerCase().includes(q) || (c.last_msg||'').toLowerCase().includes(q));
+  $('convList').innerHTML = list.map(c=>`
+    <div class="conv ${c.id==currentConv?'active':''}" onclick="openConv(${c.id})">
+      <div><b>${escapeHtml(c.title||'New Chat')}</b><span>${escapeHtml((c.last_msg||'').slice(0,60) || 'No messages yet')}</span></div>
+      <button class="del" onclick="event.stopPropagation(); deleteConv(${c.id})">×</button>
+    </div>`).join('') || '<p style="padding:10px;color:#9ca3af;font-size:12px">No chats yet. Tap New Chat.</p>';
 }
-function quick(t){document.getElementById('inp').value=t; send();}
-async function sendImage(inp){let f=inp.files[0]; if(!f)return; let rd=new FileReader(); rd.onload=async()=>{let b64=rd.result; let prompt=document.getElementById('inp').value||'Describe this image in detail, what do you see? If it is a bike, check condition, battery, give honest feedback.'; addMsg('user',prompt+' [image]'); let body={message:prompt,image:b64}; if(currentConvId) body.conversation_id=parseInt(currentConvId); let d=await api('/api/chat',{method:'POST',body:JSON.stringify(body)}); if(d.conversation_id){ currentConvId=d.conversation_id; localStorage.setItem('tabby_conv', String(d.conversation_id)); } addMsg('assistant',d.reply); if(d.reply) speakText(d.reply); loadChatList();}; rd.readAsDataURL(f);}
-// ---------- VOICE - OpenRouter only ----------
-function stopAudio(){ if(currentAudio){ currentAudio.pause(); currentAudio=null; } document.querySelectorAll('.speakBtn.playing').forEach(b=>{b.classList.remove('playing'); b.textContent='🔊 Speak';}); }
-function playAudioDataUrl(dataUrl, onEnd){ stopAudio(); if(!dataUrl){ if(onEnd) onEnd(); return; } currentAudio=new Audio(dataUrl); currentAudio.onended=()=>{currentAudio=null; if(onEnd) onEnd();}; currentAudio.onerror=()=>{currentAudio=null; if(onEnd) onEnd();}; currentAudio.play().catch(()=>{ if(onEnd) onEnd(); }); }
-async function speakText(text, btn){ if(btn && btn.classList.contains('playing')){ stopAudio(); return; } if(btn){ btn.classList.add('playing'); btn.textContent='⏸️ Stop'; } try{ let d=await api('/api/voice/speak',{method:'POST',body:JSON.stringify({text:text})}); if(d.audio){ playAudioDataUrl(d.audio, ()=>{ if(btn){btn.classList.remove('playing'); btn.textContent='🔊 Speak';} }); } else { alert(d.error||'Voice failed - check OpenRouter credits'); if(btn){btn.classList.remove('playing'); btn.textContent='🔊 Speak';} } }catch(e){ if(btn){btn.classList.remove('playing'); btn.textContent='🔊 Speak';} } }
-function speakLast(){ if(lastReply) speakText(lastReply); }
-async function toggleVoiceNote(){ if(isRecording) stopRecording(); else startRecording(); }
-async function startRecording(){ try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); mediaRecorder=new MediaRecorder(stream,{mimeType: MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':''}); audioChunks=[]; mediaRecorder.ondataavailable=e=>{if(e.data.size>0) audioChunks.push(e.data);}; mediaRecorder.onstop=()=>{ stream.getTracks().forEach(t=>t.stop()); handleVoiceBlob(); }; mediaRecorder.start(); isRecording=true; document.getElementById('micBtn').classList.add('rec'); document.getElementById('micBtn').textContent='⏹️ Stop'; }catch(e){ alert('Allow microphone to send voice note.'); } }
-function stopRecording(){ if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop(); isRecording=false; document.getElementById('micBtn').classList.remove('rec'); document.getElementById('micBtn').textContent='🎙️ Voice'; }
-async function handleVoiceBlob(){ if(!audioChunks.length) return; const blob=new Blob(audioChunks,{type:'audio/webm'}); const fd=new FormData(); fd.append('audio',blob,'voice.webm'); addMsg('user','🎤 Voice note...'); try{ let r=await fetch('/api/voice/chat',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd}); let j=await r.json(); if(j.text) { /* transcribed */ } addMsg('assistant', j.reply||'...', j.image); if(j.audio) playAudioDataUrl(j.audio, ()=>{ if(isLiveCall) liveCallLoop(); }); else if(isLiveCall) liveCallLoop(); }catch(e){ addMsg('assistant','Voice failed, try again Boss.'); if(isLiveCall) liveCallLoop(); } }
-// ---------- LIVE CALL ----------
-async function toggleLiveCall(){ if(isLiveCall) endCall(); else startCall(); }
-async function startCall(){ try{ let d=await api('/api/call/start',{method:'POST',body:JSON.stringify({})}); liveCallId=d.call_id; isLiveCall=true; liveCallShouldContinue=true; document.getElementById('callBtn').classList.add('live'); document.getElementById('callBtn').textContent='📵 End Call'; document.getElementById('callBar').classList.add('show'); document.getElementById('callStatus').textContent='Live call - Tabby dey listen... Talk now'; addMsg('assistant','📞 Live call started - talk now, Boss, Tabby dey listen'); liveCallLoop(); }catch(e){ alert('Call failed to start'); } }
-async function endCall(){ isLiveCall=false; liveCallShouldContinue=false; if(isRecording) stopRecording(); stopAudio(); document.getElementById('callBtn').classList.remove('live'); document.getElementById('callBtn').textContent='📞 Live Call'; document.getElementById('callBar').classList.remove('show'); addMsg('assistant','📞 Call ended. See you soon, Boss.'); try{ await api('/api/call/end',{method:'POST',body:JSON.stringify({call_id:liveCallId})}); }catch(e){} }
-async function liveCallLoop(){ if(!liveCallShouldContinue) return; document.getElementById('callStatus').textContent='Listening... talk now (5 sec)'; try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const rec=new MediaRecorder(stream,{mimeType: MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':''}); let chunks=[]; rec.ondataavailable=e=>{if(e.data.size>0) chunks.push(e.data);}; rec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); if(!liveCallShouldContinue) return; if(!chunks.length){ liveCallLoop(); return; } const blob=new Blob(chunks,{type:'audio/webm'}); const fd=new FormData(); fd.append('audio',blob,'voice.webm'); document.getElementById('callStatus').textContent='Tabby dey think...'; try{ let r=await fetch('/api/voice/chat',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd}); let j=await r.json(); if(j.reply){ addMsg('user','🎤 '+(j.text||'...')); addMsg('assistant',j.reply); if(j.audio){ document.getElementById('callStatus').textContent='Tabby dey talk...'; playAudioDataUrl(j.audio, ()=>{ if(liveCallShouldContinue) liveCallLoop(); }); } else liveCallLoop(); } else liveCallLoop(); }catch(e){ if(liveCallShouldContinue) liveCallLoop(); } }; rec.start(); setTimeout(()=>{ if(rec.state!=='inactive') rec.stop(); },5000); }catch(e){ document.getElementById('callStatus').textContent='Allow mic for live call'; setTimeout(()=>{ if(liveCallShouldContinue) liveCallLoop(); },2000); } }
-if(token){api('/api/me').then(d=>{if(d.success){user=d.user; afterLogin();}});}
-</script></body></html>
+function filterConvs(){ renderConvs(); }
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function newChat(){
+  let r = await api('/api/conversations','POST',{title:'New Chat'});
+  if(r.success){
+    currentConv = r.conversation_id;
+    await loadConvs();
+    $('chat').innerHTML = '';
+    showEmpty(true);
+    toggleSidebar(false);
+  }
+}
+async function openConv(id){
+  currentConv = id;
+  renderConvs();
+  toggleSidebar(false);
+  loadChat(id);
+}
+async function deleteConv(id){
+  if(!confirm('Delete this chat?')) return;
+  await api('/api/conversations/'+id,'DELETE');
+  if(currentConv==id) currentConv=null;
+  loadConvs();
+  if(!currentConv){ $('chat').innerHTML=''; showEmpty(true); }
+}
+async function loadChat(id){
+  let r = await api('/api/conversations/'+id);
+  if(!r.success) return;
+  $('chat').innerHTML = '';
+  showEmpty(r.messages.length===0);
+  r.messages.forEach(m=> addMsg(m.role==='user'?'user':'ai', m.content));
+  scrollBottom();
+}
+function showEmpty(show){ let e=$('emptyState'); if(e) e.style.display = show?'block':'none'; }
+function scrollBottom(){ let c=$('chat'); c.scrollTop=c.scrollHeight; }
+
+function addMsg(role, text, imageUrl){
+  showEmpty(false);
+  let div = document.createElement('div');
+  div.className = 'msg ' + (role==='user'?'user':'ai');
+  div.innerHTML = escapeHtml(text) + (imageUrl?`<img src="${imageUrl}">`:'') + `<div class="time">${fmtTime()}</div>`;
+  let typing = $('typing');
+  $('chat').insertBefore(div, typing);
+  scrollBottom();
+  return div;
+}
+function quickAsk(text){ $('msgInput').value=text; sendMsg(); }
+
+function onImage(e){
+  let f = e.target.files[0]; if(!f) return;
+  let reader = new FileReader();
+  reader.onload = ()=>{ selectedImage = reader.result; $('previewImg').src = selectedImage; $('preview').classList.add('show'); };
+  reader.readAsDataURL(f);
+}
+function clearImage(){ selectedImage=null; $('preview').classList.remove('show'); $('fileInput').value=''; }
+
+async function sendMsg(){
+  let text = $('msgInput').value.trim();
+  if(!text && !selectedImage) return;
+  let imgToSend = selectedImage;
+  if(text) addMsg('user', text, imgToSend);
+  else if(imgToSend) addMsg('user', 'Analyze this image', imgToSend);
+  $('msgInput').value=''; $('msgInput').style.height='auto';
+  let imgPreview = imgToSend; clearImage();
+  $('typing').classList.add('show'); scrollBottom();
+  try{
+    let body = {message:text, conversation_id: currentConv, voice:true};
+    if(imgToSend) body.image = imgToSend;
+    let r = await api('/api/chat','POST', body);
+    $('typing').classList.remove('show');
+    let reply = r.reply || 'Sorry Boss, small issue.';
+    lastReply = reply;
+    addMsg('ai', reply, r.image || r.image_url);
+    if(r.image || r.image_url){ /* image already shown */ }
+    if(r.conversation_id && !currentConv){ currentConv = r.conversation_id; loadConvs(); }
+    else if(r.conversation_id) currentConv = r.conversation_id;
+    if(r.audio) playAudio(r.audio);
+    // Refresh conv list silently
+    loadConvs();
+  }catch(e){
+    $('typing').classList.remove('show');
+    addMsg('ai', 'Network wahala, Boss. Try again.');
+  }
+}
+
+function playAudio(b64){
+  try{
+    if(currentAudio) currentAudio.pause();
+    currentAudio = new Audio(b64);
+    currentAudio.play().catch(()=>{});
+  }catch(e){}
+}
+async function speakLast(){
+  if(!lastReply) return;
+  let r = await api('/api/voice/speak','POST',{text:lastReply});
+  if(r.success && r.audio) playAudio(r.audio);
+}
+
+// VOICE - Hold to talk style: tap to start/stop
+async function toggleVoice(){
+  if(mediaRecorder && mediaRecorder.state==='recording'){
+    mediaRecorder.stop();
+    $('micBtn').classList.remove('rec');
+    return;
+  }
+  try{
+    let stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
+    mediaRecorder.onstop = async ()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      let blob = new Blob(audioChunks, {type:'audio/webm'});
+      let reader = new FileReader();
+      reader.onload = async ()=>{
+        addMsg('user', '🎙️ Voice message...');
+        $('typing').classList.add('show');
+        let fd = new FormData();
+        fd.append('audio', blob, 'voice.webm');
+        // Use fetch with token manually for FormData
+        let res = await fetch('/api/voice/chat', {method:'POST', headers:{'Authorization':'Bearer '+token}, body: fd});
+        let r = await res.json();
+        $('typing').classList.remove('show');
+        if(r.reply){ lastReply=r.reply; addMsg('ai', r.reply); if(r.audio) playAudio(r.audio); if(r.conversation_id) currentConv=r.conversation_id; loadConvs(); }
+        else addMsg('ai', 'I no hear you well, Boss, talk am again.');
+      };
+      reader.readAsDataURL(blob);
+    };
+    mediaRecorder.start();
+    $('micBtn').classList.add('rec');
+  }catch(e){ alert('Mic permission needed, Boss. Allow mic for Tabby.'); }
+}
+
+// LIVE CALL
+async function toggleCall(){
+  if(isLiveCall){
+    await api('/api/call/end','POST',{call_id: window._callId});
+    isLiveCall=false; $('callBtn').classList.remove('live'); $('callBanner').classList.remove('show');
+    if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop();
+    return;
+  }
+  let r = await api('/api/call/start','POST',{});
+  if(!r.success){ alert('Call failed, Boss.'); return; }
+  window._callId = r.call_id;
+  isLiveCall=true; $('callBtn').classList.add('live'); $('callBanner').classList.add('show');
+  addMsg('ai', 'Live Call started, Boss. Tap mic and talk, I dey listen.');
+  // Auto start mic for call
+  toggleVoice();
+  // When voice ends in call mode, auto restart listening after reply - handled by user tapping mic again for now
+}
+
+// DASHBOARD
+async function loadDashboard(){
+  let r = await api('/api/dashboard');
+  if(!r.success) return;
+  let bikes = r.bikes || [];
+  $('statBikes').textContent = bikes.length || r.total_bikes || 0;
+  if(bikes.length>0){
+    let b = bikes[0];
+    $('statBattery').textContent = (b.battery_level ?? 100) + '%';
+    $('statRange').textContent = (b.range_km ?? 125) + ' km';
+    $('statLock').textContent = b.lock_status || 'locked';
+    $('bikeList').innerHTML = bikes.map(bk=>`
+      <div class="bike-card">
+        <h3>🏍 ${escapeHtml(bk.name||'Tabby EV')} — ${escapeHtml(bk.model||'Tabby EV')}</h3>
+        <p>Battery ${bk.battery_level ?? 100}% • Health ${bk.battery_health ?? 100}% • Range ${bk.range_km ?? 125}km • Lock: ${bk.lock_status||'locked'} • ${escapeHtml(bk.customer_name||'')}</p>
+        <div class="bike-btns">
+          <button class="primary" onclick="bikeCmd(${bk.id},'unlock')">Unlock</button>
+          <button onclick="bikeCmd(${bk.id},'lock')">Lock</button>
+          <button onclick="bikeCmd(${bk.id},'locate')">Locate</button>
+          <button onclick="quickAsk('Check my bike status')">Status</button>
+        </div>
+      </div>`).join('');
+  } else {
+    $('bikeList').innerHTML = '<p style="color:#9ca3af;font-size:12px;margin-top:10px">No bike yet. Owner go assign bike for you.</p>';
+  }
+}
+async function bikeCmd(id, cmd){
+  let r = await api('/api/bike/'+id+'/command','POST',{command:cmd});
+  alert(r.message || r.error || 'Done');
+  loadDashboard();
+}
+
+// AUTH
+async function doAuth(mode){
+  let name = $('authName').value.trim();
+  let email = $('authEmail').value.trim();
+  let pass = $('authPass').value.trim();
+  if(!email || !pass){ $('authErr').textContent='Email + password required'; return; }
+  $('authErr').textContent='';
+  let path = mode==='signup' ? '/api/signup' : '/api/login';
+  let body = {email, password:pass};
+  if(mode==='signup') body.name = name || 'Faruq Sulaimon';
+  let res = await fetch(path,{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  let r = await res.json();
+  if(!r.success){ $('authErr').textContent = r.error || 'Failed'; return; }
+  if(mode==='signup'){ $('authErr').textContent='Owner created! Now tap Sign In.'; $('authErr').style.color='#86efac'; return; }
+  token = r.token; localStorage.setItem('tabby_token', token);
+  init();
+}
+function logout(){ localStorage.removeItem('tabby_token'); location.reload(); }
+
+// Auto resize textarea
+$('msgInput').addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'; });
+
+// PWA Service Worker
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('/static/sw.js').catch(()=>{}); }
+
+init();
+</script>
+</body>
+</html>
