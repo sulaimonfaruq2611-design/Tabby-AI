@@ -22,13 +22,12 @@ OPENROUTER_TTS_VOICE = os.getenv("OPENROUTER_TTS_VOICE", "onyx").strip()
 CLOUDFLARE_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
 CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
 
-# --- SQLITE - NO SUPABASE ---
 DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tabby.db")
 _lock = threading.Lock()
 
 TABLES_SQL = [
 """CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT UNIQUE, password_hash TEXT, role TEXT DEFAULT 'customer', created_at TEXT DEFAULT (datetime('now')))""",
-"""CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, "userId" INTEGER, role TEXT, content TEXT, conversationid INTEGER DEFAULT 1, "conversationId" INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))""",
+"""CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, "userId" INTEGER, role TEXT, content TEXT, conversationid INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))""",
 """CREATE TABLE IF NOT EXISTS memories(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, "userId" INTEGER, content TEXT, created_at TEXT DEFAULT (datetime('now')))""",
 """CREATE TABLE IF NOT EXISTS motorcycles(id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id INTEGER, "ownerId" INTEGER, assigned_user_id INTEGER, "assignedUserId" INTEGER, name TEXT, model TEXT DEFAULT 'Tabby EV', reg TEXT, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (datetime('now')))""",
 """CREATE TABLE IF NOT EXISTS bike_status(motorcycle_id INTEGER PRIMARY KEY, battery_health REAL DEFAULT 100, battery_level REAL DEFAULT 100, range_km REAL DEFAULT 125, total_trip REAL DEFAULT 0, total_distance REAL DEFAULT 0, co2_saved REAL DEFAULT 0, lock_status TEXT DEFAULT 'locked', access_mode TEXT DEFAULT 'full', cell_temp REAL DEFAULT 32, motor_temp REAL DEFAULT 35, last_seen TEXT)""",
@@ -43,7 +42,10 @@ TABLES_SQL = [
 
 def ensure_tables(cur):
     for s in TABLES_SQL:
-        cur.execute(s)
+        try:
+            cur.execute(s)
+        except Exception as e:
+            print("ensure_tables skip", e)
 
 class DB:
     def __enter__(self):
@@ -51,7 +53,6 @@ class DB:
         self.c = sqlite3.connect(DB_FILE, timeout=30, check_same_thread=False)
         self.c.row_factory = sqlite3.Row
         self.cur = self.c.cursor()
-        # FIX: Create tables on EVERY connection, not only at startup
         try:
             ensure_tables(self.cur)
             self.c.commit()
@@ -266,7 +267,7 @@ def bike_ctx(user):
 
 def save_msg(user_id, role, content):
     with DB() as db:
-        db.q('INSERT INTO messages (user_id, "userId", role, content, conversationid, "conversationId") VALUES (?,?,?,?,1,1)', (user_id, user_id, role, content))
+        db.q('INSERT INTO messages (user_id, "userId", role, content, conversationid) VALUES (?,?,?,?,1)', (user_id, user_id, role, content))
 
 def handle_bike_or_house_command(u, low, msg):
     with DB() as db:
