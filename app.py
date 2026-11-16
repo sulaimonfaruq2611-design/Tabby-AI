@@ -1,5 +1,5 @@
 import os, sqlite3, requests, random, re, base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, g
 from flask_cors import CORS
 import jwt
@@ -15,7 +15,7 @@ CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
 CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
-# ---------- FARUQ - FULL PROFILE AND LONG-TERM MEMORY ----------
+# ---------- FARUQ - FULL PROFILE AND LONG-TERM MEMORY - NOTHING REMOVED ----------
 DEFAULT_PROFILE = {
     "full_name": "Sulaimon Faruq Ezuwagbe",
     "preferred_name": "Faruq",
@@ -29,6 +29,8 @@ DEFAULT_PROFILE = {
     "project_tabby": "Tabby is Faruq's personal AI assistant project. Wants Tabby to become capable, persistent, intelligent personal assistant rather than basic chatbot. Core objectives: natural conversations, long-term memory, persistent chat history, voice interaction, image understanding, image generation, live web search, news and current information, personalization, device integration, future smart-home and smart-mobility. Technology: Python, Flask, HTML, CSS, JavaScript, SQLite database for storage, GitHub for source-code management, Render for hosting and deployment, OpenRouter and Gemini for AI access, Cloudflare Flux for image generation, OpenAI API for supported voice functionality.",
     "tabby_naming": "Tabby was named after Dorcas, also known as Tabitha. Tabitha is the name associated with Dorcas. The name carries personal meaning from that chapter of Faruq's life. Tabby is now Faruq's own creation and assistant, serving his work and future. Tabby should understand the naming origin with respect, but must not use it to keep Faruq emotionally trapped in the past, and must not assume Faruq wants to revisit the relationship because of the name.",
     "project_ultimate_ebike": "ULTIMATE E BIKE: long-running electric mobility project. Interested in electric-bike engineering, hardware, and practical implementation.",
+    "project_ultimate_ebike_business": "Faruq is not just building one e-bike for himself. He is initially making multiple e-bikes for business and making it unique by adding Tabby so it serves as: Intelligent battery management, GPS tracking and anti-theft security, Intelligent journey assistant, Predictive maintenance, Remote security and access control. Hardware layers: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS, Cell protection and monitoring, Motor controller, Motor power and speed control, GPS and network, Location and connectivity, Rider's app, Dashboard and remote access. Tabby is the commercial advantage that makes the bikes intelligent, not just electric.",
+    "ebike_installment_system": "The installment payment system is the commercial advantage. Process: The customer makes an initial deposit. The motorcycle is registered to their account. Tabby monitors payment status through the company's payment system. The app sends reminders before each installment is due. If payment is overdue, the customer receives warnings and a grace period. If the account remains unpaid after the agreed process, the system can activate a restricted access mode. Restricted mode must be fair, with reminders, warnings, grace period first, not sudden lock without notice. Tabby must never activate restricted mode without warning. Owner can override restricted mode.",
     "project_smart_glasses": "Tabby Smart Glasses: wants everyday-looking glasses. Interested in pocket battery. Envisions binocular, full-color video display. Explored birdbath optics as prototype direction. Waveguide optics are possible future direction. Cable arrangement and practical hardware design remain areas for development.",
     "other_interests": "Robotics, artificial intelligence, electronics, smart devices, automation, engineering solutions that can be built affordably.",
     "business_goals": "Building sustainable income through freelancing, AI animation services, video production, documentary editing, digital products, technology projects, small businesses. Previously explored Fiverr service packages, Upwork, Twine, Payoneer, Cleva, YouTube monetization, small retail business opportunities. Cost-conscious, often prefers free tools, free tiers, affordable solutions. When discussing business or financial decisions: explain actual costs, identify free-tier restrictions, avoid assuming he can pay for premium subscriptions, distinguish revenue, profit, expenses, projected earnings, do not promise guaranteed income.",
@@ -61,10 +63,76 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'user', created_at TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS conversations (id INTEGER PRIMARY KEY, user_id INTEGER, title TEXT, created_at TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, conversation_id INTEGER, role TEXT, content TEXT, created_at TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS bikes (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, model TEXT, customer_name TEXT, battery_level INTEGER DEFAULT 98, battery_health INTEGER DEFAULT 100, range_km INTEGER DEFAULT 125, lock_status TEXT DEFAULT 'locked', location TEXT DEFAULT 'Lagos, Nigeria', lat REAL DEFAULT 6.5244, lng REAL DEFAULT 3.3792, speed_kmh INTEGER DEFAULT 0, last_update TEXT, created_at TEXT)")
+    # Bikes - FLEET + INSTALLMENT - All previous fields preserved, new fields added
+    c.execute("""CREATE TABLE IF NOT EXISTS bikes (
+        id INTEGER PRIMARY KEY,
+        user_id INTEGER,
+        owner_id INTEGER,
+        customer_id INTEGER,
+        name TEXT,
+        model TEXT,
+        vin TEXT,
+        plate_number TEXT,
+        customer_name TEXT,
+        customer_phone TEXT,
+        customer_email TEXT,
+        customer_account_id TEXT,
+        battery_level INTEGER DEFAULT 98,
+        battery_health INTEGER DEFAULT 100,
+        battery_cycles INTEGER DEFAULT 0,
+        range_km INTEGER DEFAULT 125,
+        lock_status TEXT DEFAULT 'locked',
+        bike_status TEXT DEFAULT 'active',
+        location TEXT DEFAULT 'Lagos, Nigeria',
+        lat REAL DEFAULT 6.5244,
+        lng REAL DEFAULT 3.3792,
+        speed_kmh INTEGER DEFAULT 0,
+        odometer_km REAL DEFAULT 0,
+        motor_temp REAL DEFAULT 35,
+        last_maintenance TEXT,
+        next_maintenance TEXT,
+        maintenance_alert TEXT DEFAULT '',
+        deposit_paid REAL DEFAULT 0,
+        total_price REAL DEFAULT 0,
+        amount_paid REAL DEFAULT 0,
+        amount_remaining REAL DEFAULT 0,
+        installment_amount REAL DEFAULT 0,
+        installment_due_date TEXT,
+        next_payment_date TEXT,
+        payment_status TEXT DEFAULT 'paid',
+        grace_period_days INTEGER DEFAULT 7,
+        grace_until TEXT,
+        restricted_reason TEXT DEFAULT '',
+        last_update TEXT,
+        created_at TEXT
+    )""")
     c.execute("CREATE TABLE IF NOT EXISTS user_memory (id INTEGER PRIMARY KEY, user_id INTEGER, key TEXT, value TEXT, created_at TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS bike_history (id INTEGER PRIMARY KEY, bike_id INTEGER, lat REAL, lng REAL, location TEXT, battery INTEGER, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS bike_history (id INTEGER PRIMARY KEY, bike_id INTEGER, lat REAL, lng REAL, location TEXT, battery INTEGER, speed_kmh INTEGER DEFAULT 0, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY, bike_id INTEGER, customer_id INTEGER, amount REAL, payment_type TEXT, method TEXT, status TEXT DEFAULT 'completed', due_date TEXT, paid_at TEXT, note TEXT, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY, bike_id INTEGER, user_id INTEGER, type TEXT, message TEXT, severity TEXT DEFAULT 'info', is_read INTEGER DEFAULT 0, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS bike_commands (id INTEGER PRIMARY KEY, bike_id INTEGER, user_id INTEGER, command TEXT, status TEXT DEFAULT 'pending', result TEXT DEFAULT '', created_at TEXT)")
     db.commit(); db.close()
+    # Migration for old DBs - add new columns if missing
+    try:
+        db2 = sqlite3.connect(DATABASE)
+        cols = [r[1] for r in db2.execute("PRAGMA table_info(bikes)").fetchall()]
+        to_add = {
+            "owner_id": "INTEGER", "customer_id": "INTEGER", "vin": "TEXT", "plate_number": "TEXT",
+            "customer_phone": "TEXT", "customer_email": "TEXT", "customer_account_id": "TEXT",
+            "battery_cycles": "INTEGER DEFAULT 0", "bike_status": "TEXT DEFAULT 'active'",
+            "odometer_km": "REAL DEFAULT 0", "motor_temp": "REAL DEFAULT 35",
+            "last_maintenance": "TEXT", "next_maintenance": "TEXT", "maintenance_alert": "TEXT DEFAULT ''",
+            "deposit_paid": "REAL DEFAULT 0", "total_price": "REAL DEFAULT 0", "amount_paid": "REAL DEFAULT 0",
+            "amount_remaining": "REAL DEFAULT 0", "installment_amount": "REAL DEFAULT 0",
+            "installment_due_date": "TEXT", "next_payment_date": "TEXT", "payment_status": "TEXT DEFAULT 'paid'",
+            "grace_period_days": "INTEGER DEFAULT 7", "grace_until": "TEXT", "restricted_reason": "TEXT DEFAULT ''"
+        }
+        for k, v in to_add.items():
+            if k not in cols:
+                db2.execute(f"ALTER TABLE bikes ADD COLUMN {k} {v}")
+        db2.commit(); db2.close()
+    except Exception as e:
+        print("Migration:", e)
 
 init_db()
 
@@ -78,11 +146,14 @@ def get_user_from_token():
         return dict(u) if u else None
     except: return None
 
+def is_owner(user):
+    return user and user.get('role') == 'owner'
+
 def ensure_bike_for_user(user):
     db = get_db()
     row = db.execute('SELECT * FROM bikes WHERE user_id=?', (user['id'],)).fetchone()
-    if not row:
-        db.execute('INSERT INTO bikes (user_id, name, model, customer_name, battery_level, battery_health, range_km, lock_status, location, lat, lng, last_update, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', (user['id'], 'Tabby EV 001', 'Tabby EV Pro', user['name'], 98, 100, 125, 'locked', 'Lagos, Nigeria', 6.5244, 3.3792, datetime.now().isoformat(), datetime.now().isoformat()))
+    if not row and user.get('role') == 'owner':
+        db.execute('INSERT INTO bikes (user_id, owner_id, name, model, customer_name, battery_level, battery_health, range_km, lock_status, bike_status, location, lat, lng, last_update, created_at, payment_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (user['id'], user['id'], 'Tabby EV 001', 'Tabby EV Pro', user['name'], 98, 100, 125, 'locked', 'active', 'Lagos, Nigeria', 6.5244, 3.3792, datetime.now().isoformat(), datetime.now().isoformat(), 'paid'))
         db.commit()
 
 def get_memory(user_id):
@@ -105,16 +176,57 @@ def seed_profile_memory(user_id):
         for k, v in DEFAULT_PROFILE.items():
             save_memory(user_id, k, v)
     else:
-        for k in ['dorcas_chapter', 'tabby_naming', 'final_principle', 'project_tabby']:
+        for k in ['dorcas_chapter', 'tabby_naming', 'final_principle', 'project_tabby', 'project_ultimate_ebike_business', 'ebike_installment_system']:
             if k not in existing:
                 save_memory(user_id, k, DEFAULT_PROFILE[k])
+
+def add_alert(bike_id, user_id, type_, message, severity='info'):
+    db = get_db()
+    db.execute('INSERT INTO alerts (bike_id, user_id, type, message, severity, created_at) VALUES (?,?,?,?,?,?)', (bike_id, user_id, type_, message, severity, datetime.now().isoformat()))
+    db.commit()
+
+def check_payment_status(bike):
+    # Returns updated payment_status based on due date and grace
+    if not bike.get('next_payment_date') and not bike.get('installment_due_date'):
+        return bike.get('payment_status', 'paid')
+    due_str = bike.get('next_payment_date') or bike.get('installment_due_date')
+    try:
+        due = datetime.fromisoformat(due_str)
+        now = datetime.now()
+        if bike.get('amount_remaining', 0) <= 0:
+            return 'paid'
+        if now <= due:
+            days_left = (due - now).days
+            if days_left <= 3:
+                return 'due_soon'
+            return 'paid'
+        # Overdue
+        grace_days = bike.get('grace_period_days', 7) or 7
+        grace_until = due + timedelta(days=grace_days)
+        if now <= grace_until:
+            return 'grace_period'
+        return 'overdue_restricted'
+    except:
+        return bike.get('payment_status', 'paid')
+
+def predictive_maintenance(bike):
+    alerts = []
+    if bike.get('battery_health', 100) < 80:
+        alerts.append(f"Battery health is {bike.get('battery_health')}%. Service battery soon.")
+    if bike.get('battery_cycles', 0) > 800:
+        alerts.append(f"Battery has {bike.get('battery_cycles')} cycles. Check battery cells.")
+    if bike.get('motor_temp', 35) and bike.get('motor_temp') > 85:
+        alerts.append(f"Motor temperature high: {bike.get('motor_temp')}C. Check motor controller.")
+    if bike.get('odometer_km', 0) and bike.get('odometer_km') > 5000:
+        alerts.append(f"Odometer {bike.get('odometer_km')} km. Maintenance due.")
+    return alerts
 
 # ---------- DEEP RESEARCH ----------
 def deep_research(query):
     q = query.lower()
     results = []
     try:
-        if any(x in q for x in ['tech','technology','ai','news','latest','world','nigeria','trend','ev','electric']):
+        if any(x in q for x in ['tech','technology','ai','news','latest','world','nigeria','trend','ev','electric','bike','battery']):
             try:
                 r = requests.get('https://hn.algolia.com/api/v1/search?query=technology&tags=story&hitsPerPage=5', timeout=6).json()
                 for h in r.get('hits', [])[:5]:
@@ -156,7 +268,9 @@ Speak in clean English by default. No emojis. No markdown bold in ordinary chat.
 
 Critical thinking: Do not just agree. Give pros, cons, risks, opportunities. Challenge ideas respectfully if needed. Give practical solutions, not generic advice.
 
-Research: Use research data if provided. Analyse it, explain why it matters for Faruq, his Black Veil project, Tabby AI, Ultimate E Bike, freelancing, and Nigeria context. Do not invent news dates or prices.
+Research: Use research data if provided. Analyse it, explain why it matters for Faruq, his Black Veil project, Tabby AI, Ultimate E Bike fleet business, freelancing, and Nigeria context. Do not invent news dates or prices.
+
+E-Bike Business: Faruq is building multiple e-bikes for business, not just one. Tabby makes them unique: intelligent battery management, GPS tracking and anti-theft, intelligent journey assistant, predictive maintenance, remote security and access control. Installment system: deposit, registration to customer account, Tabby monitors payment, reminders before due, warnings and grace period if overdue, restricted access mode only after agreed process and warnings. Be fair, explain grace period, do not suggest sudden lock without warning.
 
 Memory - Use this, do not ask Faruq to repeat it:
 {mem_text}
@@ -305,24 +419,72 @@ def del_conv(cid):
     db.commit()
     return jsonify({'success': True})
 
+# ---------- FLEET + BIKES + INSTALLMENT ----------
 @app.route('/api/dashboard')
 def dashboard():
     u = get_user_from_token()
     if not u: return jsonify({'success': False})
     ensure_bike_for_user(u)
     db = get_db()
-    bikes = db.execute('SELECT * FROM bikes WHERE user_id=?', (u['id'],)).fetchall()
-    return jsonify({'success': True, 'bikes': [dict(b) for b in bikes], 'total_bikes': len(bikes)})
+    if is_owner(u):
+        bikes = db.execute('SELECT * FROM bikes ORDER BY id DESC').fetchall()
+    else:
+        bikes = db.execute('SELECT * FROM bikes WHERE user_id=? OR customer_id=? ORDER BY id DESC', (u['id'], u['id'])).fetchall()
+    out = []
+    for b in bikes:
+        d = dict(b)
+        d['payment_status_computed'] = check_payment_status(d)
+        d['maintenance_alerts'] = predictive_maintenance(d)
+        out.append(d)
+    total = len(out)
+    paid = len([x for x in out if x['payment_status_computed'] == 'paid'])
+    due_soon = len([x for x in out if x['payment_status_computed'] == 'due_soon'])
+    overdue = len([x for x in out if x['payment_status_computed'] in ['grace_period','overdue_restricted']])
+    restricted = len([x for x in out if x['bike_status'] == 'restricted'])
+    return jsonify({'success': True, 'bikes': out, 'total_bikes': total, 'fleet_summary': {'total': total, 'paid': paid, 'due_soon': due_soon, 'overdue_grace': overdue, 'restricted': restricted}})
+
+@app.route('/api/bikes', methods=['POST'])
+def create_bike():
+    u = get_user_from_token()
+    if not u or not is_owner(u): return jsonify({'success': False, 'error': 'Only owner can add bikes'})
+    d = request.json or {}
+    db = get_db()
+    total = float(d.get('total_price', 0) or 0)
+    deposit = float(d.get('deposit_paid', 0) or 0)
+    paid = float(d.get('amount_paid', deposit) or deposit)
+    remaining = total - paid if total else 0
+    cur = db.execute('INSERT INTO bikes (user_id, owner_id, customer_id, name, model, vin, plate_number, customer_name, customer_phone, customer_email, customer_account_id, battery_level, battery_health, range_km, lock_status, bike_status, location, lat, lng, deposit_paid, total_price, amount_paid, amount_remaining, installment_amount, installment_due_date, next_payment_date, payment_status, grace_period_days, last_update, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        (u['id'], u['id'], d.get('customer_id'), d.get('name','Tabby EV'), d.get('model','Tabby EV Pro'), d.get('vin',''), d.get('plate_number',''), d.get('customer_name',''), d.get('customer_phone',''), d.get('customer_email',''), d.get('customer_account_id',''), 98, 100, 125, 'locked', 'active', d.get('location','Lagos, Nigeria'), d.get('lat', 6.5244), d.get('lng', 3.3792), deposit, total, paid, remaining, d.get('installment_amount', 0), d.get('installment_due_date'), d.get('next_payment_date') or d.get('installment_due_date'), d.get('payment_status','paid'), d.get('grace_period_days', 7), datetime.now().isoformat(), datetime.now().isoformat()))
+    db.commit()
+    return jsonify({'success': True, 'bike_id': cur.lastrowid, 'message': 'Bike added to fleet. Customer registered.'})
 
 @app.route('/api/bike/<int:bid>/command', methods=['POST'])
 def bike_cmd(bid):
     u = get_user_from_token()
     if not u: return jsonify({'success': False})
-    cmd = request.json.get('command','')
     db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False, 'error': 'Bike not found'})
+    # Secure validation: only owner or registered customer
+    if not is_owner(u) and b['customer_id'] != u['id'] and b['user_id'] != u['id']:
+        return jsonify({'success': False, 'error': 'Not authorized for this bike'})
+    cmd = request.json.get('command','')
+    # Restricted bikes cannot be unlocked by customer
+    if b['bike_status'] == 'restricted' and cmd == 'unlock' and not is_owner(u):
+        return jsonify({'success': False, 'error': 'Bike is in restricted mode due to payment. Contact Ultimate Gee Industry. Owner can override.'})
     if cmd in ['lock','unlock']:
         db.execute('UPDATE bikes SET lock_status=? WHERE id=?', ('locked' if cmd=='lock' else 'unlocked', bid))
+        db.execute('INSERT INTO bike_commands (bike_id, user_id, command, status, result, created_at) VALUES (?,?,?,?,?,?)', (bid, u['id'], cmd, 'completed', f'Bike {cmd}ed', datetime.now().isoformat()))
         db.commit()
+    if cmd == 'restrict' and is_owner(u):
+        db.execute('UPDATE bikes SET bike_status=?, restricted_reason=? WHERE id=?', ('restricted', request.json.get('reason','Payment overdue'), bid))
+        add_alert(bid, u['id'], 'restricted', f"Bike {b['name']} restricted. Reason: {request.json.get('reason','Payment overdue')}", 'high')
+        db.commit()
+        return jsonify({'success': True, 'message': 'Bike restricted.'})
+    if cmd == 'unrestrict' and is_owner(u):
+        db.execute('UPDATE bikes SET bike_status=?, restricted_reason=? WHERE id=?', ('active', '', bid))
+        db.commit()
+        return jsonify({'success': True, 'message': 'Bike unrestricted by owner.'})
     return jsonify({'success': True, 'message': f'Bike {cmd}ed.'})
 
 @app.route('/api/bike/<int:bid>/location', methods=['POST'])
@@ -332,12 +494,24 @@ def bike_location(bid):
     d = request.json or {}
     lat, lng, loc = d.get('lat'), d.get('lng'), d.get('location','Lagos, Nigeria')
     battery = d.get('battery')
+    speed = d.get('speed_kmh', 0)
+    odometer = d.get('odometer_km')
+    motor_temp = d.get('motor_temp')
     db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False})
     if lat and lng:
         db.execute('UPDATE bikes SET lat=?, lng=?, location=?, last_update=? WHERE id=?', (lat, lng, loc, datetime.now().isoformat(), bid))
-        if battery:
+        if battery is not None:
             db.execute('UPDATE bikes SET battery_level=? WHERE id=?', (battery, bid))
-        db.execute('INSERT INTO bike_history (bike_id, lat, lng, location, battery, created_at) VALUES (?,?,?,?,?,?)', (bid, lat, lng, loc, battery or 98, datetime.now().isoformat()))
+        if odometer is not None:
+            db.execute('UPDATE bikes SET odometer_km=? WHERE id=?', (odometer, bid))
+        if motor_temp is not None:
+            db.execute('UPDATE bikes SET motor_temp=? WHERE id=?', (motor_temp, bid))
+        db.execute('INSERT INTO bike_history (bike_id, lat, lng, location, battery, speed_kmh, created_at) VALUES (?,?,?,?,?,?,?)', (bid, lat, lng, loc, battery or 98, speed, datetime.now().isoformat()))
+        # Anti-theft: if locked and moving
+        if b['lock_status'] == 'locked' and speed and speed > 5:
+            add_alert(bid, u['id'], 'anti_theft', f"Alert: {b['name']} is moving while locked at {loc}. Speed {speed} km/h.", 'high')
         db.commit()
     return jsonify({'success': True, 'message': 'Location updated live'})
 
@@ -349,7 +523,77 @@ def get_bike_location(bid):
     b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
     if not b: return jsonify({'success': False})
     hist = db.execute('SELECT * FROM bike_history WHERE bike_id=? ORDER BY id DESC LIMIT 20', (bid,)).fetchall()
-    return jsonify({'success': True, 'bike': dict(b), 'history': [dict(h) for h in hist], 'google_maps_url': f"https://maps.google.com/?q={b['lat']},{b['lng']}"})
+    d = dict(b)
+    d['payment_status_computed'] = check_payment_status(d)
+    d['maintenance_alerts'] = predictive_maintenance(d)
+    return jsonify({'success': True, 'bike': d, 'history': [dict(h) for h in hist], 'google_maps_url': f"https://maps.google.com/?q={b['lat']},{b['lng']}"})
+
+@app.route('/api/bike/<int:bid>/payment', methods=['POST'])
+def bike_payment(bid):
+    u = get_user_from_token()
+    if not u or not is_owner(u): return jsonify({'success': False, 'error': 'Only owner can record payments'})
+    d = request.json or {}
+    amount = float(d.get('amount', 0) or 0)
+    db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False})
+    new_paid = (b['amount_paid'] or 0) + amount
+    new_remaining = (b['total_price'] or 0) - new_paid
+    if new_remaining < 0: new_remaining = 0
+    # Next due date = +30 days if still remaining
+    next_due = None
+    if new_remaining > 0:
+        next_due = (datetime.now() + timedelta(days=30)).isoformat()
+    db.execute('UPDATE bikes SET amount_paid=?, amount_remaining=?, next_payment_date=?, installment_due_date=?, payment_status=? WHERE id=?', (new_paid, new_remaining, next_due, next_due, 'paid' if new_remaining <= 0 else 'paid', bid))
+    db.execute('INSERT INTO payments (bike_id, customer_id, amount, payment_type, method, status, due_date, paid_at, note, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)', (bid, b['customer_id'], amount, d.get('payment_type','installment'), d.get('method','transfer'), 'completed', b['next_payment_date'], datetime.now().isoformat(), d.get('note',''), datetime.now().isoformat()))
+    # If was restricted and now paid, auto-unrestrict if fully paid or owner chooses
+    if b['bike_status'] == 'restricted' and new_remaining <= 0:
+        db.execute('UPDATE bikes SET bike_status=?, restricted_reason=? WHERE id=?', ('active', '', bid))
+    db.commit()
+    return jsonify({'success': True, 'message': f'Payment of {amount} recorded. Remaining: {new_remaining}', 'amount_paid': new_paid, 'amount_remaining': new_remaining})
+
+@app.route('/api/bike/<int:bid>/check-payment')
+def check_payment(bid):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False})
+    d = dict(b)
+    status = check_payment_status(d)
+    # Build reminder message
+    msg = ""
+    if status == 'due_soon':
+        msg = f"Reminder: Installment of {d.get('installment_amount')} is due soon on {d.get('next_payment_date')}. Please pay to avoid restriction."
+    elif status == 'grace_period':
+        msg = f"Warning: Payment overdue. You are in grace period of {d.get('grace_period_days')} days. Please pay now to avoid restricted mode."
+    elif status == 'overdue_restricted':
+        msg = f"Payment is overdue beyond grace period. Bike may enter restricted mode. Contact Ultimate Gee Industry immediately."
+    elif status == 'paid':
+        msg = "Payment status is good, Boss."
+    # Update DB payment_status
+    db.execute('UPDATE bikes SET payment_status=? WHERE id=?', (status, bid))
+    db.commit()
+    return jsonify({'success': True, 'bike_id': bid, 'payment_status': status, 'reminder': msg, 'amount_remaining': d.get('amount_remaining'), 'next_payment_date': d.get('next_payment_date')})
+
+@app.route('/api/bike/<int:bid>/payments')
+def bike_payments(bid):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    rows = db.execute('SELECT * FROM payments WHERE bike_id=? ORDER BY id DESC', (bid,)).fetchall()
+    return jsonify({'success': True, 'payments': [dict(r) for r in rows]})
+
+@app.route('/api/alerts')
+def alerts():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    if is_owner(u):
+        rows = db.execute('SELECT * FROM alerts ORDER BY id DESC LIMIT 50').fetchall()
+    else:
+        rows = db.execute('SELECT * FROM alerts WHERE user_id=? ORDER BY id DESC LIMIT 50', (u['id'],)).fetchall()
+    return jsonify({'success': True, 'alerts': [dict(r) for r in rows]})
 
 @app.route('/api/image/generate', methods=['POST'])
 def gen_image():
@@ -449,13 +693,20 @@ def chat():
         except Exception as e:
             reply = f"I had trouble reading that image, Boss: {e}. Can you send it again?"
 
-    elif 'bike' in low or 'my bike' in low:
-        bikes = db.execute('SELECT * FROM bikes WHERE user_id=?', (u['id'],)).fetchall()
-        if bikes:
-            b = bikes[0]
-            reply = f"Your bike is doing well, Boss.\n\n{b['name']} - {b['model']}\nBattery: {b['battery_level']}% (Health {b['battery_health']}%)\nRange: {b['range_km']} km\nLock: {b['lock_status']}\nLocation: {b['location']}\nLive Map: https://maps.google.com/?q={b['lat']},{b['lng']}\nLast Update: {b['last_update']}\n\nTap Dashboard to lock or unlock it. Do you want me to track it now?"
+    elif any(x in low for x in ['bike','my bike','fleet','installment','payment','restricted']):
+        if is_owner(u):
+            bikes = db.execute('SELECT * FROM bikes ORDER BY id DESC').fetchall()
         else:
-            reply = "Your bike is in the Dashboard, Boss. Tap the chart icon at the top to see it."
+            bikes = db.execute('SELECT * FROM bikes WHERE user_id=? OR customer_id=?', (u['id'], u['id'])).fetchall()
+        if bikes:
+            lines = []
+            for b in bikes[:5]:
+                bd = dict(b)
+                ps = check_payment_status(bd)
+                lines.append(f"{bd['name']} - {bd.get('customer_name','')} - Battery {bd['battery_level']}% Health {bd['battery_health']}% - Range {bd['range_km']} km - Lock {bd['lock_status']} - Status {bd['bike_status']} - Payment {ps} - Remaining {bd.get('amount_remaining',0)} - Location {bd['location']} - Map https://maps.google.com/?q={bd['lat']},{bd['lng']}")
+            reply = f"Here is your fleet, Boss. Total bikes: {len(bikes)}\n\n" + "\n\n".join(lines) + "\n\nTap Dashboard to see all, lock, unlock, or check payments. Do you want details for a specific bike?"
+        else:
+            reply = "Your fleet is in the Dashboard, Boss. Tap the chart icon at the top to see it."
 
     elif any(x in low for x in ['my name is','i am ','i live in','my business is','remember that','my age is','my goal is']):
         save_memory(u['id'], 'about_user_update', msg)
