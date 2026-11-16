@@ -12,6 +12,14 @@
 .nav button{width:100%;text-align:left;padding:12px 14px;margin:4px 0;border:none;border-radius:10px;background:transparent;color:#cbd5e1;cursor:pointer;font-size:14px}
 .nav button.active,.nav button:hover{background:#1a2a4d;color:#fff}
 .nav small{color:#64748b;font-size:10px;letter-spacing:1px;padding:10px 14px;display:block}
+.newchat-btn{width:100%;text-align:left;padding:12px 14px;margin:4px 0 10px;border:none;border-radius:12px;background:#2b6cff;color:#fff;cursor:pointer;font-size:14px;font-weight:700}
+.newchat-btn:hover{background:#1d4ed8}
+.chatlist{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
+.chatlist button{width:100%;text-align:left;padding:10px 12px;border:none;border-radius:10px;background:#0f1a30;color:#cbd5e1;cursor:pointer;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.chatlist button:hover{background:#1a2a4d;color:#fff}
+.chatlist button.active{background:#1a2a4d;color:#fff;border:1px solid #2b6cff}
+.chatlist .del{flex-shrink:0;background:transparent;border:none;color:#64748b;cursor:pointer;font-size:13px;padding:0 2px}
+.chatlist .del:hover{color:#f87171}
 .main{margin-left:260px;flex:1;padding:20px;max-width:1100px;width:100%}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .pill{background:#0f3d2a;color:#7ee2a8;padding:6px 12px;border-radius:20px;font-size:12px}
@@ -75,6 +83,9 @@ button.tool.live{background:#e11d48}
 <button id="btnAI" onclick="show('ai')">✦ Tabby AI</button>
 <button id="btnMyBike" onclick="show('mybike')">🏍️ My Bike</button>
 <button id="btnCust" onclick="show('cust')">👥 Customer Bikes</button>
+<small>CHATS</small>
+<button class="newchat-btn" onclick="startNewChat()">➕ New Chat</button>
+<div id="chatList" class="chatlist"></div>
 <small>ACCOUNT</small>
 <button onclick="logout()">🚪 Logout</button></div></div>
 
@@ -97,7 +108,7 @@ button.tool.live{background:#e11d48}
 <div id="msgs" style="max-height:55vh;overflow:auto;margin-top:12px"></div>
 <div class="chat-input-wrap"><input id="inp" placeholder="Message Tabby..." onkeydown="if(event.key==='Enter')send()"><button class="primary" onclick="send()">Send ➤</button></div>
 <div><input type="file" id="imgFile" accept="image/*" style="display:none" onchange="sendImage(this)"><button class="tool" onclick="document.getElementById('imgFile').click()">🖼️ Analyze Image</button><button class="tool" onclick="quick('Tell me latest news in Nigeria')">News Nigeria</button><button class="tool" onclick="quick('What is Naira to Dollar rate today?')">Naira Rate</button><button class="tool" onclick="quick('Check my bike')">My Bike</button><button class="tool" onclick="quick('Generate image of a villain, 2D, Hulk size, gray, Bane mask, holding Thanos sword')">Generate Villain</button></div>
-<p style="font-size:11px;color:#8ea0c3">Single chat - everything saved. Tabby speaks with male voice.</p></div>
+<p style="font-size:11px;color:#8ea0c3">Multiple chats - click New Chat for fresh chat. Everything saved.</p></div>
 </div>
 
 <div id="view-mybike" style="display:none"><div class="panel"><h3>My Bike - BMS • GPS • Predictive Maintenance</h3><div id="myBikeList"></div></div></div>
@@ -112,15 +123,65 @@ button.tool.live{background:#e11d48}
 </div>
 </div>
 <script>
-let token=localStorage.getItem('tabby_token')||'', user=null, lastReply='', currentAudio=null, mediaRecorder=null, audioChunks=[], isRecording=false, isLiveCall=false, liveCallId=null, liveCallShouldContinue=false, isRegister=false;
+let token=localStorage.getItem('tabby_token')||'', user=null, lastReply='', currentAudio=null, mediaRecorder=null, audioChunks=[], isRecording=false, isLiveCall=false, liveCallId=null, liveCallShouldContinue=false, isRegister=false, currentConvId=localStorage.getItem('tabby_conv')||null;
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show');}
 function api(p,o={}){let h={}; if(token)h.Authorization='Bearer '+token; if(o.body)h['Content-Type']='application/json'; return fetch(p,{method:o.method||'GET',headers:h,body:o.body}).then(r=>r.json());}
+// --- NEW CHAT / CHAT LIST ---
+async function loadChatList(){
+  if(!token || !user || user.role!=='owner') return;
+  try{
+    let d=await api('/api/conversations');
+    let list=document.getElementById('chatList');
+    if(!list) return;
+    list.innerHTML='';
+    (d.conversations||[]).forEach(c=>{
+      let wrap=document.createElement('div');
+      wrap.style.cssText='display:flex;gap:4px;align-items:center;';
+      let b=document.createElement('button');
+      b.textContent='💬 '+(c.title||'New Chat');
+      b.title=c.title||'New Chat';
+      if(String(c.id)===String(currentConvId)) b.classList.add('active');
+      b.style.flex='1';
+      b.onclick=()=>openConversation(c.id);
+      let del=document.createElement('button');
+      del.className='del'; del.textContent='✕'; del.title='Delete chat';
+      del.onclick=async(e)=>{e.stopPropagation(); if(!confirm('Delete this chat?')) return; await api('/api/conversations/'+c.id,{method:'DELETE'}); if(String(c.id)===String(currentConvId)){ localStorage.removeItem('tabby_conv'); currentConvId=null; document.getElementById('msgs').innerHTML=''; } loadChatList();};
+      wrap.appendChild(b); wrap.appendChild(del);
+      list.appendChild(wrap);
+    });
+  }catch(e){console.log(e);}
+}
+async function startNewChat(){
+  try{
+    let d=await api('/api/conversations',{method:'POST',body:JSON.stringify({title:'New Chat'})});
+    if(d.success){
+      currentConvId=d.conversation_id;
+      localStorage.setItem('tabby_conv', String(currentConvId));
+      document.getElementById('msgs').innerHTML='';
+      addMsg('assistant','New chat started, Boss. Wetin we go brainstorm today?');
+      loadChatList();
+      show('ai');
+    }
+  }catch(e){console.log(e);}
+}
+async function openConversation(cid){
+  currentConvId=cid;
+  localStorage.setItem('tabby_conv', String(cid));
+  document.getElementById('msgs').innerHTML='';
+  try{
+    let d=await api('/api/conversations/'+cid);
+    (d.messages||[]).forEach(m=>addMsg(m.role,m.content));
+    if(!(d.messages||[]).length) addMsg('assistant','Continue this chat, Boss.');
+  }catch(e){}
+  loadChatList();
+  show('ai');
+}
 // --- REGISTER / LOGIN TOGGLE ---
 function toggleAuth(e){ if(e) e.preventDefault(); isRegister=!isRegister; document.getElementById('regName').style.display=isRegister?'block':'none'; document.getElementById('signInBtn').style.display=isRegister?'none':'block'; document.getElementById('signUpBtn').style.display=isRegister?'block':'none'; document.getElementById('toggleLink').textContent=isRegister?'Already have account? Sign In':'No account yet? Register as Owner'; document.getElementById('st').textContent=''; }
 async function doSignup(){ let name=document.getElementById('regName').value.trim()||'Faruq Sulaimon'; let e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value; if(!e||!pw){document.getElementById('st').textContent='Email + password required';return;} let d=await api('/api/signup',{method:'POST',body:JSON.stringify({name:name,email:e,password:pw})}); if(!d.success){document.getElementById('st').textContent=d.error;return;} document.getElementById('st').style.color='#7ee2a8'; document.getElementById('st').textContent=d.message||'Owner created. Now Sign In.'; toggleAuth(); document.getElementById('st').style.color='#fca5a5'; }
 async function login(){let e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value; let d=await api('/api/login',{method:'POST',body:JSON.stringify({email:e,password:pw})}); if(!d.success){document.getElementById('st').textContent=d.error;return;} token=d.token; user=d.user; localStorage.setItem('tabby_token',token); afterLogin();}
-function logout(){localStorage.removeItem('tabby_token'); location.reload();}
-function afterLogin(){document.getElementById('auth').style.display='none'; document.getElementById('app').style.display='block'; document.getElementById('who').textContent=user.name+' • '+user.role.toUpperCase(); document.getElementById('cRole').textContent=user.role.toUpperCase(); if(user.role!=='owner'){document.getElementById('btnAI').style.display='none'; document.getElementById('btnCust').style.display='none'; document.getElementById('bnAI').style.display='none'; document.getElementById('bnCust').style.display='none'; document.getElementById('createWrap').style.display='none'; document.getElementById('dashCustWrap').style.display='none';} loadDash(); if(user.role==='owner') loadHistory();}
+function logout(){localStorage.removeItem('tabby_token'); localStorage.removeItem('tabby_conv'); location.reload();}
+function afterLogin(){document.getElementById('auth').style.display='none'; document.getElementById('app').style.display='block'; document.getElementById('who').textContent=user.name+' • '+user.role.toUpperCase(); document.getElementById('cRole').textContent=user.role.toUpperCase(); if(user.role!=='owner'){document.getElementById('btnAI').style.display='none'; document.getElementById('btnCust').style.display='none'; document.getElementById('bnAI').style.display='none'; document.getElementById('bnCust').style.display='none'; document.getElementById('createWrap').style.display='none'; document.getElementById('dashCustWrap').style.display='none';} loadDash(); if(user.role==='owner'){ loadChatList(); loadHistory(); } }
 function show(v){['dash','ai','mybike','cust'].forEach(x=>document.getElementById('view-'+x).style.display=(x===v?'block':'none')); document.getElementById('title').textContent=v==='dash'?'Main Dashboard':v==='ai'?'Tabby AI':v==='mybike'?'My Bike':'Customer Bikes'; document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.bottomnav button').forEach(b=>b.classList.toggle('active',b.dataset.nav===v)); if(window.innerWidth<=850) {document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show');} if(v==='mybike'||v==='cust'||v==='dash') loadDash();}
 async function loadDash(){let d=await api('/api/dashboard'); if(!d.success)return; let bikes=d.bikes||[]; document.getElementById('cBikes').textContent=bikes.length; document.getElementById('cCust').textContent=(d.customers||[]).length||bikes.length;
 document.getElementById('dashBikes').innerHTML=bikes.map(b=>bikeCard(b)).join('')||'No bikes yet. Create a customer.';
@@ -132,11 +193,29 @@ async function cmd(id,c){let d=await api('/api/bike/'+id+'/command',{method:'POS
 async function createCust(){let body={name:document.getElementById('cuName').value,email:document.getElementById('cuEmail').value,password:document.getElementById('cuPass').value||'Tabby1234',bike_name:document.getElementById('cuBike').value||'Tabby EV 1',total_amount:document.getElementById('cuTotal').value,deposit:document.getElementById('cuDeposit').value,installment_amount:document.getElementById('cuInst').value,installments_total:document.getElementById('cuCount').value,next_due_date:document.getElementById('cuDue').value}; let d=await api('/api/register',{method:'POST',body:JSON.stringify(body)}); document.getElementById('cuMsg').textContent=d.message||d.error||'Done'; loadDash();}
 async function checkOverdue(){let d=await api('/api/payments/overdue-check',{method:'POST'}); document.getElementById('payMsg').textContent='Overdue checked: '+(d.overdue||0)+' plans. Restricted mode applied if >7 days.'; loadDash();}
 async function remindPayments(){let d=await api('/api/payments/remind',{method:'POST'}); document.getElementById('payMsg').textContent=(d.due_soon||[]).length+' customers due soon.';}
-async function loadHistory(){let s=await api('/api/chat/history'); (s.messages||[]).forEach(m=>addMsg(m.role,m.content));}
+async function loadHistory(){
+  // If user get saved conv, open am, else load latest via /api/chat/history
+  if(currentConvId){
+    try{
+      let d=await api('/api/conversations/'+currentConvId);
+      if(d.success){ (d.messages||[]).forEach(m=>addMsg(m.role,m.content)); return; }
+    }catch(e){}
+  }
+  let s=await api('/api/chat/history'); (s.messages||[]).forEach(m=>addMsg(m.role,m.content));
+  if(s.conversation_id){ currentConvId=s.conversation_id; localStorage.setItem('tabby_conv', String(s.conversation_id)); }
+}
 function addMsg(role,text,img){let box=document.getElementById('msgs'); let d=document.createElement('div'); d.className='msg '+(role==='user'?'user':'ai'); let span=document.createElement('div'); span.textContent=text||''; d.appendChild(span); if(img){let im=document.createElement('img'); im.src=img; d.appendChild(im);} if(role==='assistant' && text){ let b=document.createElement('button'); b.className='speakBtn'; b.textContent='🔊 Speak'; b.onclick=()=>speakText(text,b); d.appendChild(b); } box.appendChild(d); box.scrollTop=box.scrollHeight; if(role==='assistant')lastReply=text;}
-async function send(){let v=document.getElementById('inp').value.trim(); if(!v)return; document.getElementById('inp').value=''; addMsg('user',v); let d=await api('/api/chat',{method:'POST',body:JSON.stringify({message:v})}); addMsg('assistant',d.reply||'Done.',d.image); }
+async function send(){
+  let v=document.getElementById('inp').value.trim(); if(!v)return; document.getElementById('inp').value=''; addMsg('user',v);
+  let body={message:v};
+  if(currentConvId) body.conversation_id=parseInt(currentConvId);
+  let d=await api('/api/chat',{method:'POST',body:JSON.stringify(body)});
+  if(d.conversation_id){ currentConvId=d.conversation_id; localStorage.setItem('tabby_conv', String(d.conversation_id)); }
+  addMsg('assistant',d.reply||'Done.',d.image);
+  loadChatList();
+}
 function quick(t){document.getElementById('inp').value=t; send();}
-async function sendImage(inp){let f=inp.files[0]; if(!f)return; let rd=new FileReader(); rd.onload=async()=>{let b64=rd.result; let prompt=document.getElementById('inp').value||'Describe this image in detail, what do you see? If it is a bike, check condition, battery, give honest feedback.'; addMsg('user',prompt+' [image]'); let d=await api('/api/chat',{method:'POST',body:JSON.stringify({message:prompt,image:b64})}); addMsg('assistant',d.reply); if(d.reply) speakText(d.reply);}; rd.readAsDataURL(f);}
+async function sendImage(inp){let f=inp.files[0]; if(!f)return; let rd=new FileReader(); rd.onload=async()=>{let b64=rd.result; let prompt=document.getElementById('inp').value||'Describe this image in detail, what do you see? If it is a bike, check condition, battery, give honest feedback.'; addMsg('user',prompt+' [image]'); let body={message:prompt,image:b64}; if(currentConvId) body.conversation_id=parseInt(currentConvId); let d=await api('/api/chat',{method:'POST',body:JSON.stringify(body)}); if(d.conversation_id){ currentConvId=d.conversation_id; localStorage.setItem('tabby_conv', String(d.conversation_id)); } addMsg('assistant',d.reply); if(d.reply) speakText(d.reply); loadChatList();}; rd.readAsDataURL(f);}
 // ---------- VOICE - OpenRouter only ----------
 function stopAudio(){ if(currentAudio){ currentAudio.pause(); currentAudio=null; } document.querySelectorAll('.speakBtn.playing').forEach(b=>{b.classList.remove('playing'); b.textContent='🔊 Speak';}); }
 function playAudioDataUrl(dataUrl, onEnd){ stopAudio(); if(!dataUrl){ if(onEnd) onEnd(); return; } currentAudio=new Audio(dataUrl); currentAudio.onended=()=>{currentAudio=null; if(onEnd) onEnd();}; currentAudio.onerror=()=>{currentAudio=null; if(onEnd) onEnd();}; currentAudio.play().catch(()=>{ if(onEnd) onEnd(); }); }
@@ -152,4 +231,4 @@ async function startCall(){ try{ let d=await api('/api/call/start',{method:'POST
 async function endCall(){ isLiveCall=false; liveCallShouldContinue=false; if(isRecording) stopRecording(); stopAudio(); document.getElementById('callBtn').classList.remove('live'); document.getElementById('callBtn').textContent='📞 Live Call'; document.getElementById('callBar').classList.remove('show'); addMsg('assistant','📞 Call ended. See you soon, Boss.'); try{ await api('/api/call/end',{method:'POST',body:JSON.stringify({call_id:liveCallId})}); }catch(e){} }
 async function liveCallLoop(){ if(!liveCallShouldContinue) return; document.getElementById('callStatus').textContent='Listening... talk now (5 sec)'; try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const rec=new MediaRecorder(stream,{mimeType: MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':''}); let chunks=[]; rec.ondataavailable=e=>{if(e.data.size>0) chunks.push(e.data);}; rec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); if(!liveCallShouldContinue) return; if(!chunks.length){ liveCallLoop(); return; } const blob=new Blob(chunks,{type:'audio/webm'}); const fd=new FormData(); fd.append('audio',blob,'voice.webm'); document.getElementById('callStatus').textContent='Tabby dey think...'; try{ let r=await fetch('/api/voice/chat',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd}); let j=await r.json(); if(j.reply){ addMsg('user','🎤 '+(j.text||'...')); addMsg('assistant',j.reply); if(j.audio){ document.getElementById('callStatus').textContent='Tabby dey talk...'; playAudioDataUrl(j.audio, ()=>{ if(liveCallShouldContinue) liveCallLoop(); }); } else liveCallLoop(); } else liveCallLoop(); }catch(e){ if(liveCallShouldContinue) liveCallLoop(); } }; rec.start(); setTimeout(()=>{ if(rec.state!=='inactive') rec.stop(); },5000); }catch(e){ document.getElementById('callStatus').textContent='Allow mic for live call'; setTimeout(()=>{ if(liveCallShouldContinue) liveCallLoop(); },2000); } }
 if(token){api('/api/me').then(d=>{if(d.success){user=d.user; afterLogin();}});}
-</script></body></html> 
+</script></body></html>
