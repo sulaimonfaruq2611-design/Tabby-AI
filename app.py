@@ -28,7 +28,6 @@ _lock = threading.Lock()
 _NEWS_CACHE = {"time": 0, "data": []}
 IS_PG = bool(DATABASE_URL.startswith("postgres"))
 
-# ---------- TABLES ----------
 def tables_sql():
     if IS_PG:
         return [
@@ -36,7 +35,7 @@ def tables_sql():
         "CREATE TABLE IF NOT EXISTS conversations(id SERIAL PRIMARY KEY, user_id INTEGER, title TEXT DEFAULT 'New Chat', summary TEXT DEFAULT '', created_at TEXT DEFAULT (NOW()::text), updated_at TEXT DEFAULT (NOW()::text))",
         'CREATE TABLE IF NOT EXISTS messages(id SERIAL PRIMARY KEY, user_id INTEGER, "userId" INTEGER, role TEXT, content TEXT, conversationid INTEGER DEFAULT 1, created_at TEXT DEFAULT (NOW()::text))',
         'CREATE TABLE IF NOT EXISTS memories(id SERIAL PRIMARY KEY, user_id INTEGER, "userId" INTEGER, content TEXT, created_at TEXT DEFAULT (NOW()::text))',
-        'CREATE TABLE IF NOT EXISTS motorcycles(id SERIAL PRIMARY KEY, owner_id INTEGER, "ownerId" INTEGER, assigned_user_id INTEGER, "assignedUserId" INTEGER, name TEXT, model TEXT DEFAULT \'Tabby EV\', reg TEXT, status TEXT DEFAULT \'active\', created_at TEXT DEFAULT (NOW()::text))',
+        'CREATE TABLE IF NOT EXISTS motorcycles(id SERIAL PRIMARY KEY, owner_id INTEGER, "ownerId" INTEGER, assigned_user_id INTEGER, "assignedUserId" INTEGER, name TEXT, model TEXT DEFAULT \'Tabby EV\', reg TEXT, status TEXT DEFAULT \'active\', created_at TEXT DEFAULT (datetime(\'now\')))',
         "CREATE TABLE IF NOT EXISTS bike_status(motorcycle_id INTEGER PRIMARY KEY, battery_health REAL DEFAULT 100, battery_level REAL DEFAULT 100, range_km REAL DEFAULT 125, total_trip REAL DEFAULT 0, total_distance REAL DEFAULT 0, co2_saved REAL DEFAULT 0, lock_status TEXT DEFAULT 'locked', access_mode TEXT DEFAULT 'full', cell_temp REAL DEFAULT 32, motor_temp REAL DEFAULT 35, last_seen TEXT)",
         "CREATE TABLE IF NOT EXISTS telemetry(id SERIAL PRIMARY KEY, motorcycle_id INTEGER, latitude REAL, longitude REAL, speed REAL, battery_level REAL, engine_temp REAL, created_at TEXT DEFAULT (NOW()::text))",
         "CREATE TABLE IF NOT EXISTS payment_plans(id SERIAL PRIMARY KEY, user_id INTEGER, motorcycle_id INTEGER, total_amount REAL, deposit REAL DEFAULT 0, installment_amount REAL, installments_paid INTEGER DEFAULT 0, installments_total INTEGER, next_due_date TEXT, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (NOW()::text))",
@@ -74,6 +73,27 @@ def ensure_tables(cur):
             cur.execute(s)
         except Exception as e:
             print("ensure_tables skip", e)
+    if IS_PG:
+        fixes = [
+            'ALTER TABLE messages ALTER COLUMN conversationid SET DEFAULT 1',
+            'ALTER TABLE messages ALTER COLUMN conversationid DROP NOT NULL',
+            'ALTER TABLE messages ALTER COLUMN user_id DROP NOT NULL',
+            'ALTER TABLE messages ALTER COLUMN "userId" DROP NOT NULL',
+            'ALTER TABLE messages ALTER COLUMN role DROP NOT NULL',
+            'ALTER TABLE messages ALTER COLUMN content DROP NOT NULL',
+            'ALTER TABLE memories ALTER COLUMN user_id DROP NOT NULL',
+            'ALTER TABLE memories ALTER COLUMN "userId" DROP NOT NULL',
+            'ALTER TABLE conversations ALTER COLUMN user_id DROP NOT NULL',
+        ]
+        for f in fixes:
+            try:
+                cur.execute(f)
+            except Exception:
+                try:
+                    cur.connection.rollback()
+                except Exception:
+                    pass
+                pass
 
 class DB:
     def __enter__(self):
@@ -137,7 +157,6 @@ class DB:
         params = tuple(p) if isinstance(p, (list, tuple)) else (p,)
         if params == ((),):
             params = ()
-        # Fix for Postgres: need %s placeholders already handled
         self.cur.execute(sql2, params)
         return self.cur
     def one(self, sql, p=()):
@@ -160,7 +179,10 @@ class DB:
                 return r["id"]
             return self.cur.lastrowid
         except Exception:
-            # Fallback without RETURNING
+            try:
+                self.c.rollback()
+            except Exception:
+                pass
             self.q(sql, p)
             try:
                 return self.cur.lastrowid
@@ -186,20 +208,27 @@ def clean(t):
     return re.sub(r"\s+", " ", t).strip()
 
 def get_or_create_conversation(user_id, conv_id=None, first_msg=""):
+    if not user_id:
+        return 1
     with DB() as db:
         if conv_id:
-            c = db.one("SELECT * FROM conversations WHERE id=%s AND user_id=%s", (conv_id, user_id))
-            if c:
-                return c["id"]
+            try:
+                c = db.one("SELECT * FROM conversations WHERE id=%s AND user_id=%s", (int(conv_id), user_id))
+                if c:
+                    return c["id"]
+            except Exception:
+                pass
         latest = db.one("SELECT * FROM conversations WHERE user_id=%s ORDER BY updated_at DESC, id DESC LIMIT 1", (user_id,))
         if latest and not conv_id:
             return latest["id"]
         title = (first_msg[:40] or "New Chat") if first_msg else "New Chat"
         nid = db.ins("INSERT INTO conversations (user_id, title) VALUES (%s,%s)", (user_id, title))
+        if not nid:
+            return 1
         return nid
 
 def auto_title_conversation(conv_id, first_msg):
-    if not first_msg:
+    if not first_msg or not conv_id:
         return
     title = clean(first_msg)[:40]
     with DB() as db:
@@ -209,6 +238,8 @@ def auto_title_conversation(conv_id, first_msg):
 
 def prune_and_summarise(user_id, conv_id):
     try:
+        if not conv_id:
+            conv_id = 1
         with DB() as db:
             cnt = db.one("SELECT COUNT(*) as c FROM messages WHERE user_id=%s AND conversationid=%s", (user_id, conv_id))["c"]
             if cnt < 60:
@@ -430,11 +461,19 @@ def bike_ctx(user):
         return "Bike: " + str(b) + " Status: " + str(st) + " Plan: " + str(pl)
 
 def save_msg(user_id, role, content, conv_id=1):
+    if not conv_id:
+        conv_id = 1
+    try:
+        conv_id = int(conv_id)
+    except Exception:
+        conv_id = 1
     with DB() as db:
         db.q('INSERT INTO messages (user_id, "userId", role, content, conversationid) VALUES (%s,%s,%s,%s,%s)', (user_id, user_id, role, content, conv_id))
         db.q("UPDATE conversations SET updated_at=NOW() WHERE id=%s", (conv_id,))
 
 def handle_bike_or_house_command(u, low, msg, conv_id=1):
+    if not conv_id:
+        conv_id = 1
     with DB() as db:
         if "bike" in low and any(w in low for w in ["lock", "unlock", "check", "battery", "locate", "status"]):
             bike = db.one("SELECT * FROM motorcycles ORDER BY id DESC LIMIT 1")
@@ -473,7 +512,7 @@ def home():
 
 @app.route("/health")
 def health():
-    return jsonify({"success": True, "version": "tabby-23-supabase", "db": "postgres" if IS_PG else "sqlite", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", [])), "voice": {"stt": OPENROUTER_STT_MODEL, "tts": OPENROUTER_TTS_MODEL, "tts_voice": OPENROUTER_TTS_VOICE}})
+    return jsonify({"success": True, "version": "tabby-24-supabase-fixed", "db": "postgres" if IS_PG else "sqlite", "auto_last": AUTO.get("last"), "auto_count": len(AUTO.get("news", [])), "voice": {"stt": OPENROUTER_STT_MODEL, "tts": OPENROUTER_TTS_MODEL, "tts_voice": OPENROUTER_TTS_VOICE}})
 
 @app.route("/api/signup", methods=["POST"])
 def signup():
@@ -693,6 +732,8 @@ def voice_chat():
             return jsonify({"success": True, "reply": "I no hear you well, Boss, talk am again.", "text": "", "audio": None})
         low = user_text.lower()
         conv_id = get_or_create_conversation(u["id"], (request.get_json(silent=True) or {}).get("conversation_id"), user_text)
+        if not conv_id:
+            conv_id = 1
         cmd_reply = handle_bike_or_house_command(u, low, user_text, conv_id)
         if cmd_reply:
             try:
@@ -767,8 +808,12 @@ def chat():
     if d.get("new_chat"):
         with DB() as db:
             conv_id = db.ins("INSERT INTO conversations (user_id, title) VALUES (%s,%s)", (u["id"], clean(msg)[:40] or "New Chat"))
+            if not conv_id:
+                conv_id = 1
     else:
         conv_id = get_or_create_conversation(u["id"], conv_id, msg)
+    if not conv_id:
+        conv_id = 1
     cmd_reply = handle_bike_or_house_command(u, low, msg, conv_id) if msg else None
     if cmd_reply:
         audio = None
