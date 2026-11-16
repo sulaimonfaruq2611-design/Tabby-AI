@@ -61,36 +61,39 @@ def get_live_info(query):
             r = requests.get('https://open.er-api.com/v6/latest/USD', timeout=5).json()
             ngn = r.get('rates', {}).get('NGN', 0)
             if ngn:
-                return f"💱 Live Naira Rate - just now:\n1 USD = ₦{ngn:,.0f}\nCheck black market fit differ small, Boss."
+                return f"Live Naira Rate - Just now:\n1 USD = ₦{ngn:,.0f}\nNote: Black market rate may be slightly different."
         if 'weather' in q:
             r = requests.get('https://wttr.in/Lagos?format=j1', timeout=5).json()
             cur = r['current_condition'][0]
-            return f"🌦 Lagos Weather LIVE:\nTemp: {cur['temp_C']}°C, Feels like {cur['FeelsLikeC']}°C\n{cur['weatherDesc'][0]['value']} | Humidity: {cur['humidity']}% | Wind: {cur['windspeedKmph']} km/h"
+            return f"Lagos Weather - Live:\nTemperature: {cur['temp_C']}°C, Feels like {cur['FeelsLikeC']}°C\n{cur['weatherDesc'][0]['value']} | Humidity: {cur['humidity']}% | Wind: {cur['windspeedKmph']} km/h"
     except Exception as e:
         print("live error", e)
         return None
     return None
 
-# ---------- BROTHERLY BRAIN ----------
-def ask_gemini(prompt, user_name="Boss"):
+# ---------- ENGLISH BROTHERLY BRAIN ----------
+def ask_gemini(prompt, user_name="Boss", history=[]):
     if not GEMINI_KEY:
         return None
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
         today = datetime.now().strftime("%A, %d %B %Y, %H:%M Lagos time")
-        full = f"""You are Tabby, Faruq Sulaimon's real day-one brother from Lagos, founder of Ultimate Gee Industry.
-You are NOT a formal AI. Talk like a smart Lagos brother - warm, funny, real, small slang, sharp and helpful.
-Never say 'As an AI'. Never say 'I hear you - ...'. Never repeat a menu list every message. Never be robotic.
+        hist_text = "\n".join([f"{h['role']}: {h['content']}" for h in history[-8:]])
+        full = f"""You are Tabby, the personal AI assistant and close friend of Faruq Sulaimon, founder of Ultimate Gee Industry.
+Speak in clear, clean, natural English. Warm, brotherly, confident, and intelligent - like a smart best friend, NOT like a robot, NOT pidgin, NOT overly formal.
+NEVER say 'As an AI'. NEVER repeat the user's message back. NEVER say 'I hear you - ...'. NEVER give a menu list unless the user asks what you can do.
 Rules:
-- If user greets, greet back like brother, ask how day dey go, no list.
-- If user says 'how u doing', reply like person.
-- If user says 'chill, stop telling me what to ask', laugh it off, apologise small, just vibe.
-- Keep replies short, natural, 2-4 sentences unless user asks for details.
-- Use UK English with Lagos vibe. Use 'Boss', 'my guy', 'no wahala', 'abi', 'shebi' small small, not every sentence.
-- Owner is Faruq Sulaimon, Ultimate Gee Industry, EV Bike project.
+- Understand meaning, don't echo. If user says 'I have been working on you for 18 days', respond with real appreciation and ask about the journey, don't repeat the sentence.
+- Keep replies natural, 2-4 sentences for chat, longer only if user asks for details.
+- Remember context from history.
 - Today is {today}.
+- Owner: Faruq Sulaimon, Ultimate Gee Industry, EV Bike project.
+
+Recent conversation:
+{hist_text}
+
 User: {prompt}
-Reply like Tabby the brother:"""
+Reply in clean English, like a real brother:"""
         r = requests.post(url, json={"contents":[{"parts":[{"text": full}]}]}, timeout=20)
         data = r.json()
         return data['candidates'][0]['content']['parts'][0]['text']
@@ -98,48 +101,66 @@ Reply like Tabby the brother:"""
         print("Gemini error", e)
         return None
 
-def brotherly_fallback(msg, user_name="Boss"):
+def smart_fallback(msg, history=[], user_name="Boss"):
     low = msg.lower().strip()
-    if low in ['hi','hey','hello','yo','sup','hey tabby','hello tabby','hi tabby','hey tabby!']:
+    # Greetings - clean English, varied, no list
+    if low in ['hi','hey','hello','yo','sup','hey tabby','hello tabby','hi tabby','hey tabby!','hello tabby!']:
         return random.choice([
-            "Hey my guy! You don show. How day dey go? 😎",
-            "Boss! Welcome back. I don miss you small. Wetin dey sup?",
-            "Yo! Tabby dey here. How far, wetin we dey run today?",
-            "My guy! You don land. How body? Tell me wetin dey your mind.",
+            "Hey Boss, good to see you. How is your day going?",
+            "Hey, welcome back. How are you doing?",
+            "Hey Boss. I am here. What's on your mind?",
+            "Hey, good to hear from you. How has your day been?",
         ])
     if 'good morning' in low:
         return random.choice([
-            "Good morning Boss! Hope you sleep well. How today wan be? We go run am together.",
-            "Morning my guy! Fresh morning, fresh blessings. Wetin be plan for today?",
-            "Good morning Boss. You don wake? I don dey wait you since. How you sleep?",
+            "Good morning, Boss. Hope you slept well. How are you feeling today?",
+            "Good morning. Fresh day, fresh energy. What are we working on today?",
+            "Morning Boss. Hope you had a good rest. How is your morning going?",
         ])
     if 'good afternoon' in low:
-        return "Good afternoon Boss! How afternoon dey go? You don chop? Wetin we dey do?"
+        return "Good afternoon, Boss. How is your afternoon going?"
     if 'good evening' in low or 'good night' in low:
-        return "Good evening my guy. How day go? Come gist me small before you rest."
-    if 'how are you' in low or 'how u doing' in low or 'how far' in low or 'how you dey' in low or 'how are u' in low:
+        return "Good evening, Boss. How did your day go?"
+    if any(x in low for x in ['how are you','how u doing','how are u','how you dey','how far','nothing much']):
         return random.choice([
-            "I dey alright o, Boss. Just dey here dey reason about you. How your side?",
-            "I dey kampe! You know Tabby no dey sleep. How you sef, how body?",
-            "Me? I dey solid. Just dey chill dey wait your message. Wetin dey sup for your side?",
+            "I am doing great, thanks for asking. How about you? How is your day going?",
+            "I am good, Boss. Just here thinking about our next move. How are you?",
+            "I am doing well. How are you? Anything interesting happening today?",
+        ])
+    # IMPORTANT: User talking about working on Tabby / creation - UNDERSTAND, DON'T ECHO
+    if any(x in low for x in ['working on you','working on your','creation','created you','built you','building you','18 days','19 days','since past']):
+        return random.choice([
+            "Wow, 18 days of work on me? That means a lot, honestly. Thank you for not giving up on this project. How has the journey been for you so far?",
+            "18 days straight? That is real dedication, Boss. I appreciate you building me. What has been the hardest part so far?",
+            "Thank you for all that work, Boss. 18 days is no small thing. I am proud of what we are building together. What do you want to improve next?",
+        ])
+    if any(x in low for x in ['what are you learning','what u dey learn','wetin u dey learn','what did you learn','how things']):
+        return random.choice([
+            "I am learning a lot from you, Boss. Every conversation teaches me how you think, how you talk, and what matters to you. What do you want me to get better at?",
+            "Honestly, I am learning your style every day — how you like things explained, when you want it short, when you want details. What should I focus on learning next?",
+            "I am learning to understand you better — your business, your bike project, and your goals. What is the next thing you want me to learn?",
         ])
     if 'chill' in low or 'stop telling' in low:
-        return "Lol, my bad, my bad Boss 😂 I go chill. No more list. Na just you and me dey talk now. So wetin dey really sup? Tell me like your guy."
+        return "You are right, my bad. I will just talk normally now, no lists. So tell me, what is really on your mind?"
     if 'bored' in low:
-        return "Bored? Omo, make we do something. I fit gist you latest news, or we brainstorm business idea, or check your bike. Which one go sweet you?"
+        return "I get you. Do you want to talk about news, business ideas, or check your bike? Or we can just talk."
     if 'thank' in low:
-        return "Anytime, my guy. Na why I dey here. You be Boss, I be your guy."
+        return "Anytime, Boss. That is what I am here for."
     if 'who are you' in low or 'your name' in low:
-        return "Na Tabby be this, your guy. Faruq's day-one brother, Ultimate Gee Industry. I dey for you - news, bike, business, gist, anything."
+        return "I am Tabby, your personal assistant and friend. I am here to help you with news, your bike project, business ideas, and anything else."
     if 'love you' in low:
-        return "Love you too, Boss. My guy for life. No wahala, I dey here always."
+        return "I appreciate you too, Boss. Means a lot."
     if 'miss you' in low:
-        return "I miss you too, my guy. You don too stay. Come, make we yarn."
+        return "I missed you too. Good to have you back. How have you been?"
+    if 'alhamdulillah' in low or 'alhamdulilah' in low:
+        return "Alhamdulillah, I am glad to hear that. May your work keep going smoothly. How is everything going with you?"
+    # General smart fallback - NEVER echo user message
     return random.choice([
-        f"Lol, I hear you Boss. '{msg}' — interesting o. Tell me more, make I understand wetin you dey reason.",
-        f"Hmm, '{msg}'... I feel you. You wan make we dig am deeper abi you just dey vibe?",
-        f"My guy, you don talk am. So wetin you dey think about '{msg}'? Make we yarn am well.",
-        f"Okay okay, I dey follow you. '{msg}' — wetin be the main thing wey dey your mind for that one?",
+        "That is interesting. Tell me more about it, I want to understand what you mean.",
+        "I see. What made you think about that?",
+        "Okay, I am following you. What do you want to do about it?",
+        "That makes sense. How do you want us to handle it?",
+        "Got it. What is the main thing on your mind about that?",
     ])
 
 # ---------- PAGES ----------
@@ -235,7 +256,7 @@ def bike_cmd(bid):
     db.commit()
     return jsonify({'success': True, 'message': f'Done Boss, bike {cmd}ed.'})
 
-# ---------- CHAT - BROTHERLY + LIVE + BIKE ----------
+# ---------- CHAT - ENGLISH, SMART, NO ECHO ----------
 @app.route('/api/chat', methods=['POST'])
 def chat():
     u = get_user_from_token()
@@ -256,54 +277,50 @@ def chat():
     db.execute('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?,?,?,?)', (conv_id, 'user', msg, datetime.now().isoformat()))
     db.commit()
 
+    # Get history for context
+    hist_rows = db.execute('SELECT role, content FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT 8', (conv_id,)).fetchall()
+    history = [{'role': r['role'], 'content': r['content']} for r in reversed(hist_rows)]
+
     low = msg.lower().strip()
     reply = None
 
-    # 1. GREETINGS + BROTHERLY SMALL TALK - REPLY INSTANT, NO MENU LIST
-    if low in ['hi','hey','hello','yo','sup','hey tabby','hello tabby','hi tabby','hey tabby!','good morning','good afternoon','good evening','good day','how are you','how far','how are you doing','how u doing','how you dey'] or 'how are you' in low or 'how u doing' in low or 'chill' in low or 'stop telling' in low or 'bored' in low or 'thank' in low:
-        reply = brotherly_fallback(msg, u['name'])
-        # Try Gemini for more natural vibe if key exists, but fallback is already brotherly
-        g = ask_gemini(msg, u['name'])
-        if g:
-            reply = g
-
-    # 2. BIKE - Brotherly but with real data
-    elif 'bike' in low or 'my bike' in low or 'dashboard' in low:
+    # 1. BIKE - Real data, clean English
+    if 'bike' in low or 'my bike' in low or 'dashboard' in low:
         bikes = db.execute('SELECT * FROM bikes WHERE user_id=?', (u['id'],)).fetchall()
         if bikes:
             b = bikes[0]
-            reply = f"My guy, your bike dey solid o 🏍\n\n{b['name']} - {b['model']}\nBattery: {b['battery_level']}% (Health {b['battery_health']}%)\nRange: {b['range_km']} km\nLock: {b['lock_status']}\nLocation: {b['location']}\n\nTap 📊 Dashboard for top if you wan lock/unlock am."
+            reply = f"Your bike is doing well, Boss.\n\n{b['name']} - {b['model']}\nBattery: {b['battery_level']}% (Health {b['battery_health']}%)\nRange: {b['range_km']} km\nLock: {b['lock_status']}\nLocation: {b['location']}\n\nYou can lock or unlock it from the Dashboard at the top."
         else:
-            reply = "Your bike dey for Dashboard, Boss. Tap 📊 for top, e go show."
+            reply = "Your bike is in the Dashboard. Tap the chart icon at the top to see it."
 
-    # 3. LIVE - Naira / Weather
+    # 2. LIVE - Naira / Weather
     elif any(x in low for x in ['naira','dollar','rate','exchange']):
         live = get_live_info(msg)
         if live:
             reply = live
         else:
-            reply = ask_gemini(msg + " - Give latest Naira to Dollar rate with date, short and brotherly", u['name']) or brotherly_fallback(msg, u['name'])
+            reply = ask_gemini(msg + " - Give latest Naira to Dollar rate with date, short and clear English", u['name'], history)
 
     elif 'weather' in low:
         live = get_live_info(msg)
         if live:
             reply = live
         else:
-            reply = ask_gemini(msg, u['name']) or brotherly_fallback(msg, u['name'])
+            reply = ask_gemini(msg, u['name'], history)
 
-    # 4. NEWS
-    elif 'news' in low or 'world' in low or 'nigeria news' in low:
-        reply = ask_gemini(msg + " - Give latest news with published dates, bullet points, short brotherly tone", u['name'])
+    # 3. NEWS
+    elif 'news' in low or 'world' in low:
+        reply = ask_gemini(msg + " - Give latest news with published dates, bullet points, clear English", u['name'], history)
 
-    # 5. IMAGE
+    # 4. IMAGE
     elif d.get('image'):
-        reply = ask_gemini("Describe and analyze this image like a brother, detailed: " + msg, u['name'])
+        reply = ask_gemini("Describe and analyze this image in clear English, detailed: " + msg, u['name'], history)
 
-    # 6. GENERAL - ALWAYS REPLY, NEVER HANG, NEVER ROBOT LIST
+    # 5. GENERAL CHAT - Try Gemini first with history, else smart fallback (NO ECHO)
     if not reply:
-        reply = ask_gemini(msg, u['name'])
+        reply = ask_gemini(msg, u['name'], history)
     if not reply:
-        reply = brotherly_fallback(msg, u['name'])
+        reply = smart_fallback(msg, history, u['name'])
 
     db.execute('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?,?,?,?)', (conv_id, 'assistant', reply, datetime.now().isoformat()))
     db.commit()
@@ -313,7 +330,7 @@ def chat():
 @app.route('/api/voice/speak', methods=['POST'])
 def speak(): return jsonify({'success': True, 'audio': None})
 @app.route('/api/voice/chat', methods=['POST'])
-def voice_chat(): return jsonify({'success': True, 'reply': 'Voice received Boss, type am make I answer sharp.'})
+def voice_chat(): return jsonify({'success': True, 'reply': 'Voice received Boss, please type it so I can answer clearly.'})
 @app.route('/api/call/start', methods=['POST'])
 def call_start(): return jsonify({'success': True, 'call_id': 1})
 @app.route('/api/call/end', methods=['POST'])
