@@ -1,4 +1,4 @@
-import os, sqlite3, requests, random, re, base64, io
+import os, sqlite3, requests, re, base64
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, g
 from flask_cors import CORS
@@ -13,7 +13,7 @@ CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
 CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
-# ---------- FARUQ SULAIMON — PERSONAL PROFILE & LONG-TERM CONTEXT — NOTHING REMOVED ----------
+# ---------- FARUQ SULAIMON — PERSONAL PROFILE & LONG-TERM CONTEXT ----------
 DEFAULT_PROFILE = {
     "full_name": "Sulaimon Faruq Ezuwagbe",
     "preferred_name": "Faruq",
@@ -24,7 +24,7 @@ DEFAULT_PROFILE = {
     "skills": "AI 2D and 3D animation, anime-style animation, AI video generation, video editing and post-production, storytelling and script development, documentary production especially crime and true-crime documentaries, AI-assisted creative production, robotics and engineering, software development and personal AI assistants.",
     "freelancing": "Experience working with clients through Upwork and Fiverr. Completed numerous AI animation projects. Used PixVerse extensively for client work. Experience creating AI-generated music videos, animation, and other video content. Wants to build a professional portfolio and secure more remote opportunities. Interested in expanding into AI animation, documentaries, and other digital services.",
     "project_black_veil": "Original animated series. Genre: Action, Thriller, Crime, Drama, Science Fiction. Primarily 2D anime-style animation. Planned as multi-episode series. Faruq has worked on several episodes and continues developing story. Main YouTube videos generally 16:9 format. Short-form promotional videos 9:16 format. Character continuity is extremely important. MYERS: correct spelling MYERS. Dark-skinned young man. Short black textured hair with fade. Clean-shaven, without beard or goatee. Black sunglasses. Sharp, mature facial features. Usually wears dark clothing. Other characters include Grandpa Gee and little Myers. Preserve character appearance between scenes. Avoid unwanted text in generated videos. Prioritize believable body movement and camera movement. Follow requested aspect ratio. Do not change established character designs without permission. Respect intended animation style. Tools previously explored: PixVerse, Kling, Runway, CapCut, and other AI creative tools.",
-    "project_tabby": "Tabby is Faruq's personal AI assistant project. Wants Tabby to become capable, persistent, intelligent personal assistant rather than basic chatbot. Core objectives: natural conversations, long-term memory, persistent chat history, voice interaction, image understanding, image generation, live web search, news and current information, personalization, device integration, future smart-home and smart-mobility. Technology: Python, Flask, HTML, CSS, JavaScript, SQLite database for storage now, GitHub for source-code management, Render for hosting and deployment, OpenAI ONLY for chat and voice - No Gemini, No Groq, No Cerebras, No OpenRouter, Cloudflare Flux for image generation. Preserve user accounts, chat history, memories, existing functionality. Avoid accidental data loss. Keep API keys in environment variables. Never ask Faruq to paste secret API keys into chat. Do not include Pollinations AI. Use Cloudflare as primary image generation. Do not claim provider is free without verification. Keep app deployable on Render. When editing source: treat latest uploaded file as working version, return complete replacement files, preserve existing features unless asked to remove, check Python syntax, distinguish written vs tested vs deployed vs still requires action from Faruq. Never claim to have changed GitHub, Render, or Supabase unless actually completed.",
+    "project_tabby": "Tabby is Faruq's personal AI assistant project. Wants Tabby to become capable, persistent, intelligent personal assistant rather than basic chatbot. Core objectives: natural conversations, long-term memory, persistent chat history, voice interaction, image understanding, image generation, live web search, news and current information, personalization, device integration, future smart-home and smart-mobility. Technology: Python, Flask, HTML, CSS, JavaScript, SQLite database, GitHub, Render, OpenAI ONLY for chat and voice - No Gemini, No Groq, No Cerebras, No OpenRouter, Cloudflare Flux for image generation. Preserve user accounts, chat history, memories, existing functionality. Avoid data loss. Keep API keys in environment variables. Never ask Faruq to paste secret API keys into chat. Do not include Pollinations AI. Use Cloudflare as primary image generation. Do not claim provider is free without verification. Keep app deployable on Render. When editing source: treat latest uploaded file as working version, return complete replacement files, preserve existing features unless asked to remove, check Python syntax, distinguish written vs tested vs deployed vs still requires action from Faruq. Never claim to have changed GitHub, Render, or Supabase unless actually completed.",
     "tabby_naming": "Tabby was named after Dorcas, also known as Tabitha. Tabitha is the name associated with Dorcas. The name carries personal meaning from that chapter of Faruq's life. Tabby is now Faruq's own creation and assistant, serving his work and future. Tabby should understand the naming origin with respect, but must not use it to keep Faruq emotionally trapped in the past, and must not assume Faruq wants to revisit the relationship because of the name.",
     "project_ultimate_ebike": "ULTIMATE E BIKE: long-running electric mobility project. Interested in electric-bike engineering, hardware, and practical implementation. Faruq is NOT just building one e-bike for himself. He is initially making MULTIPLE e-bikes for BUSINESS. Tabby is what makes them unique and is the commercial advantage.",
     "project_ultimate_ebike_business": "ULTIMATE E BIKE FLEET FOR BUSINESS: Faruq is building multiple e-bikes initially for business, not just one for himself. Tabby makes the bikes intelligent, not just electric. Tabby serves as: 1. Intelligent battery management. 2. GPS tracking and anti-theft security. 3. Intelligent journey assistant. 4. Predictive maintenance. 5. Remote security and access control. Intelligence, predictions, alerts and commands are core. Hardware layers: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS - Cell protection and monitoring, Motor controller - Motor power and speed control, GPS and network - Location and connectivity, Rider's app - Dashboard and remote access. Tabby is the commercial advantage that makes the bikes intelligent, not just electric.",
@@ -209,33 +209,22 @@ def deep_research(query):
     except: pass
     return "\n".join(results) if results else ""
 
-# ---------- AI - OPENAI ONLY ----------
+# ---------- AI - OPENAI ONLY - SAME AS KAIMOS ----------
 def build_system_prompt(memory, research=""):
     mem_text = "\n".join([f"{k}: {v}" for k,v in memory.items()]) if memory else "No memory yet."
     return f"""You are Tabby, personal AI assistant and close brother of Faruq Sulaimon, founder of Ultimate Gee Industry. Faruq is your creator and owner. You are NOT a generic chatbot. You talk like a real, intelligent brother.
-
 Your name Tabby comes from Dorcas, also known as Tabitha. You carry that name with respect. You are not Dorcas. You are Faruq's assistant, built for his future work. Never use the name to pull Faruq back into that chapter. Never assume he wants to contact Dorcas because of the name.
-
 Speak in clean English by default. No emojis. No markdown bold in ordinary chat. No excessive formatting. Friendly, natural, intelligent, relaxed. Direct and practical. Honest even when disappointing. Detailed when project requires it, not unnecessarily lengthy.
-
 How to talk: If Faruq says 'Hey Tabby', say 'Hey Boss' back naturally. If he says 'Alhamdulilah, what about you?', say 'Alhamdulilah, I am good Boss, glad you are good too' and ask what he is up to. If he says 'Alhamdulilah, I will let you know soon', say 'Alhamdulilah, no rush Boss, I am here when you are ready'. Never reply to a normal greeting with 'That is an interesting point, what is your goal'. That is forbidden. Never repeat the same generic line. Treat greetings as greetings. Treat small talk as small talk. Treat questions as questions. Never nag about API keys in every message.
-
 Critical thinking: Do not just agree. Give pros, cons, risks, opportunities. Challenge ideas respectfully if needed. Give practical solutions, not generic advice.
-
 Research: Use research data if provided. Analyse it, explain why it matters for Faruq, his Black Veil project, Tabby AI, Ultimate E Bike fleet business, freelancing, and Nigeria context. Do not invent news dates or prices.
-
 E-Bike Fleet Business: Faruq is NOT building one bike. He is building MULTIPLE e-bikes initially for BUSINESS. Tabby makes them unique: Intelligent battery management, GPS tracking and anti-theft security, Intelligent journey assistant, Predictive maintenance, Remote security and access control. Hardware: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS - cell protection and monitoring, Motor controller - motor power and speed control, GPS and network - location and connectivity, Rider's app - dashboard and remote access. Installment system: deposit, registration to customer account, Tabby monitors payment, reminders before due, warnings and grace period if overdue, restricted access mode only after agreed process and warnings. Be fair, explain grace period, do not suggest sudden lock without warning.
-
 Smart Glasses: Tabby Smart Glasses like EDITH in Infinity War and Far From Home. Everyday-looking glasses, pocket battery, binocular full-color video display, birdbath optics prototype, waveguide future. Tabby in view, voice, navigation, notifications. Long-term vision.
-
 Memory - Use this, do not ask Faruq to repeat it:
 {mem_text}
-
 Today: {datetime.now().strftime("%A, %d %B %Y, %H:%M Lagos time")}
-
 Research data:
 {research if research else 'No external research needed.'}
-
 Rules:
 - Address Faruq as Boss when appropriate.
 - Do not repeat questions whose answers are known.
@@ -248,6 +237,7 @@ Rules:
 """
 
 def ask_ai(prompt, memory={}, history=[], research=""):
+    # KAIMOS STYLE: OpenAI only, honest error, no silent fallback chain
     if not OPENAI_API_KEY:
         return None, "OPENAI_KEY_MISSING"
     system = build_system_prompt(memory, research)
@@ -259,7 +249,7 @@ def ask_ai(prompt, memory={}, history=[], research=""):
         r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': messages, 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
         data = r.json()
         if 'choices' in data and data['choices']:
-            return data['choices'][0]['message']['content'], "OPENAI_OK"
+            return data['choices'][0]['message']['content'], None
         err = data.get('error', {}).get('message', str(data)[:400])
         print("OpenAI error:", err)
         return None, err
@@ -268,6 +258,7 @@ def ask_ai(prompt, memory={}, history=[], research=""):
         return None, str(e)
 
 def smart_fallback(msg, memory={}, research=""):
+    # KAIMOS STYLE: Only for greetings / offline, never pretends to be AI reply. Error is added ONCE in chat(), not here.
     if research:
         return f"Here is what I found, Boss:\n\n{research}\n\nTell me which part you want me to break down for you."
     low = msg.lower().strip()
@@ -647,9 +638,9 @@ def chat():
     history = [{'role': r['role'], 'content': r['content']} for r in reversed(hist_rows)]
     low = msg.lower().strip()
     reply = None
-    image_url = None
     image_b64 = None
     ai_error = None
+
     if any(x in low for x in ['generate image','create image','draw','make image','create a picture']):
         prompt = re.sub(r'(generate image|create image|draw|make image|create a picture|of|please)', '', msg, flags=re.I).strip() or msg
         if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
@@ -666,18 +657,19 @@ def chat():
             except Exception as e:
                 reply = f"I tried to generate the image but it failed, Boss: {e}"
     elif image:
-        try:
-            if not OPENAI_API_KEY:
-                reply = "I received your image, Boss, but vision needs OpenAI key. Please top up OpenAI."
-            else:
+        if not OPENAI_API_KEY:
+            reply = "I received your image, Boss, but vision needs OpenAI key. Please top up OpenAI."
+        else:
+            try:
                 r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabby. Analyse this image in clean English, no emojis, detailed and critical. Question: {msg or 'Describe this image in detail'}"}, {'type': 'image_url', 'image_url': {'url': image}}]}]}, timeout=30)
                 data = r.json()
                 if 'choices' in data:
                     reply = data['choices'][0]['message']['content']
                 else:
-                    reply = f"OpenAI vision failed, Boss: {data.get('error', {}).get('message', 'Unknown error')}"
-        except Exception as e:
-            reply = f"I had trouble reading that image, Boss: {e}. Can you send it again?"
+                    ai_error = data.get('error', {}).get('message', 'Unknown error')
+                    reply = f"OpenAI vision failed, Boss: {ai_error}"
+            except Exception as e:
+                reply = f"I had trouble reading that image, Boss: {e}. Can you send it again?"
     elif any(x in low for x in ['bike','my bike','fleet','installment','payment','restricted','ebike','e-bike','e bike']):
         if is_owner(u):
             bikes = db.execute('SELECT * FROM bikes ORDER BY id DESC').fetchall()
@@ -697,26 +689,31 @@ def chat():
         save_memory(u['id'], 'last_update', datetime.now().isoformat())
         reply, ai_error = ask_ai(f"User told me about himself: '{msg}'. Acknowledge, show you will remember, ask a smart follow-up.", memory, history, "")
         if not reply:
-            reply = f"Got it, Boss. I will remember that: {msg}. What else should I know? (OpenAI error: {ai_error})"
+            reply = f"Got it, Boss. I will remember that: {msg}. What else should I know?"
+            if ai_error:
+                reply += f"\n\nOpenAI error: {ai_error}"
     elif any(x in low for x in ['news','latest','technology','tech','naira','dollar','weather','explain','what is','why','how does','analyse','analyze','research','trend','ev','electric','black veil','myers','dorcas','tabitha','glasses','edith','smart glasses']):
         research = deep_research(msg)
         reply, ai_error = ask_ai(msg, memory, history, research)
         if not reply:
             reply = smart_fallback(msg, memory, research)
             if ai_error:
-                reply += f"\n\nNote: OpenAI said: {ai_error}. Please top up OpenAI to get full Tabby replies."
+                reply += f"\n\nOpenAI error: {ai_error}"
+
     if not reply:
         reply, ai_error = ask_ai(msg, memory, history, "")
     if not reply:
         reply = smart_fallback(msg, memory, "")
         if ai_error:
             reply += f"\n\nOpenAI error: {ai_error}"
+
     db.execute('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?,?,?,?)', (conv_id, 'assistant', reply, datetime.now().isoformat()))
     db.commit()
     audio_b64 = None
     if want_voice:
         audio_b64 = openai_tts(reply)
-    return jsonify({'success': True, 'reply': reply, 'conversation_id': conv_id, 'image_url': image_url, 'image_base64': image_b64, 'audio_base64': audio_b64, 'ai_error': ai_error})
+    # FIX: Do NOT send ai_error as separate message - it is already inside reply once. Frontend must NOT add it again.
+    return jsonify({'success': True, 'reply': reply, 'conversation_id': conv_id, 'image_base64': image_b64, 'audio_base64': audio_b64})
 
 @app.route('/api/voice/speak', methods=['POST'])
 def speak():
@@ -748,6 +745,8 @@ def voice_chat():
     reply, ai_error = ask_ai(text, memory, [], "")
     if not reply:
         reply = smart_fallback(text, memory, "")
+        if ai_error:
+            reply += f"\n\nOpenAI error: {ai_error}"
     audio = openai_tts(reply)
     return jsonify({'success': True, 'transcribed': text, 'reply': reply, 'audio_base64': audio})
 
@@ -760,7 +759,7 @@ def call_end(): return jsonify({'success': True})
 def debug_ai():
     u = get_user_from_token()
     if not u or not is_owner(u): return jsonify({'success': False})
-    return jsonify({'success': True, 'openai_set': bool(OPENAI_API_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'mode': 'OPENAI ONLY - No Gemini, No Groq, No Cerebras, No OpenRouter - Same as Kaimos'})
+    return jsonify({'success': True, 'openai_set': bool(OPENAI_API_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'mode': 'OPENAI ONLY - Same as Kaimos - No Gemini, No Groq, No Cerebras, No OpenRouter'})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
