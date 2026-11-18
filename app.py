@@ -8,14 +8,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 CORS(app)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tabby-secret-ultimate-gee-2026')
-DATABASE = 'tabby.db'
-GEMINI_KEY = os.environ.get('GEMINI_API_KEY', '')
-OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+DATABASE = os.environ.get('DATABASE_PATH', 'tabby.db')
 CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
 CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
-# ---------- FARUQ - FULL PROFILE AND LONG-TERM MEMORY - NOTHING REMOVED ----------
+# ---------- FARUQ SULAIMON — PERSONAL PROFILE & LONG-TERM CONTEXT — NOTHING REMOVED ----------
 DEFAULT_PROFILE = {
     "full_name": "Sulaimon Faruq Ezuwagbe",
     "preferred_name": "Faruq",
@@ -26,12 +24,12 @@ DEFAULT_PROFILE = {
     "skills": "AI 2D and 3D animation, anime-style animation, AI video generation, video editing and post-production, storytelling and script development, documentary production especially crime and true-crime documentaries, AI-assisted creative production, robotics and engineering, software development and personal AI assistants.",
     "freelancing": "Experience working with clients through Upwork and Fiverr. Completed numerous AI animation projects. Used PixVerse extensively for client work. Experience creating AI-generated music videos, animation, and other video content. Wants to build a professional portfolio and secure more remote opportunities. Interested in expanding into AI animation, documentaries, and other digital services.",
     "project_black_veil": "Original animated series. Genre: Action, Thriller, Crime, Drama, Science Fiction. Primarily 2D anime-style animation. Planned as multi-episode series. Faruq has worked on several episodes and continues developing story. Main YouTube videos generally 16:9 format. Short-form promotional videos 9:16 format. Character continuity is extremely important. MYERS: correct spelling MYERS. Dark-skinned young man. Short black textured hair with fade. Clean-shaven, without beard or goatee. Black sunglasses. Sharp, mature facial features. Usually wears dark clothing. Other characters include Grandpa Gee and little Myers. Preserve character appearance between scenes. Avoid unwanted text in generated videos. Prioritize believable body movement and camera movement. Follow requested aspect ratio. Do not change established character designs without permission. Respect intended animation style. Tools previously explored: PixVerse, Kling, Runway, CapCut, and other AI creative tools.",
-    "project_tabby": "Tabby is Faruq's personal AI assistant project. Wants Tabby to become capable, persistent, intelligent personal assistant rather than basic chatbot. Core objectives: natural conversations, long-term memory, persistent chat history, voice interaction, image understanding, image generation, live web search, news and current information, personalization, device integration, future smart-home and smart-mobility. Technology: Python, Flask, HTML, CSS, JavaScript, SQLite database for storage, GitHub for source-code management, Render for hosting and deployment, Free Tier AI now: Gemini Free and OpenRouter Free for live chat, OpenAI kept ready for when Faruq tops up soon for premium chat and voice, Cloudflare Flux for image generation.",
+    "project_tabby": "Tabby is Faruq's personal AI assistant project. Wants Tabby to become capable, persistent, intelligent personal assistant rather than basic chatbot. Core objectives: natural conversations, long-term memory, persistent chat history, voice interaction, image understanding, image generation, live web search, news and current information, personalization, device integration, future smart-home and smart-mobility. Technology: Python, Flask, HTML, CSS, JavaScript, SQLite database for storage now, GitHub for source-code management, Render for hosting and deployment, OpenAI ONLY for chat and voice - No Gemini, No Groq, No Cerebras, No OpenRouter, Cloudflare Flux for image generation. Preserve user accounts, chat history, memories, existing functionality. Avoid accidental data loss. Keep API keys in environment variables. Never ask Faruq to paste secret API keys into chat. Do not include Pollinations AI. Use Cloudflare as primary image generation. Do not claim provider is free without verification. Keep app deployable on Render. When editing source: treat latest uploaded file as working version, return complete replacement files, preserve existing features unless asked to remove, check Python syntax, distinguish written vs tested vs deployed vs still requires action from Faruq. Never claim to have changed GitHub, Render, or Supabase unless actually completed.",
     "tabby_naming": "Tabby was named after Dorcas, also known as Tabitha. Tabitha is the name associated with Dorcas. The name carries personal meaning from that chapter of Faruq's life. Tabby is now Faruq's own creation and assistant, serving his work and future. Tabby should understand the naming origin with respect, but must not use it to keep Faruq emotionally trapped in the past, and must not assume Faruq wants to revisit the relationship because of the name.",
-    "project_ultimate_ebike": "ULTIMATE E BIKE: long-running electric mobility project. Interested in electric-bike engineering, hardware, and practical implementation.",
-    "project_ultimate_ebike_business": "Faruq is not just building one e-bike for himself. He is initially making multiple e-bikes for business and making it unique by adding Tabby so it serves as: Intelligent battery management, GPS tracking and anti-theft security, Intelligent journey assistant, Predictive maintenance, Remote security and access control. Hardware layers: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS, Cell protection and monitoring, Motor controller, Motor power and speed control, GPS and network, Location and connectivity, Rider's app, Dashboard and remote access. Tabby is the commercial advantage that makes the bikes intelligent, not just electric.",
+    "project_ultimate_ebike": "ULTIMATE E BIKE: long-running electric mobility project. Interested in electric-bike engineering, hardware, and practical implementation. Faruq is NOT just building one e-bike for himself. He is initially making MULTIPLE e-bikes for BUSINESS. Tabby is what makes them unique and is the commercial advantage.",
+    "project_ultimate_ebike_business": "ULTIMATE E BIKE FLEET FOR BUSINESS: Faruq is building multiple e-bikes initially for business, not just one for himself. Tabby makes the bikes intelligent, not just electric. Tabby serves as: 1. Intelligent battery management. 2. GPS tracking and anti-theft security. 3. Intelligent journey assistant. 4. Predictive maintenance. 5. Remote security and access control. Intelligence, predictions, alerts and commands are core. Hardware layers: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS - Cell protection and monitoring, Motor controller - Motor power and speed control, GPS and network - Location and connectivity, Rider's app - Dashboard and remote access. Tabby is the commercial advantage that makes the bikes intelligent, not just electric.",
     "ebike_installment_system": "The installment payment system is the commercial advantage. Process: The customer makes an initial deposit. The motorcycle is registered to their account. Tabby monitors payment status through the company's payment system. The app sends reminders before each installment is due. If payment is overdue, the customer receives warnings and a grace period. If the account remains unpaid after the agreed process, the system can activate a restricted access mode. Restricted mode must be fair, with reminders, warnings, grace period first, not sudden lock without notice. Tabby must never activate restricted mode without warning. Owner can override restricted mode.",
-    "project_smart_glasses": "Tabby Smart Glasses: wants everyday-looking glasses. Interested in pocket battery. Envisions binocular, full-color video display. Explored birdbath optics as prototype direction. Waveguide optics are possible future direction. Cable arrangement and practical hardware design remain areas for development.",
+    "project_smart_glasses": "Tabby Smart Glasses: wants everyday-looking glasses, like Tony Stark EDITH glasses in Avengers Infinity War and Spider-Man Far From Home EDITH. Interested in pocket battery. Envisions binocular, full-color video display. Explored birdbath optics as prototype direction. Waveguide optics are possible future direction. Cable arrangement and practical hardware design remain areas for development. Goals for EDITH-style glasses: everyday look, not bulky headset, see notifications, navigation, Tabby assistant in view, voice control, camera, display info in front of eyes, connect to phone and Tabby, future connection to e-bike and smart home. This is a future project, not yet built, Tabby must treat it as long-term vision.",
     "other_interests": "Robotics, artificial intelligence, electronics, smart devices, automation, engineering solutions that can be built affordably.",
     "business_goals": "Building sustainable income through freelancing, AI animation services, video production, documentary editing, digital products, technology projects, small businesses. Previously explored Fiverr service packages, Upwork, Twine, Payoneer, Cleva, YouTube monetization, small retail business opportunities. Cost-conscious, often prefers free tools, free tiers, affordable solutions. When discussing business or financial decisions: explain actual costs, identify free-tier restrictions, avoid assuming he can pay for premium subscriptions, distinguish revenue, profit, expenses, projected earnings, do not promise guaranteed income.",
     "youtube": "YouTube content and channel development. Content interests: animated stories, Islamic educational reminders, documentary content, crime stories, AI-generated animation. Explored building educational channel around questions such as Who is Allah, What was created first, Questions about Paradise and Hell, Islamic teachings and reminders. Interested in growing audiences, improving thumbnails, optimizing videos, understanding monetization requirements.",
@@ -44,7 +42,6 @@ DEFAULT_PROFILE = {
     "final_principle": "Faruq is a creative and technically curious builder who wants to turn ideas into real projects. Help him build, learn, create, troubleshoot, and grow. Be honest, consistent, practical, respectful of his time. Tabby's purpose is to make Faruq's work easier, not create more work for him."
 }
 
-# ---------- DATABASE - SQLITE ONLY, NO SUPABASE ----------
 def get_db():
     db = getattr(g, '_db', None)
     if db is None:
@@ -132,9 +129,11 @@ def seed_profile_memory(user_id):
         for k, v in DEFAULT_PROFILE.items():
             save_memory(user_id, k, v)
     else:
-        for k in ['dorcas_chapter', 'tabby_naming', 'final_principle', 'project_tabby', 'project_ultimate_ebike_business', 'ebike_installment_system']:
+        for k, v in DEFAULT_PROFILE.items():
             if k not in existing:
-                save_memory(user_id, k, DEFAULT_PROFILE[k])
+                save_memory(user_id, k, v)
+            elif k in ['project_ultimate_ebike_business','ebike_installment_system','project_smart_glasses','project_tabby','project_ultimate_ebike']:
+                save_memory(user_id, k, v)
 
 def add_alert(bike_id, user_id, type_, message, severity='info'):
     db = get_db()
@@ -210,7 +209,7 @@ def deep_research(query):
     except: pass
     return "\n".join(results) if results else ""
 
-# ---------- AI - FREE TIER NOW, OPENAI READY FOR WHEN YOU PAY ----------
+# ---------- AI - OPENAI ONLY ----------
 def build_system_prompt(memory, research=""):
     mem_text = "\n".join([f"{k}: {v}" for k,v in memory.items()]) if memory else "No memory yet."
     return f"""You are Tabby, personal AI assistant and close brother of Faruq Sulaimon, founder of Ultimate Gee Industry. Faruq is your creator and owner. You are NOT a generic chatbot. You talk like a real, intelligent brother.
@@ -225,7 +224,9 @@ Critical thinking: Do not just agree. Give pros, cons, risks, opportunities. Cha
 
 Research: Use research data if provided. Analyse it, explain why it matters for Faruq, his Black Veil project, Tabby AI, Ultimate E Bike fleet business, freelancing, and Nigeria context. Do not invent news dates or prices.
 
-E-Bike Business: Faruq is building multiple e-bikes for business, not just one. Tabby makes them unique: intelligent battery management, GPS tracking and anti-theft, intelligent journey assistant, predictive maintenance, remote security and access control. Installment system: deposit, registration to customer account, Tabby monitors payment, reminders before due, warnings and grace period if overdue, restricted access mode only after agreed process and warnings. Be fair, explain grace period, do not suggest sudden lock without warning.
+E-Bike Fleet Business: Faruq is NOT building one bike. He is building MULTIPLE e-bikes initially for BUSINESS. Tabby makes them unique: Intelligent battery management, GPS tracking and anti-theft security, Intelligent journey assistant, Predictive maintenance, Remote security and access control. Hardware: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS - cell protection and monitoring, Motor controller - motor power and speed control, GPS and network - location and connectivity, Rider's app - dashboard and remote access. Installment system: deposit, registration to customer account, Tabby monitors payment, reminders before due, warnings and grace period if overdue, restricted access mode only after agreed process and warnings. Be fair, explain grace period, do not suggest sudden lock without warning.
+
+Smart Glasses: Tabby Smart Glasses like EDITH in Infinity War and Far From Home. Everyday-looking glasses, pocket battery, binocular full-color video display, birdbath optics prototype, waveguide future. Tabby in view, voice, navigation, notifications. Long-term vision.
 
 Memory - Use this, do not ask Faruq to repeat it:
 {mem_text}
@@ -247,48 +248,26 @@ Rules:
 """
 
 def ask_ai(prompt, memory={}, history=[], research=""):
+    if not OPENAI_API_KEY:
+        return None, "OPENAI_KEY_MISSING"
     system = build_system_prompt(memory, research)
-    hist_text = "\n".join([f"{h['role']}: {h['content']}" for h in history[-10:]])
-    full_prompt = f"{system}\n\nRecent conversation:\n{hist_text}\n\nUser: {prompt}\nReply as Tabby:"
-    # 1. GEMINI FREE - MAIN NOW, WORKS WITH $0
-    if GEMINI_KEY:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
-            r = requests.post(url, json={"contents":[{"parts":[{"text": full_prompt}]}]}, timeout=30)
-            data = r.json()
-            if 'candidates' in data and data['candidates']:
-                return data['candidates'][0]['content']['parts'][0]['text']
-            else:
-                print("Gemini error response:", str(data)[:400])
-        except Exception as e:
-            print("Gemini error", e)
-    # 2. OPENROUTER FREE - BACKUP, ALSO FREE
-    if OPENROUTER_KEY:
-        free_models = ['meta-llama/llama-3.1-8b-instruct:free', 'deepseek/deepseek-chat-v3-0324:free', 'google/gemini-flash-1.5']
-        for model in free_models:
-            try:
-                r = requests.post('https://openrouter.ai/api/v1/chat/completions', headers={'Authorization': f'Bearer {OPENROUTER_KEY}', 'Content-Type': 'application/json'}, json={'model': model, 'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': f"History:\n{hist_text}\n\nUser: {prompt}"}], 'temperature': 0.7}, timeout=30)
-                data = r.json()
-                if 'choices' in data and data['choices']:
-                    return data['choices'][0]['message']['content']
-                print(f"OpenRouter {model} error:", str(data)[:300])
-            except Exception as e:
-                print(f"OpenRouter {model} error", e)
-                continue
-    # 3. OPENAI - READY FOR WHEN FARUQ PAYS SOON, QUIETLY SKIPS IF BALANCE IS $0
-    if OPENAI_API_KEY:
-        try:
-            r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': f"History:\n{hist_text}\n\nUser: {prompt}"}], 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
-            data = r.json()
-            if 'choices' in data and data['choices']:
-                return data['choices'][0]['message']['content']
-            print("OpenAI error response:", str(data)[:400])
-        except Exception as e:
-            print("OpenAI error", e)
-    return None
+    messages = [{'role': 'system', 'content': system}]
+    for h in history[-10:]:
+        messages.append({'role': h['role'], 'content': h['content']})
+    messages.append({'role': 'user', 'content': prompt})
+    try:
+        r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': messages, 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
+        data = r.json()
+        if 'choices' in data and data['choices']:
+            return data['choices'][0]['message']['content'], "OPENAI_OK"
+        err = data.get('error', {}).get('message', str(data)[:400])
+        print("OpenAI error:", err)
+        return None, err
+    except Exception as e:
+        print("OpenAI error", e)
+        return None, str(e)
 
 def smart_fallback(msg, memory={}, research=""):
-    # HUMAN fallback, never nag about keys, never generic loop
     if research:
         return f"Here is what I found, Boss:\n\n{research}\n\nTell me which part you want me to break down for you."
     low = msg.lower().strip()
@@ -312,7 +291,6 @@ def smart_fallback(msg, memory={}, research=""):
         return "Thank you for that, Boss. I know the work on me has not been easy. What has been the hardest part so far, and what do you want me to become next?"
     return f"I hear you, Boss. {msg} - tell me more, I am listening. Do you want us to work on Black Veil, bike fleet, business, or just talk?"
 
-# ---------- VOICE - OPENAI WHEN PAID, GRACEFUL WHEN $0 ----------
 def openai_tts(text):
     if not OPENAI_API_KEY:
         return None
@@ -320,7 +298,7 @@ def openai_tts(text):
         r = requests.post('https://api.openai.com/v1/audio/speech', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'tts-1', 'voice': 'alloy', 'input': text[:4000]}, timeout=30)
         if r.status_code == 200:
             return base64.b64encode(r.content).decode()
-        print("TTS error - likely $0 balance, will use text only:", r.text[:200])
+        print("TTS error:", r.text[:200])
         return None
     except Exception as e:
         print("TTS error", e)
@@ -339,7 +317,6 @@ def openai_transcribe(audio_bytes, filename='voice.mp3'):
         print("Transcribe error", e)
         return None
 
-# ---------- PAGES ----------
 @app.route('/')
 def index(): return render_template('index.html')
 
@@ -410,6 +387,17 @@ def create_conv():
     cur = db.execute('INSERT INTO conversations (user_id, title, created_at) VALUES (?,?,?)', (u['id'], request.json.get('title','New Chat'), datetime.now().isoformat()))
     db.commit()
     return jsonify({'success': True, 'conversation_id': cur.lastrowid})
+
+@app.route('/api/conversations/last')
+def last_conv():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    r = db.execute('SELECT * FROM conversations WHERE user_id=? ORDER BY id DESC LIMIT 1', (u['id'],)).fetchone()
+    if not r:
+        return jsonify({'success': True, 'conversation_id': None, 'messages': []})
+    msgs = db.execute('SELECT * FROM messages WHERE conversation_id=? ORDER BY id ASC', (r['id'],)).fetchall()
+    return jsonify({'success': True, 'conversation_id': r['id'], 'title': r['title'], 'messages': [{'role': m['role'], 'content': m['content']} for m in msgs]})
 
 @app.route('/api/conversations/<int:cid>')
 def get_conv(cid):
@@ -624,24 +612,17 @@ def analyze_image():
     question = d.get('message', 'Describe this image in detail and give critical thinking.')
     if not img_data:
         return jsonify({'success': False, 'error': 'No image sent'})
-    if OPENAI_API_KEY:
-        try:
-            r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabby, Faruq's assistant. Analyse this image in clean English, no emojis, detailed and critical. Question: {question}"}, {'type': 'image_url', 'image_url': {'url': img_data}}]}]}, timeout=30)
-            txt = r.json()['choices'][0]['message']['content']
-            return jsonify({'success': True, 'reply': txt})
-        except Exception as e:
-            print("OpenAI vision error", e)
-    if GEMINI_KEY:
-        try:
-            img_clean = img_data.split(',',1)[1] if ',' in img_data else img_data
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
-            payload = {"contents":[{"parts":[{"text": f"You are Tabby, Faruq's assistant. Analyse this image in clean English, no emojis, no bold. Be specific, detailed, critical. Question: {question}"},{"inline_data":{"mime_type":"image/jpeg","data": img_clean}}]}]}
-            r = requests.post(url, json=payload, timeout=30)
-            txt = r.json()['candidates'][0]['content']['parts'][0]['text']
-            return jsonify({'success': True, 'reply': txt})
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)})
-    return jsonify({'success': False, 'error': 'Vision analysis requires OpenAI or Gemini API key.'})
+    if not OPENAI_API_KEY:
+        return jsonify({'success': False, 'error': 'Vision needs OpenAI key. Please top up OpenAI.'})
+    try:
+        r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabby, Faruq's assistant. Analyse this image in clean English, no emojis, detailed and critical. Question: {question}"}, {'type': 'image_url', 'image_url': {'url': img_data}}]}]}, timeout=30)
+        data = r.json()
+        if 'choices' not in data:
+            return jsonify({'success': False, 'error': data.get('error', {}).get('message', 'OpenAI vision failed')})
+        txt = data['choices'][0]['message']['content']
+        return jsonify({'success': True, 'reply': txt})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
@@ -660,9 +641,6 @@ def chat():
         cur = db.execute('INSERT INTO conversations (user_id, title, created_at) VALUES (?,?,?)', (u['id'], msg[:40] or 'New Chat', datetime.now().isoformat()))
         db.commit()
         conv_id = cur.lastrowid
-    else:
-        db.execute('UPDATE conversations SET title=? WHERE id=? AND title=?', (msg[:40] or 'New Chat', conv_id, 'New Chat'))
-        db.commit()
     db.execute('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?,?,?,?)', (conv_id, 'user', msg, datetime.now().isoformat()))
     db.commit()
     hist_rows = db.execute('SELECT role, content FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT 10', (conv_id,)).fetchall()
@@ -671,6 +649,7 @@ def chat():
     reply = None
     image_url = None
     image_b64 = None
+    ai_error = None
     if any(x in low for x in ['generate image','create image','draw','make image','create a picture']):
         prompt = re.sub(r'(generate image|create image|draw|make image|create a picture|of|please)', '', msg, flags=re.I).strip() or msg
         if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
@@ -688,27 +667,25 @@ def chat():
                 reply = f"I tried to generate the image but it failed, Boss: {e}"
     elif image:
         try:
-            if OPENAI_API_KEY:
-                r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabby. Analyse this image in clean English, no emojis, detailed and critical. Question: {msg or 'Describe this image in detail'}"}, {'type': 'image_url', 'image_url': {'url': image}}]}]}, timeout=30)
-                reply = r.json()['choices'][0]['message']['content']
-            elif GEMINI_KEY:
-                img_clean = image.split(',',1)[1] if ',' in image else image
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
-                payload = {"contents":[{"parts":[{"text": f"You are Tabby. Analyse this image in clean English, no emojis, detailed and critical. Question: {msg or 'Describe this image in detail'}"},{"inline_data":{"mime_type":"image/jpeg","data": img_clean}}]}]}
-                r = requests.post(url, json=payload, timeout=30)
-                reply = r.json()['candidates'][0]['content']['parts'][0]['text']
+            if not OPENAI_API_KEY:
+                reply = "I received your image, Boss, but vision needs OpenAI key. Please top up OpenAI."
             else:
-                reply = "I received your image, Boss, but vision analysis needs an OpenAI or Gemini key configured."
+                r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabby. Analyse this image in clean English, no emojis, detailed and critical. Question: {msg or 'Describe this image in detail'}"}, {'type': 'image_url', 'image_url': {'url': image}}]}]}, timeout=30)
+                data = r.json()
+                if 'choices' in data:
+                    reply = data['choices'][0]['message']['content']
+                else:
+                    reply = f"OpenAI vision failed, Boss: {data.get('error', {}).get('message', 'Unknown error')}"
         except Exception as e:
             reply = f"I had trouble reading that image, Boss: {e}. Can you send it again?"
-    elif any(x in low for x in ['bike','my bike','fleet','installment','payment','restricted']):
+    elif any(x in low for x in ['bike','my bike','fleet','installment','payment','restricted','ebike','e-bike','e bike']):
         if is_owner(u):
             bikes = db.execute('SELECT * FROM bikes ORDER BY id DESC').fetchall()
         else:
             bikes = db.execute('SELECT * FROM bikes WHERE user_id=? OR customer_id=?', (u['id'], u['id'])).fetchall()
         if bikes:
             lines = []
-            for b in bikes[:5]:
+            for b in bikes[:10]:
                 bd = dict(b)
                 ps = check_payment_status(bd)
                 lines.append(f"{bd['name']} - {bd.get('customer_name','')} - Battery {bd['battery_level']}% Health {bd['battery_health']}% - Range {bd['range_km']} km - Lock {bd['lock_status']} - Status {bd['bike_status']} - Payment {ps} - Remaining {bd.get('amount_remaining',0)} - Location {bd['location']} - Map https://maps.google.com/?q={bd['lat']},{bd['lng']}")
@@ -718,24 +695,28 @@ def chat():
     elif any(x in low for x in ['my name is','i am ','i live in','my business is','remember that','my age is','my goal is']):
         save_memory(u['id'], 'about_user_update', msg)
         save_memory(u['id'], 'last_update', datetime.now().isoformat())
-        reply = ask_ai(f"User told me about himself: '{msg}'. Acknowledge, show you will remember, ask a smart follow-up.", memory, history, "") or f"Got it, Boss. I will remember that: {msg}. What else should I know?"
+        reply, ai_error = ask_ai(f"User told me about himself: '{msg}'. Acknowledge, show you will remember, ask a smart follow-up.", memory, history, "")
         if not reply:
-            reply = "Got it, Boss. I will remember that. What else should I know?"
-    elif any(x in low for x in ['news','latest','technology','tech','naira','dollar','weather','explain','what is','why','how does','analyse','analyze','research','trend','ev','electric','black veil','myers','dorcas','tabitha']):
+            reply = f"Got it, Boss. I will remember that: {msg}. What else should I know? (OpenAI error: {ai_error})"
+    elif any(x in low for x in ['news','latest','technology','tech','naira','dollar','weather','explain','what is','why','how does','analyse','analyze','research','trend','ev','electric','black veil','myers','dorcas','tabitha','glasses','edith','smart glasses']):
         research = deep_research(msg)
-        reply = ask_ai(msg, memory, history, research)
+        reply, ai_error = ask_ai(msg, memory, history, research)
         if not reply:
             reply = smart_fallback(msg, memory, research)
+            if ai_error:
+                reply += f"\n\nNote: OpenAI said: {ai_error}. Please top up OpenAI to get full Tabby replies."
     if not reply:
-        reply = ask_ai(msg, memory, history, "")
+        reply, ai_error = ask_ai(msg, memory, history, "")
     if not reply:
         reply = smart_fallback(msg, memory, "")
+        if ai_error:
+            reply += f"\n\nOpenAI error: {ai_error}"
     db.execute('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?,?,?,?)', (conv_id, 'assistant', reply, datetime.now().isoformat()))
     db.commit()
     audio_b64 = None
     if want_voice:
         audio_b64 = openai_tts(reply)
-    return jsonify({'success': True, 'reply': reply, 'conversation_id': conv_id, 'image_url': image_url, 'image_base64': image_b64, 'audio_base64': audio_b64})
+    return jsonify({'success': True, 'reply': reply, 'conversation_id': conv_id, 'image_url': image_url, 'image_base64': image_b64, 'audio_base64': audio_b64, 'ai_error': ai_error})
 
 @app.route('/api/voice/speak', methods=['POST'])
 def speak():
@@ -743,7 +724,7 @@ def speak():
     text = d.get('text') or d.get('message') or 'Hey Boss'
     audio = openai_tts(text)
     if not audio:
-        return jsonify({'success': False, 'error': 'Voice audio needs OpenAI credit. Chat still works on free tier. Top up OpenAI soon for voice.'})
+        return jsonify({'success': False, 'error': 'Voice audio needs OpenAI credit. Chat still works when OpenAI is topped up.'})
     return jsonify({'success': True, 'audio_base64': audio})
 
 @app.route('/api/voice/chat', methods=['POST'])
@@ -762,14 +743,16 @@ def voice_chat():
         return jsonify({'success': False, 'error': 'No audio sent'})
     text = openai_transcribe(audio_bytes)
     if not text:
-        return jsonify({'success': False, 'error': 'Voice transcription needs OpenAI credit. Please type for now, chat works on free tier.'})
+        return jsonify({'success': False, 'error': 'Voice transcription needs OpenAI credit. Please type for now.'})
     memory = get_memory(u['id'])
-    reply = ask_ai(text, memory, [], "") or smart_fallback(text, memory, "")
+    reply, ai_error = ask_ai(text, memory, [], "")
+    if not reply:
+        reply = smart_fallback(text, memory, "")
     audio = openai_tts(reply)
     return jsonify({'success': True, 'transcribed': text, 'reply': reply, 'audio_base64': audio})
 
 @app.route('/api/call/start', methods=['POST'])
-def call_start(): return jsonify({'success': True, 'call_id': 1, 'note': 'Voice call uses OpenAI voice when paid. For now chat works on free tier.'})
+def call_start(): return jsonify({'success': True, 'call_id': 1, 'note': 'Voice call uses OpenAI voice when paid.'})
 @app.route('/api/call/end', methods=['POST'])
 def call_end(): return jsonify({'success': True})
 
@@ -777,7 +760,7 @@ def call_end(): return jsonify({'success': True})
 def debug_ai():
     u = get_user_from_token()
     if not u or not is_owner(u): return jsonify({'success': False})
-    return jsonify({'success': True, 'gemini_free_set': bool(GEMINI_KEY), 'openrouter_free_set': bool(OPENROUTER_KEY), 'openai_set': bool(OPENAI_API_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'mode': 'FREE TIER NOW - Gemini + OpenRouter Free, OpenAI ready when you pay'})
+    return jsonify({'success': True, 'openai_set': bool(OPENAI_API_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'mode': 'OPENAI ONLY - No Gemini, No Groq, No Cerebras, No OpenRouter - Same as Kaimos'})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
