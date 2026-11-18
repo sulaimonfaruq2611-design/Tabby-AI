@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="/static/icon-192.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#04070f;--panel:#0a0f1e;--card:#111827;--line:#1f2937;--blue:#2563eb;--blue2:#3b82f6;--text:#f9fafb;--muted:#9ca3af;--green:#22c55e;--red:#ef4444;--amber:#f59e0b}
+:root{--bg:#04070f;--panel:#0a0f1e;--card:#111827;--line:#1f2937;--blue:#2563eb;--blue2:#3b82f6;--text:#f9fafb;--muted:#9ca3af;--green:#22c55e;--red:#ef4444}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;height:100vh;height:100dvh;overflow:hidden}
 a{color:var(--blue2)}
 button{cursor:pointer;border:none;font-family:inherit}
@@ -23,7 +23,7 @@ input,textarea{font-family:inherit;outline:none}
 .sidebar{width:280px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0}
 .main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
 .topbar{height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 14px}
-.logo{width:36px;height:36px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#2563eb}
+.logo{width:36px;height:36px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#0a0f1e;display:flex;align-items:center;justify-content:center}
 .logo img{width:100%;height:100%;object-fit:cover;display:block}
 .logo-text b{font-size:16px}
 .logo-text span{font-size:11px;color:var(--muted);display:block}
@@ -64,7 +64,7 @@ input,textarea{font-family:inherit;outline:none}
 .bike-btns button.danger{background:#7f1d1d}
 .chat{flex:1;overflow-y:auto;padding:16px 14px 10px}
 .empty{text-align:center;margin-top:60px;padding:0 20px}
-.empty .big{width:72px;height:72px;border-radius:20px;overflow:hidden;margin:0 auto}
+.empty .big{width:72px;height:72px;border-radius:20px;overflow:hidden;margin:0 auto;background:#0a0f1e}
 .empty .big img{width:100%;height:100%;object-fit:cover}
 .empty h2{margin-top:14px;font-size:20px}
 .empty p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.6}
@@ -134,7 +134,7 @@ input,textarea{font-family:inherit;outline:none}
   <div class="main">
     <div class="topbar">
       <button class="icon-btn menu-btn" onclick="toggleSidebar(true)">☰</button>
-      <div class="logo"><img src="/static/icon-192.png" alt="Tabby"></div>
+      <div class="logo"><img src="/static/icon-192.png?v=2" alt="Tabby"></div>
       <div class="logo-text"><b>Tabby</b><span>Ultimate Gee Industry • OpenAI</span></div>
       <div class="spacer"></div>
       <button class="icon-btn" title="Dashboard" onclick="toggleDash()">📊</button>
@@ -166,7 +166,7 @@ input,textarea{font-family:inherit;outline:none}
     </div>
     <div class="chat" id="chat">
       <div class="empty" id="emptyState">
-        <div class="big"><img src="/static/icon-192.png" alt="Tabby"></div>
+        <div class="big"><img src="/static/icon-192.png?v=2" alt="Tabby"></div>
         <h2>Hey Boss, Tabby is here.</h2>
         <p>Your personal AI • Clean English • OpenAI<br>Ask me about your e-bike fleet, news, rates, Black Veil, or business ideas.</p>
         <div class="chips">
@@ -192,7 +192,7 @@ input,textarea{font-family:inherit;outline:none}
 </div>
 <div class="auth" id="auth">
   <div class="auth-card">
-    <div style="text-align:center"><div style="width:64px;height:64px;border-radius:18px;overflow:hidden;margin:0 auto"><img src="/static/icon-192.png" style="width:100%;height:100%;object-fit:cover"></div></div>
+    <div style="text-align:center"><div style="width:64px;height:64px;border-radius:18px;overflow:hidden;margin:0 auto;background:#0a0f1e"><img src="/static/icon-192.png?v=2" style="width:100%;height:100%;object-fit:cover"></div></div>
     <h1>Tabby AI</h1>
     <p>Your personal AI • Ultimate Gee Industry<br>Clean English • OpenAI • E-Bike Fleet + Smart Glasses</p>
     <input id="authName" placeholder="Your name (Sign Up only)">
@@ -315,9 +315,9 @@ async function sendMsg(){
     let reply = r.reply || 'Sorry Boss, small issue.';
     lastReply = reply;
     let img = r.image_base64 || r.image_url || r.image || null;
+    // KAIMOS FIX: Do NOT add ai_error again. Backend already put error inside reply ONCE. No duplicate.
     addMsg('ai', reply, img);
     if(r.conversation_id) currentConv = r.conversation_id;
-    if(r.ai_error) addMsg('ai', 'OpenAI note: ' + r.ai_error);
     loadConvs();
   }catch(e){
     $('typing').classList.remove('show');
