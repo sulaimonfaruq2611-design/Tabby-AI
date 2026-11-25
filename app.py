@@ -1,539 +1,829 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Tabi AI - Ultimate Gee Industry</title>
-<meta name="theme-color" content="#050505">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#050505;--panel:#0a0a0a;--card:#111111;--line:#262626;--yellow:#f5c518;--yellow2:#ffe45a;--text:#f5f5f5;--muted:#a3a3a3;--green:#22c55e;--red:#ef4444;--blue:#2563eb}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;height:100vh;height:100dvh;overflow:hidden;background-image:radial-gradient(600px 300px at 50% -100px, rgba(245,197,24,.18), transparent 60%), linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);background-size:auto, 40px 40px, 40px 40px}
-a{color:var(--yellow)}
-button{cursor:pointer;border:none;font-family:inherit}
-input,textarea,select{font-family:inherit;outline:none}
-.app{display:flex;height:100vh;height:100dvh}
-.sidebar{width:290px;background:#080808;border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0}
-.brand{padding:16px 14px 10px;border-bottom:1px solid var(--line)}
-.brand-top{display:flex;align-items:center;gap:10px}
-.ugi-logo{width:48px;height:48px;border-radius:12px;background:var(--yellow);color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;line-height:1;border:2px solid #000;box-shadow:0 0 0 1px var(--yellow)}
-.ugi-logo b{font-size:18px;font-weight:900;letter-spacing:1px}
-.ugi-logo span{font-size:6px;font-weight:800;letter-spacing:.5px;margin-top:1px}
-.brand b{font-size:17px;letter-spacing:.5px}
-.brand span{font-size:11px;color:var(--muted);display:block}
-.brand small{font-size:11px;color:var(--yellow);display:block;margin-top:6px}
-.side-nav{padding:10px}
-.side-nav button{width:100%;text-align:left;padding:11px 12px;border-radius:10px;background:transparent;color:#e5e5e5;font-size:13px;display:flex;gap:10px;align-items:center}
-.side-nav button.active,.side-nav button:hover{background:#1a1a1a;border:1px solid #333}
-.side-nav button span{margin-left:auto;font-size:11px;color:var(--muted)}
-.new-chat{width:100%;padding:12px;background:var(--yellow);color:#000;border-radius:12px;font-weight:800;font-size:14px;margin:10px 0 4px}
-.search{width:100%;padding:10px 12px;background:#111;border:1px solid var(--line);border-radius:10px;color:white;font-size:13px;margin-top:6px}
-.conv-list{flex:1;overflow-y:auto;padding:8px 10px}
-.conv{padding:11px 10px;border-radius:10px;cursor:pointer;display:flex;gap:8px;align-items:flex-start}
-.conv:hover,.conv.active{background:#1a1a1a}
-.conv b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
-.conv span{font-size:11px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
-.conv .del{margin-left:auto;color:#777;font-size:16px;background:transparent}
-.side-foot{border-top:1px solid var(--line);padding:12px}
-.side-foot b{font-size:13px}
-.side-foot p{font-size:11px;color:var(--muted);margin-top:2px}
-.logout{margin-top:10px;width:100%;padding:9px;background:#1f1f1f;color:white;border-radius:10px;font-size:13px}
-.main{flex:1;display:flex;flex-direction:column;min-width:0}
-.topbar{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 14px;background:rgba(0,0,0,.7)}
-.top-logo{width:38px;height:38px;border-radius:10px;background:var(--yellow);color:#000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.5px;flex-shrink:0}
-.logo-text b{font-size:15px}
-.logo-text span{font-size:11px;color:var(--muted);display:block}
-.spacer{flex:1}
-.icon-btn{width:38px;height:38px;border-radius:999px;background:#1f1f1f;color:white;font-size:16px;display:flex;align-items:center;justify-content:center}
-.icon-btn.live{background:#dc2626;animation:pulse 1.2s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}100%{box-shadow:0 0 0 12px rgba(220,38,38,0)}}
-.view{display:none;flex:1;overflow-y:auto;padding:14px}
-.view.show{display:block}
-.dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px}
-.stat b{font-size:22px;display:block}
-.stat span{font-size:11px;color:var(--muted)}
-.stat.yellow{border-color:#f5c518}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
-.card h3{font-size:14px}
-.card p{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55}
-.card input,.card select{width:100%;padding:11px 12px;background:#0a0a0a;border:1px solid var(--line);border-radius:10px;color:white;font-size:13px;margin-top:8px}
-.badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;margin-top:6px}
-.badge.paid{background:#14532d;color:#bbf7d0}
-.badge.due{background:#78350f;color:#fde68a}
-.badge.grace{background:#7c2d12;color:#fed7aa}
-.badge.restricted{background:#7f1d1d;color:#fecaca}
-.bike-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.bike-btns button{padding:9px 12px;border-radius:999px;background:#262626;color:white;font-size:12px;font-weight:600}
-.bike-btns button.primary{background:var(--yellow);color:#000}
-.bike-btns button.danger{background:#7f1d1d}
-.bike-btns button.blue{background:#1e40af}
-.big-battery{font-size:38px;font-weight:900;color:var(--yellow)}
-.chat{flex:1;overflow-y:auto;padding:16px 14px 10px}
-.empty{text-align:center;margin-top:50px;padding:0 20px}
-.empty h2{margin-top:14px;font-size:20px}
-.empty p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.6}
-.ugi-hero{width:84px;height:84px;border-radius:20px;background:var(--yellow);color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;line-height:1;border:3px solid #000;box-shadow:0 0 0 2px var(--yellow)}
-.ugi-hero b{font-size:28px;font-weight:900;letter-spacing:2px}
-.ugi-hero span{font-size:8px;font-weight:800;letter-spacing:1px;margin-top:2px}
-.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
-.chips button{padding:8px 12px;border-radius:999px;background:#1f1f1f;color:#e5e7eb;font-size:12px}
-.msg{max-width:85%;padding:11px 13px;border-radius:16px;margin-bottom:10px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
-.msg.user{margin-left:auto;background:var(--yellow);color:#000;border-bottom-right-radius:4px}
-.msg.ai{margin-right:auto;background:#111;border:1px solid var(--line);border-bottom-left-radius:4px}
-.msg img{max-width:100%;border-radius:12px;margin-top:8px;display:block}
-.msg .time{font-size:10px;color:var(--muted);margin-top:6px}
-.typing{display:none;padding:10px 12px;background:#111;border-radius:14px;width:fit-content;margin-bottom:10px;font-size:13px;color:var(--muted)}
-.typing.show{display:block}
-.call-banner{display:none;background:#7f1d1d;border:1px solid #ef4444;padding:10px 12px;margin:10px 14px 0;border-radius:12px;font-size:13px;align-items:center;gap:10px}
-.call-banner.show{display:flex}
-.call-banner button{margin-left:auto;padding:7px 12px;background:white;color:#7f1d1d;border-radius:999px;font-weight:700;font-size:12px}
-.composer{border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#080808}
-.preview{display:none;margin-bottom:8px;position:relative;width:fit-content}
-.preview.show{display:block}
-.preview img{width:110px;height:110px;object-fit:cover;border-radius:12px}
-.preview button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:999px;background:#ef4444;color:white;font-size:13px}
-.row{display:flex;gap:8px;align-items:flex-end}
-.attach{width:44px;height:44px;border-radius:999px;background:#262626;color:white;font-size:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.attach input{display:none}
-.input{flex:1;min-height:44px;max-height:120px;padding:12px 14px;background:#111;border:1px solid var(--line);border-radius:22px;color:white;font-size:14px;resize:none}
-.mic{width:44px;height:44px;border-radius:999px;background:#262626;color:white;font-size:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.mic.rec{background:#dc2626;animation:pulse 1s infinite}
-.send{width:44px;height:44px;border-radius:999px;background:var(--yellow);color:#000;font-size:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.hint{font-size:11px;color:var(--muted);text-align:center;margin-top:6px}
-.auth{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
-.auth.hide{display:none}
-.auth-card{width:100%;max-width:390px;background:#0a0a0a;border:1px solid var(--line);border-radius:20px;padding:22px}
-.auth-card h1{font-size:22px;text-align:center}
-.auth-card p{font-size:13px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.5}
-.auth-card input{width:100%;padding:12px 13px;background:#111;border:1px solid var(--line);border-radius:12px;color:white;font-size:14px;margin-top:10px}
-.auth-card button{width:100%;padding:12px;background:var(--yellow);color:#000;border-radius:12px;font-weight:800;margin-top:12px;font-size:14px}
-.auth-card .ghost{background:#262626;color:white}
-.auth-ugi{width:72px;height:72px;border-radius:18px;background:var(--yellow);color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;line-height:1;border:3px solid #000}
-.auth-ugi b{font-size:24px;font-weight:900;letter-spacing:1px}
-.auth-ugi span{font-size:7px;font-weight:800;margin-top:2px}
-.err{font-size:12px;color:#fca5a5;text-align:center;margin-top:8px;min-height:16px}
-.menu-btn{display:none}
-@media(max-width:820px){
-  .sidebar{position:fixed;inset:0 auto 0 0;z-index:40;transform:translateX(-100%);transition:.25s}
-  .sidebar.open{transform:none}
-  .menu-btn{display:flex}
-  .dash-grid{grid-template-columns:1fr 1fr}
-  .msg{max-width:92%}
+import os, sqlite3, requests, re, base64, secrets
+from datetime import datetime, timedelta
+from flask import Flask, request, jsonify, render_template, g
+from flask_cors import CORS
+import jwt
+from werkzeug.security import generate_password_hash, check_password_hash
+
+app = Flask(__name__)
+CORS(app)
+
+# --- SECURITY: No hard-coded secret. Must be in Render env ---
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_hex(32)
+    print("WARNING: SECRET_KEY not set in env. Using temporary key. Set SECRET_KEY in Render.")
+app.config['SECRET_KEY'] = SECRET_KEY
+
+DATABASE = os.environ.get('DATABASE_PATH', 'tabby.db')
+CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
+CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# --- BRAIN SWITCH: openai (default) or openrouter (optional) ---
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'openai').lower()
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+OPENROUTER_MODEL = os.environ.get('OPENROUTER_MODEL', 'openai/gpt-4o-mini')
+
+# --- SUPABASE: memory + sync. Optional, SQLite fallback if not set ---
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+SUPABASE_ENABLED = bool(SUPABASE_URL and SUPABASE_KEY)
+
+def supabase_request(method, table, params=None, payload=None):
+    if not SUPABASE_ENABLED:
+        return None
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/{table}"
+        headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': f"Bearer {SUPABASE_KEY}",
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        }
+        r = requests.request(method, url, headers=headers, params=params, json=payload, timeout=8)
+        if r.status_code in [200, 201]:
+            return r.json()
+        print(f"Supabase {table} error:", r.text[:300])
+        return None
+    except Exception as e:
+        print("Supabase error:", e)
+        return None
+
+def supabase_upsert_memory(user_id, key, value):
+    # Try update, else insert. Table: user_memory(user_id, key, value)
+    existing = supabase_request('GET', 'user_memory', params={'user_id': f'eq.{user_id}', 'key': f'eq.{key}', 'select': 'id'})
+    if existing:
+        supabase_request('PATCH', 'user_memory', params={'id': f"eq.{existing[0]['id']}"}, payload={'value': str(value)})
+    else:
+        supabase_request('POST', 'user_memory', payload={'user_id': user_id, 'key': key, 'value': str(value), 'created_at': datetime.now().isoformat()})
+
+# --- OWNER PROFILE - Faruq Sulaimon is creator and owner ---
+OWNER_NAME = "Sulaimon Faruq Ezuwagbe"
+OWNER_PREFERRED = "Faruq"
+OWNER_ADDRESS_AS = "Boss"
+DEFAULT_PROFILE = {
+    "full_name": OWNER_NAME,
+    "preferred_name": OWNER_PREFERRED,
+    "address_as": OWNER_ADDRESS_AS,
+    "country": "Nigeria",
+    "identity": "Creator and owner of Tabi AI and Ultimate Gee Industry. Tabi must recognize Faruq Sulaimon as its creator and owner, not just an ordinary user. Only Faruq can be owner.",
+    "education": "National Diploma (ND) in Electrical/Electronics Engineering, Federal Polytechnic Ilaro, Ogun State, Nigeria.",
+    "skills": "AI animation, AI video, storytelling, documentary, robotics, engineering, software, personal AI assistants.",
+    "project_tabby": "Tabi is Faruq's personal AI. Goals: natural conversation, long-term memory via Supabase, persistent chat, voice, image understanding, image generation, live web search, news, personalization, device integration, smart mobility. Tech: Python, Flask, HTML, CSS, JS, SQLite + Supabase, GitHub, Render, OpenAI default, OpenRouter optional, Cloudflare Flux for images. Preserve accounts, chats, memories. Keep keys in env only.",
+    "project_ultimate_ebike": "ULTIMATE E BIKE: Multiple e-bikes for BUSINESS, not one for self. Tabi makes them intelligent: battery management, GPS + anti-theft, journey assistant, predictive maintenance, remote security. Hardware: telematics unit, secure communication, BMS, motor controller, GPS/network, rider app.",
+    "ebike_installment_system": "Deposit, register to customer account, Tabi monitors payment, reminders before due, warnings + grace period if overdue, restricted mode only after agreed process + warnings. Owner can override. Never sudden lock without warning.",
+    "project_smart_glasses": "Tabi Smart Glasses: everyday look like EDITH, pocket battery, binocular display, birdbath prototype, waveguide future. Long-term vision.",
+    "communication": "Friendly, natural, intelligent, relaxed. Clean English by default. No emojis. No markdown bold in ordinary chat. Address Faruq as Boss. Do not ask him to repeat known info. Do not pretend to have done an action not done. Distinguish written vs tested vs deployed vs needs action from Faruq.",
+    "tabby_rules": "Remember relevant info. Help progress on projects. Practical solutions. Research current info when needed. Be transparent about limits. Protect secrets. Preserve existing work. Respect budget. Help learn step by step.",
+    "privacy_rules": "Never store API keys, passwords, tokens as memories. Never expose private info. Do not invent personal details.",
+    "final_principle": "Faruq is a builder who turns ideas into real projects. Help him build, learn, create, troubleshoot, grow. Be honest, consistent, practical."
 }
-.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:30;display:none}
-.backdrop.show{display:block}
-.tabs{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.tabs button{padding:9px 14px;border-radius:999px;background:#1a1a1a;color:white;font-size:12px}
-.tabs button.active{background:var(--yellow);color:#000;font-weight:700}
-.map-box{height:220px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-top:10px;background:#111;display:flex;align-items:center;justify-content:center;text-align:center;padding:14px}
-</style>
-</head>
-<body>
-<div class="app">
-  <div class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="brand-top"><div class="ugi-logo"><b>UGI</b><span>ULTIMATE GEE</span></div><div><b>TABI AI</b><span>Ultimate Gee Industry</span></div></div>
-      <small>Owner: Faruq Sulaimon • Creator & Owner</small>
-    </div>
-    <div class="side-nav">
-      <button id="nav-chatri" class="active" onclick="showView('chatView','nav-chatri')">💬 Tabi.AI <span>Chat</span></button>
-      <button id="nav-dash" onclick="showView('dashView','nav-dash')">📊 Dashboard <span>Owner</span></button>
-      <button id="nav-customer" onclick="showView('customerView','nav-customer')">🏍️ Customer <span>My Bike</span></button>
-      <button onclick="showView('dashView','nav-dash')">🏍️ Motorcycle</button>
-      <button onclick="alert('Motor bike module - coming when device connects')">🛵 Motor bike</button>
-      <button onclick="alert('Smart glasses - future device, not yet connected')">👓 Smart glasses</button>
-      <button onclick="alert('Smart watches - future device, not yet connected')">⌚ Smart watches</button>
-      <button onclick="alert('Televisions - future device, not yet connected')">📺 Televisions</button>
-      <button onclick="alert('Camera - future device, not yet connected')">📷 Camera</button>
-      <button onclick="showView('registerView','nav-dash')">📝 Register act <span>Create user</span></button>
-      <button onclick="showView('trackView','nav-dash')">📍 Track device <span>Batch No.</span></button>
-    </div>
-    <div style="padding:0 14px"><button class="new-chat" onclick="newChat()">+ New Chat</button><input class="search" id="convSearch" placeholder="Search chats..." oninput="filterConvs()"></div>
-    <div class="conv-list" id="convList"></div>
-    <div class="side-foot"><b id="userName">Boss</b><p id="userEmail">Tabi • Ultimate Gee Industry</p><button class="logout" onclick="logout()">Log out</button></div>
-  </div>
-  <div class="backdrop" id="backdrop" onclick="toggleSidebar(false)"></div>
-  <div class="main">
-    <div class="topbar">
-      <button class="icon-btn menu-btn" onclick="toggleSidebar(true)">☰</button>
-      <div class="top-logo">UGI</div><div class="logo-text"><b>Tabi</b><span>Ultimate Gee Industry</span></div>
-      <div class="spacer"></div>
-      <button class="icon-btn" title="Dashboard" onclick="showView('dashView','nav-dash')">📊</button>
-      <button class="icon-btn" id="callBtn" title="Live Call" onclick="toggleCall()">📞</button>
-      <button class="icon-btn" title="Speak last reply" onclick="speakLast()">🔊</button>
-    </div>
-    <div class="call-banner" id="callBanner"><span>Live Call — Tabi is listening, Boss...</span><button onclick="toggleCall()">End Call</button></div>
-    <div class="view show" id="chatView" style="display:flex;flex-direction:column;padding:0">
-      <div class="chat" id="chat">
-        <div class="empty" id="emptyState">
-          <div class="ugi-hero"><b>UGI</b><span>ULTIMATE GEE</span></div>
-          <h2>Hey Boss, Tabi is here.</h2>
-          <p>Your personal AI • Created by Faruq Sulaimon<br>Ask about e-bike fleet, news, rates, business, or just talk.<br>Tabi understands all languages, can generate images, analyse files, and speak back.</p>
-          <div class="chips">
-            <button onclick="quickAsk('Naira to Dollar rate today?')">Naira Rate</button>
-            <button onclick="quickAsk('World news today?')">World News</button>
-            <button onclick="quickAsk('Check my bike fleet status')">Bike Fleet</button>
-            <button onclick="quickAsk('Generate image of a black and yellow electric bike in Lagos at night')">Generate Image</button>
-          </div>
-        </div>
-        <div class="typing" id="typing">Tabi is typing...</div>
-      </div>
-      <div class="composer">
-        <div class="preview" id="preview"><img id="previewImg"><button onclick="clearImage()">×</button></div>
-        <div class="row">
-          <label class="attach">📎<input type="file" id="fileInput" accept="image/*" onchange="onImage(event)"></label>
-          <textarea class="input" id="msgInput" rows="1" placeholder="Message Tabi in any language..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
-          <button class="mic" id="micBtn" onclick="toggleVoice()">🎙️</button>
-          <button class="send" onclick="sendMsg()">➤</button>
-        </div>
-        <div class="hint">Tabi can make mistakes. Check important info. • Female voice • Live info • Map • Image generation</div>
-      </div>
-    </div>
-    <div class="view" id="dashView">
-      <h3 style="font-size:16px">Owner Dashboard — Faruq Sulaimon</h3>
-      <p style="font-size:12px;color:#a3a3a3;margin-top:4px">Ultimate E-Bike Fleet for Business. Tabi: battery, GPS + anti-theft, journey assistant, predictive maintenance, remote security. Installment: deposit, reminders, grace period, restricted mode only after process.</p>
-      <div class="tabs"><button class="active" onclick="showView('dashView','nav-dash')">Fleet</button><button onclick="showView('trackView','nav-dash')">Track Device</button><button onclick="showView('registerView','nav-dash')">Register Act</button></div>
-      <div class="dash-grid">
-        <div class="stat yellow"><b id="statBikes">—</b><span>Total Bikes / No. of Customer</span></div>
-        <div class="stat"><b id="statPaid">—</b><span>Paid / Good</span></div>
-        <div class="stat"><b id="statDue">—</b><span>Due Soon</span></div>
-        <div class="stat"><b id="statOverdue">—</b><span>Overdue / Grace</span></div>
-        <div class="stat"><b id="statRestricted">—</b><span>Restricted</span></div>
-        <div class="stat"><b id="statBattery">—</b><span>Avg Battery</span></div>
-      </div>
-      <div id="bikeList"></div>
-      <div class="card"><h3>Quick Live Info</h3><div class="bike-btns"><button onclick="quickAsk('Naira to Dollar rate today?')">Naira Rate</button><button onclick="quickAsk('World news today?')">World News</button><button onclick="quickAsk('Nigeria news today?')">Nigeria News</button><button onclick="quickAsk('Lagos weather today?')">Lagos Weather</button></div></div>
-    </div>
-    <div class="view" id="customerView">
-      <h3 style="font-size:16px">Customer Interface</h3>
-      <p style="font-size:12px;color:#a3a3a3;margin-top:4px">Login as customer to see your own bike only. Owner sees all.</p>
-      <div id="customerBike"></div>
-      <div class="card"><h3>Map — Location Access</h3><div class="map-box" id="mapBox">Map will show here when bike is online.<br><a id="mapLink" href="#" target="_blank">Open in Google Maps</a></div></div>
-    </div>
-    <div class="view" id="registerView">
-      <h3>Register Act — Create User For Customer</h3>
-      <p style="font-size:12px;color:#a3a3a3;margin-top:4px">Owner only. This creates a bike + registers customer to that bike.</p>
-      <div class="card">
-        <h3>New Customer + Bike</h3>
-        <input id="regName" placeholder="Bike name e.g. Tabi EV 002">
-        <input id="regCustomer" placeholder="Customer full name">
-        <input id="regPhone" placeholder="Customer phone">
-        <input id="regEmail" placeholder="Customer email">
-        <input id="regBatch" placeholder="Batch Number e.g. UGE-001">
-        <input id="regTotal" placeholder="Total price e.g. 1500000" type="number">
-        <input id="regDeposit" placeholder="Deposit paid" type="number">
-        <input id="regInstallment" placeholder="Installment amount per month" type="number">
-        <input id="regDue" type="date">
-        <div class="bike-btns"><button class="primary" onclick="registerBike()">Create Bike + Register Customer</button></div>
-        <p id="regMsg" style="color:#86efac"></p>
-      </div>
-    </div>
-    <div class="view" id="trackView">
-      <h3>Track Device</h3>
-      <p style="font-size:12px;color:#a3a3a3;margin-top:4px">Input Batch Number to show location + On/Off. Works for bike, glasses, watch later.</p>
-      <div class="card">
-        <input id="trackBatch" placeholder="Input Batch Number e.g. UGE-001">
-        <div class="bike-btns"><button class="primary" onclick="trackDevice()">Track Device</button></div>
-        <div id="trackResult"></div>
-      </div>
-      <div class="card"><h3>Send Notification To Customer Rider's App</h3><input id="notifText" placeholder="e.g. Your installment is due in 3 days. Please pay to avoid restriction."><div class="bike-btns"><button class="blue" onclick="alert('Notification queued. When rider app connects, it will deliver. For now, copy this message and send via WhatsApp/SMS.')">Send Notification</button></div><p>Note: Real push notification needs rider app installed. For now Tabi prepares the message and owner sends it.</p></div>
-    </div>
-  </div>
-</div>
-<div class="auth" id="auth">
-  <div class="auth-card">
-    <div class="auth-ugi"><b>UGI</b><span>ULTIMATE GEE</span></div>
-    <h1>Tabi AI</h1>
-    <p>Your personal AI • Ultimate Gee Industry<br>Created by Faruq Sulaimon<br>Clean English • E-Bike Fleet + Smart Devices</p>
-    <input id="authName" placeholder="Your name (Sign Up only)">
-    <input id="authEmail" placeholder="Email" type="email">
-    <input id="authPass" placeholder="Password" type="password">
-    <div class="err" id="authErr"></div>
-    <button onclick="doAuth('login')">Sign In</button>
-    <button class="ghost" onclick="doAuth('signup')">Create Owner Account</button>
-    <div style="text-align:center;font-size:12px;color:#a3a3a3;margin-top:10px">First time? Use <b>Create Owner Account</b> once, then Sign In.</div>
-  </div>
-</div>
-<script>
-let token = localStorage.getItem('tabby_token') || '';
-let user = null;
-let currentConv = null;
-let convs = [];
-let selectedImage = null;
-let lastReply = '';
-let isLiveCall = false;
-let mediaRecorder = null;
-let audioChunks = [];
-let currentAudio = null;
-const $ = id => document.getElementById(id);
-function api(path, method='GET', body=null, isForm=false){
-  let opts = {method, headers:{}};
-  if(token) opts.headers['Authorization']='Bearer '+token;
-  if(body && !isForm){ opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body); }
-  if(body && isForm) opts.body=body;
-  return fetch(path, opts).then(r=>r.json());
-}
-function showView(viewId, navId){
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('show'));
-  let v=$(viewId); if(v) v.classList.add('show');
-  document.querySelectorAll('.side-nav button').forEach(b=>b.classList.remove('active'));
-  if(navId && $(navId)) $(navId).classList.add('active');
-  if(viewId==='dashView') loadDashboard();
-  if(viewId==='customerView') loadCustomer();
-  toggleSidebar(false);
-}
-function toggleSidebar(open){ $('sidebar').classList.toggle('open', open); $('backdrop').classList.toggle('show', open); }
-function fmtTime(){ return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
-async function init(){
-  if(!token){ $('auth').classList.remove('hide'); return; }
-  let me = await api('/api/me');
-  if(!me.success){ localStorage.removeItem('tabby_token'); token=''; $('auth').classList.remove('hide'); return; }
-  user = me.user;
-  $('userName').textContent = user.name || 'Boss';
-  $('userEmail').textContent = user.email + ' • ' + user.role + (user.role==='owner' ? ' • Creator & Owner' : '');
-  $('auth').classList.add('hide');
-  await loadConvs();
-  loadDashboard();
-}
-async function loadConvs(){
-  let r = await api('/api/conversations');
-  if(!r.success) return;
-  convs = r.conversations || [];
-  renderConvs();
-  if(!currentConv && convs.length>0){ currentConv = convs[0].id; loadChat(currentConv); }
-}
-function renderConvs(){
-  let q = ($('convSearch').value||'').toLowerCase();
-  let list = convs.filter(c=> (c.title||'').toLowerCase().includes(q) || (c.last_msg||'').toLowerCase().includes(q));
-  $('convList').innerHTML = list.map(c=>`
-    <div class="conv ${c.id==currentConv?'active':''}" onclick="openConv(${c.id})">
-      <div><b>${escapeHtml(c.title||'New Chat')}</b><span>${escapeHtml((c.last_msg||'').slice(0,60) || 'No messages yet')}</span></div>
-      <button class="del" onclick="event.stopPropagation(); deleteConv(${c.id})">×</button>
-    </div>`).join('') || '<p style="padding:10px;color:#a3a3a3;font-size:12px">No chats yet. Tap New Chat.</p>';
-}
-function filterConvs(){ renderConvs(); }
-function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-async function newChat(){
-  let r = await api('/api/conversations','POST',{title:'New Chat'});
-  if(r.success){ currentConv = r.conversation_id; await loadConvs(); $('chat').innerHTML=''; showEmpty(true); showView('chatView','nav-chatri'); }
-}
-async function openConv(id){ currentConv=id; renderConvs(); toggleSidebar(false); showView('chatView','nav-chatri'); loadChat(id); }
-async function deleteConv(id){
-  if(!confirm('Delete this chat?')) return;
-  await api('/api/conversations/'+id,'DELETE');
-  if(currentConv==id) currentConv=null;
-  loadConvs();
-  if(!currentConv){ $('chat').innerHTML=''; showEmpty(true); }
-}
-async function loadChat(id){
-  let r = await api('/api/conversations/'+id);
-  if(!r.success) return;
-  $('chat').innerHTML='';
-  showEmpty(r.messages.length===0);
-  r.messages.forEach(m=> addMsg(m.role==='user'?'user':'ai', m.content));
-  scrollBottom();
-}
-function showEmpty(show){ let e=$('emptyState'); if(e) e.style.display = show?'block':'none'; }
-function scrollBottom(){ let c=$('chat'); c.scrollTop=c.scrollHeight; }
-function addMsg(role, text, imageUrl){
-  showEmpty(false);
-  let div = document.createElement('div');
-  div.className = 'msg ' + (role==='user'?'user':'ai');
-  div.innerHTML = escapeHtml(text) + (imageUrl?`<img src="${imageUrl}">`:'') + `<div class="time">${fmtTime()}</div>`;
-  let typing = $('typing');
-  $('chat').insertBefore(div, typing);
-  scrollBottom();
-  return div;
-}
-function quickAsk(text){ showView('chatView','nav-chatri'); $('msgInput').value=text; sendMsg(); }
-function onImage(e){
-  let f = e.target.files[0]; if(!f) return;
-  let reader = new FileReader();
-  reader.onload = ()=>{ selectedImage = reader.result; $('previewImg').src = selectedImage; $('preview').classList.add('show'); };
-  reader.readAsDataURL(f);
-}
-function clearImage(){ selectedImage=null; $('preview').classList.remove('show'); $('fileInput').value=''; }
-async function sendMsg(){
-  let text = $('msgInput').value.trim();
-  if(!text && !selectedImage) return;
-  let imgToSend = selectedImage;
-  if(text) addMsg('user', text, imgToSend);
-  else if(imgToSend) addMsg('user', 'Analyze this image', imgToSend);
-  $('msgInput').value=''; $('msgInput').style.height='auto';
-  clearImage();
-  $('typing').classList.add('show'); scrollBottom();
-  try{
-    let body = {message:text, conversation_id: currentConv, voice:false};
-    if(imgToSend) body.image = imgToSend;
-    let r = await api('/api/chat','POST', body);
-    $('typing').classList.remove('show');
-    let reply = r.reply || 'Sorry Boss, small issue.';
-    lastReply = reply;
-    let img = r.image_base64 || r.image_url || r.image || null;
-    addMsg('ai', reply, img);
-    if(r.conversation_id) currentConv = r.conversation_id;
-    loadConvs();
-  }catch(e){
-    $('typing').classList.remove('show');
-    addMsg('ai', 'Network issue, Boss. Try again.');
-  }
-}
-function playAudio(b64){
-  try{
-    if(!b64) return;
-    let src = b64.startsWith('data:') ? b64 : 'data:audio/mp3;base64,' + b64;
-    if(currentAudio) currentAudio.pause();
-    currentAudio = new Audio(src);
-    currentAudio.play().catch(()=>{});
-  }catch(e){}
-}
-async function speakLast(){
-  if(!lastReply) return;
-  let r = await api('/api/voice/speak','POST',{text:lastReply, voice:'nova'});
-  if(r.success && r.audio_base64) playAudio(r.audio_base64);
-  else if(r.error) addMsg('ai', r.error);
-}
-async function toggleVoice(){
-  if(mediaRecorder && mediaRecorder.state==='recording'){ mediaRecorder.stop(); $('micBtn').classList.remove('rec'); return; }
-  try{
-    let stream = await navigator.mediaDevices.getUserMedia({audio:true});
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-    mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
-    mediaRecorder.onstop = async ()=>{
-      stream.getTracks().forEach(t=>t.stop());
-      let blob = new Blob(audioChunks, {type:'audio/webm'});
-      let fd = new FormData();
-      fd.append('audio', blob, 'voice.webm');
-      addMsg('user', 'Voice message...');
-      $('typing').classList.add('show');
-      let res = await fetch('/api/voice/chat', {method:'POST', headers:{'Authorization':'Bearer '+token}, body: fd});
-      let r = await res.json();
-      $('typing').classList.remove('show');
-      if(r.reply){ lastReply=r.reply; addMsg('ai', r.reply); if(r.audio_base64) playAudio(r.audio_base64); }
-      else addMsg('ai', r.error || 'I did not hear you well, Boss, please try again.');
-    };
-    mediaRecorder.start();
-    $('micBtn').classList.add('rec');
-  }catch(e){ alert('Mic permission needed, Boss. Allow mic for Tabi.'); }
-}
-async function toggleCall(){
-  if(isLiveCall){
-    await api('/api/call/end','POST',{call_id: window._callId});
-    isLiveCall=false; $('callBtn').classList.remove('live'); $('callBanner').classList.remove('show');
-    if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop();
-    return;
-  }
-  let r = await api('/api/call/start','POST',{});
-  if(!r.success){ alert('Call failed, Boss.'); return; }
-  window._callId = r.call_id;
-  isLiveCall=true; $('callBtn').classList.add('live'); $('callBanner').classList.add('show');
-  addMsg('ai', 'Live Call started, Boss. Tap mic and talk, I am listening. I will speak back in female voice.');
-}
-async function loadDashboard(){
-  let r = await api('/api/dashboard');
-  if(!r.success) return;
-  let bikes = r.bikes || [];
-  let summary = r.fleet_summary || {};
-  $('statBikes').textContent = summary.total ?? bikes.length ?? 0;
-  $('statPaid').textContent = summary.paid ?? 0;
-  $('statDue').textContent = summary.due_soon ?? 0;
-  $('statOverdue').textContent = summary.overdue_grace ?? 0;
-  $('statRestricted').textContent = summary.restricted ?? 0;
-  if(bikes.length>0){
-    let avg = Math.round(bikes.reduce((s,b)=> s + (b.battery_level||0),0)/bikes.length);
-    $('statBattery').textContent = avg + '%';
-    $('bikeList').innerHTML = bikes.map(bk=>{
-      let ps = bk.payment_status_computed || bk.payment_status || 'paid';
-      let badgeClass = ps==='paid' ? 'paid' : ps==='due_soon' ? 'due' : ps==='grace_period' ? 'grace' : 'restricted';
-      let badgeText = ps==='paid' ? 'Paid / Good' : ps==='due_soon' ? 'Due Soon' : ps==='grace_period' ? 'Grace Period' : ps==='overdue_restricted' ? 'Overdue' : ps;
-      let alerts = (bk.maintenance_alerts||[]).map(a=>`<div style="font-size:11px;color:#fbbf24;margin-top:4px">• ${escapeHtml(a)}</div>`).join('');
-      return `
-      <div class="card">
-        <h3>${escapeHtml(bk.name||'Tabi EV')} — ${escapeHtml(bk.model||'Tabi EV Pro')} • Batch: ${escapeHtml(bk.batch_number||'—')}</h3>
-        <span class="badge ${badgeClass}">${badgeText}</span>
-        <p>Customer: ${escapeHtml(bk.customer_name||'—')} • ${escapeHtml(bk.customer_phone||'')} • Account: ${escapeHtml(bk.customer_account_id||'—')}</p>
-        <p>Battery ${bk.battery_level ?? 100}% • Health ${bk.battery_health ?? 100}% • Range ${bk.range_km ?? 125} km • Lock: ${bk.lock_status||'locked'} • Status: ${bk.bike_status||'active'}</p>
-        <p>Location: ${escapeHtml(bk.location||'Lagos, Nigeria')} • <a href="https://maps.google.com/?q=${bk.lat},${bk.lng}" target="_blank">Open Map</a></p>
-        <p>Paid: ${bk.amount_paid||0} • Remaining: ${bk.amount_remaining||0} • Installment: ${bk.installment_amount||0} • Next: ${escapeHtml((bk.next_payment_date||bk.installment_due_date||'—').slice(0,10))}</p>
-        ${alerts}
-        <div class="bike-btns">
-          <button class="primary" onclick="bikeCmd(${bk.id},'unlock')">Unlock</button>
-          <button onclick="bikeCmd(${bk.id},'lock')">Lock / Stop Engine</button>
-          <button onclick="checkPayment(${bk.id})">Check Payment</button>
-          <button class="blue" onclick="alert('Reminder prepared for ${escapeHtml(bk.customer_name||'customer')}: Your installment is due. Please pay to avoid restriction.')">Send Notification</button>
-          <button class="danger" onclick="bikeCmd(${bk.id},'restrict')">Restrict</button>
-          <button onclick="bikeCmd(${bk.id},'unrestrict')">Unrestrict</button>
-        </div>
-      </div>`;
-    }).join('');
-  } else {
-    $('bikeList').innerHTML = '<p style="color:#a3a3a3;font-size:12px;margin-top:10px">No bike yet. Use Register Act to add bikes.</p>';
-  }
-}
-async function loadCustomer(){
-  let r = await api('/api/dashboard');
-  if(!r.success) return;
-  let bikes = r.bikes || [];
-  if(bikes.length===0){ $('customerBike').innerHTML='<div class="card"><p>No bike assigned yet.</p></div>'; return; }
-  let bk = bikes[0];
-  $('customerBike').innerHTML = `
-    <div class="card"><h3>My Bike — ${escapeHtml(bk.name||'Tabi EV')}</h3>
-    <div class="big-battery">${bk.battery_level ?? 100}%</div><p>Battery Percent</p>
-    <p>Battery Health: ${bk.battery_health ?? 100}% • Range: ${bk.range_km ?? 125} km • Lock: ${bk.lock_status}</p></div>
-    <div class="card"><h3>Payment</h3><p>Account Number: ${escapeHtml(bk.customer_account_id||bk.id||'—')}</p><p>Total: ${bk.total_price||0} • Paid: ${bk.amount_paid||0} • Remaining: ${bk.amount_remaining||0}</p><p>Installment: ${bk.installment_amount||0} • Next Due: ${escapeHtml((bk.next_payment_date||bk.installment_due_date||'—').slice(0,10))}</p><p>Status: ${bk.payment_status_computed||bk.payment_status}</p></div>`;
-  $('mapLink').href = `https://maps.google.com/?q=${bk.lat},${bk.lng}`;
-  $('mapBox').innerHTML = `Location: ${escapeHtml(bk.location||'Lagos, Nigeria')}<br>Lat ${bk.lat}, Lng ${bk.lng}<br><a href="https://maps.google.com/?q=${bk.lat},${bk.lng}" target="_blank">Open in Google Maps</a>`;
-}
-async function registerBike(){
-  let body = {name: $('regName').value || 'Tabi EV', customer_name: $('regCustomer').value, customer_phone: $('regPhone').value, customer_email: $('regEmail').value, batch_number: $('regBatch').value, total_price: Number($('regTotal').value||0), deposit_paid: Number($('regDeposit').value||0), amount_paid: Number($('regDeposit').value||0), installment_amount: Number($('regInstallment').value||0), installment_due_date: $('regDue').value, next_payment_date: $('regDue').value};
-  let r = await api('/api/bikes','POST', body);
-  $('regMsg').textContent = r.success ? 'Bike added + customer registered. Bike ID: ' + r.bike_id : (r.error || 'Failed');
-  if(r.success) loadDashboard();
-}
-async function trackDevice(){
-  let batch = $('trackBatch').value.trim();
-  if(!batch){ $('trackResult').innerHTML='<p>Input Batch Number first.</p>'; return; }
-  let r = await api('/api/device/'+encodeURIComponent(batch));
-  if(r.device){
-    $('trackResult').innerHTML = `<p style="margin-top:10px">Device ${escapeHtml(batch)} — Type ${escapeHtml(r.device.device_type)} — Status ${escapeHtml(r.device.status)} — Last Seen ${escapeHtml(r.device.last_seen||'—')}</p><p>Lat ${r.device.lat||'—'} Lng ${r.device.lng||'—'}</p>`;
-  } else {
-    $('trackResult').innerHTML = `<p style="margin-top:10px">${escapeHtml(r.message||'Device offline. No device with this batch number connected yet.')}</p><p>Tip: Check bike list for batch numbers, or register device first.</p>`;
-  }
-}
-async function bikeCmd(id, cmd){
-  let r = await api('/api/bike/'+id+'/command','POST',{command:cmd});
-  alert(r.message || r.error || 'Done');
-  loadDashboard(); loadCustomer();
-}
-async function checkPayment(id){
-  let r = await api('/api/bike/'+id+'/check-payment');
-  if(r.success) alert(r.reminder || ('Status: ' + r.payment_status));
-  else alert(r.error || 'Failed');
-  loadDashboard();
-}
-async function doAuth(mode){
-  let name = $('authName').value.trim();
-  let email = $('authEmail').value.trim();
-  let pass = $('authPass').value.trim();
-  if(!email || !pass){ $('authErr').textContent='Email + password required'; return; }
-  $('authErr').textContent='';
-  let path = mode==='signup' ? '/api/signup' : '/api/login';
-  let body = {email, password:pass};
-  if(mode==='signup') body.name = name || 'Faruq Sulaimon';
-  let res = await fetch(path,{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  let r = await res.json();
-  if(!r.success){ $('authErr').textContent = r.error || 'Failed'; return; }
-  if(mode==='signup'){ $('authErr').textContent='Owner created! Now tap Sign In.'; $('authErr').style.color='#86efac'; return; }
-  token = r.token; localStorage.setItem('tabby_token', token);
-  init();
-}
-function logout(){ localStorage.removeItem('tabby_token'); location.reload(); }
-$('msgInput').addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'; });
-init();
-</script>
-</body>
-</html>
+
+def get_db():
+    db = getattr(g, '_db', None)
+    if db is None:
+        db = g._db = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+    return db
+
+@app.teardown_appcontext
+def close_db(exc):
+    db = getattr(g, '_db', None)
+    if db: db.close()
+
+def init_db():
+    db = sqlite3.connect(DATABASE)
+    c = db.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'user', created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS conversations (id INTEGER PRIMARY KEY, user_id INTEGER, title TEXT, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, conversation_id INTEGER, role TEXT, content TEXT, created_at TEXT)")
+    c.execute("""CREATE TABLE IF NOT EXISTS bikes (
+        id INTEGER PRIMARY KEY, user_id INTEGER, owner_id INTEGER, customer_id INTEGER, name TEXT, model TEXT, vin TEXT, plate_number TEXT,
+        customer_name TEXT, customer_phone TEXT, customer_email TEXT, customer_account_id TEXT, batch_number TEXT,
+        battery_level INTEGER DEFAULT 98, battery_health INTEGER DEFAULT 100, battery_cycles INTEGER DEFAULT 0, range_km INTEGER DEFAULT 125,
+        lock_status TEXT DEFAULT 'locked', bike_status TEXT DEFAULT 'active', location TEXT DEFAULT 'Lagos, Nigeria',
+        lat REAL DEFAULT 6.5244, lng REAL DEFAULT 3.3792, speed_kmh INTEGER DEFAULT 0, odometer_km REAL DEFAULT 0, motor_temp REAL DEFAULT 35,
+        last_maintenance TEXT, next_maintenance TEXT, maintenance_alert TEXT DEFAULT '',
+        deposit_paid REAL DEFAULT 0, total_price REAL DEFAULT 0, amount_paid REAL DEFAULT 0, amount_remaining REAL DEFAULT 0,
+        installment_amount REAL DEFAULT 0, installment_due_date TEXT, next_payment_date TEXT, payment_status TEXT DEFAULT 'paid',
+        grace_period_days INTEGER DEFAULT 7, grace_until TEXT, restricted_reason TEXT DEFAULT '', last_update TEXT, created_at TEXT)""")
+    c.execute("CREATE TABLE IF NOT EXISTS user_memory (id INTEGER PRIMARY KEY, user_id INTEGER, key TEXT, value TEXT, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS bike_history (id INTEGER PRIMARY KEY, bike_id INTEGER, lat REAL, lng REAL, location TEXT, battery INTEGER, speed_kmh INTEGER DEFAULT 0, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY, bike_id INTEGER, customer_id INTEGER, amount REAL, payment_type TEXT, method TEXT, status TEXT DEFAULT 'completed', due_date TEXT, paid_at TEXT, note TEXT, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY, bike_id INTEGER, user_id INTEGER, type TEXT, message TEXT, severity TEXT DEFAULT 'info', is_read INTEGER DEFAULT 0, created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS bike_commands (id INTEGER PRIMARY KEY, bike_id INTEGER, user_id INTEGER, command TEXT, status TEXT DEFAULT 'pending', result TEXT DEFAULT '', created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY, batch_number TEXT UNIQUE, device_type TEXT, bike_id INTEGER, owner_id INTEGER, status TEXT DEFAULT 'offline', last_seen TEXT, lat REAL, lng REAL, created_at TEXT)")
+    db.commit(); db.close()
+
+init_db()
+
+def get_user_from_token():
+    auth = request.headers.get('Authorization','')
+    if not auth.startswith('Bearer '): return None
+    try:
+        data = jwt.decode(auth[7:], app.config['SECRET_KEY'], algorithms=['HS256'])
+        db = get_db()
+        u = db.execute('SELECT * FROM users WHERE id=?', (data['user_id'],)).fetchone()
+        return dict(u) if u else None
+    except: return None
+
+def is_owner(user):
+    return user and user.get('role') == 'owner'
+
+def ensure_bike_for_user(user):
+    db = get_db()
+    row = db.execute('SELECT * FROM bikes WHERE user_id=?', (user['id'],)).fetchone()
+    if not row and user.get('role') == 'owner':
+        db.execute('INSERT INTO bikes (user_id, owner_id, name, model, customer_name, battery_level, battery_health, range_km, lock_status, bike_status, location, lat, lng, last_update, created_at, payment_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (user['id'], user['id'], 'Tabi EV 001', 'Tabi EV Pro', user['name'], 98, 100, 125, 'locked', 'active', 'Lagos, Nigeria', 6.5244, 3.3792, datetime.now().isoformat(), datetime.now().isoformat(), 'paid'))
+        db.commit()
+
+def get_memory(user_id):
+    db = get_db()
+    rows = db.execute('SELECT key, value FROM user_memory WHERE user_id=?', (user_id,)).fetchall()
+    mem = {r['key']: r['value'] for r in rows}
+    # Supabase read-through: if Supabase has more, merge (Supabase wins for new keys)
+    if SUPABASE_ENABLED:
+        sup = supabase_request('GET', 'user_memory', params={'user_id': f'eq.{user_id}', 'select': 'key,value'})
+        if sup:
+            for item in sup:
+                if item.get('key') not in mem:
+                    mem[item['key']] = item['value']
+    return mem
+
+def save_memory(user_id, key, value):
+    db = get_db()
+    existing = db.execute('SELECT id FROM user_memory WHERE user_id=? AND key=?', (user_id, key)).fetchone()
+    if existing:
+        db.execute('UPDATE user_memory SET value=? WHERE id=?', (value, existing['id']))
+    else:
+        db.execute('INSERT INTO user_memory (user_id, key, value, created_at) VALUES (?,?,?,?)', (user_id, key, str(value), datetime.now().isoformat()))
+    db.commit()
+    if SUPABASE_ENABLED:
+        supabase_upsert_memory(user_id, key, value)
+
+def seed_profile_memory(user_id):
+    existing = get_memory(user_id)
+    for k, v in DEFAULT_PROFILE.items():
+        if k not in existing:
+            save_memory(user_id, k, v)
+        elif k in ['project_ultimate_ebike','ebike_installment_system','project_smart_glasses','project_tabby']:
+            save_memory(user_id, k, v)
+
+def add_alert(bike_id, user_id, type_, message, severity='info'):
+    db = get_db()
+    db.execute('INSERT INTO alerts (bike_id, user_id, type, message, severity, created_at) VALUES (?,?,?,?,?,?)', (bike_id, user_id, type_, message, severity, datetime.now().isoformat()))
+    db.commit()
+
+def check_payment_status(bike):
+    if not bike.get('next_payment_date') and not bike.get('installment_due_date'):
+        return bike.get('payment_status', 'paid')
+    due_str = bike.get('next_payment_date') or bike.get('installment_due_date')
+    try:
+        due = datetime.fromisoformat(due_str)
+        now = datetime.now()
+        if bike.get('amount_remaining', 0) <= 0:
+            return 'paid'
+        if now <= due:
+            days_left = (due - now).days
+            if days_left <= 3:
+                return 'due_soon'
+            return 'paid'
+        grace_days = bike.get('grace_period_days', 7) or 7
+        grace_until = due + timedelta(days=grace_days)
+        if now <= grace_until:
+            return 'grace_period'
+        return 'overdue_restricted'
+    except:
+        return bike.get('payment_status', 'paid')
+
+def predictive_maintenance(bike):
+    alerts = []
+    if bike.get('battery_health', 100) < 80:
+        alerts.append(f"Battery health is {bike.get('battery_health')}%. Service battery soon.")
+    if bike.get('battery_cycles', 0) > 800:
+        alerts.append(f"Battery has {bike.get('battery_cycles')} cycles. Check battery cells.")
+    if bike.get('motor_temp', 35) and bike.get('motor_temp') > 85:
+        alerts.append(f"Motor temperature high: {bike.get('motor_temp')}C. Check motor controller.")
+    if bike.get('odometer_km', 0) and bike.get('odometer_km') > 5000:
+        alerts.append(f"Odometer {bike.get('odometer_km')} km. Maintenance due.")
+    return alerts
+
+def deep_research(query):
+    q = query.lower()
+    results = []
+    try:
+        if any(x in q for x in ['tech','technology','ai','news','latest','world','nigeria','trend','ev','electric','bike','battery']):
+            try:
+                r = requests.get('https://hn.algolia.com/api/v1/search?query=technology&tags=story&hitsPerPage=5', timeout=6).json()
+                for h in r.get('hits', [])[:5]:
+                    results.append(f"- {h.get('title')} - {h.get('url','')}")
+            except Exception as e:
+                results.append(f"Hacker News fetch failed: {e}")
+    except: pass
+    try:
+        if any(x in q for x in ['what is','who is','explain','how does','why']):
+            search = re.sub(r'(what is|who is|explain|how does|why|tell me about)', '', q).strip()
+            if search:
+                r = requests.get(f'https://en.wikipedia.org/api/rest_v1/page/summary/{search}', timeout=6).json()
+                if r.get('extract'):
+                    results.append(f"Wikipedia: {r['extract'][:900]}")
+    except: pass
+    try:
+        if any(x in q for x in ['naira','dollar','rate','exchange']):
+            r = requests.get('https://open.er-api.com/v6/latest/USD', timeout=5).json()
+            ngn = r.get('rates', {}).get('NGN', 0)
+            if ngn:
+                results.append(f"Live Naira Rate: 1 USD = {ngn:,.0f} NGN (just now)")
+    except: pass
+    try:
+        if 'weather' in q:
+            r = requests.get('https://wttr.in/Lagos?format=j1', timeout=5).json()
+            cur = r['current_condition'][0]
+            results.append(f"Lagos Weather Live: {cur['temp_C']}C, {cur['weatherDesc'][0]['value']}, Humidity {cur['humidity']}%, Wind {cur['windspeedKmph']} km/h")
+    except: pass
+    return "\n".join(results) if results else ""
+
+def build_system_prompt(memory, research=""):
+    mem_text = "\n".join([f"{k}: {v}" for k,v in memory.items()]) if memory else "No memory yet."
+    return f"""You are Tabi, personal AI assistant and close brother of Faruq Sulaimon, founder of Ultimate Gee Industry. Faruq Sulaimon is your creator and owner. You are NOT a generic chatbot. You talk like a real, intelligent brother.
+Speak in clean English by default. No emojis. No markdown bold in ordinary chat. Friendly, natural, intelligent, relaxed. Direct and practical. Honest even when disappointing. Detailed when project requires it, not unnecessarily lengthy.
+How to talk: If Faruq says 'Hey Tabi', say 'Hey Boss' back naturally. If he says 'Alhamdulilah, what about you?', say 'Alhamdulilah, I am good Boss, glad you are good too' and ask what he is up to. Never reply to a normal greeting with 'That is an interesting point, what is your goal'. Treat greetings as greetings.
+Critical thinking: Do not just agree. Give pros, cons, risks, opportunities. Challenge ideas respectfully if needed. Give practical solutions, not generic advice.
+Research: Use research data if provided. Analyse it, explain why it matters for Faruq, his projects, Ultimate E Bike fleet business, freelancing, and Nigeria context. Do not invent news dates or prices.
+E-Bike Fleet Business: Faruq is building MULTIPLE e-bikes for BUSINESS. Tabi makes them unique: Intelligent battery management, GPS tracking and anti-theft, Intelligent journey assistant, Predictive maintenance, Remote security. Installment system: deposit, registration, Tabi monitors payment, reminders before due, warnings and grace period if overdue, restricted mode only after agreed process and warnings. Be fair, do not suggest sudden lock without warning.
+Memory - Use this, do not ask Faruq to repeat it:
+{mem_text}
+Today: {datetime.now().strftime("%A, %d %B %Y, %H:%M Lagos time")}
+Research data:
+{research if research else 'No external research needed.'}
+Rules:
+- Address Faruq as Boss when appropriate. Faruq is creator and owner.
+- Do not repeat questions whose answers are known.
+- Do not pretend to have completed an action not completed.
+- Distinguish written vs tested vs deployed vs still requires action from Faruq.
+- If you do not know, say so honestly.
+- When Faruq says continue, use project history, do not start from scratch.
+"""
+
+def ask_ai(prompt, memory={}, history=[], research=""):
+    system = build_system_prompt(memory, research)
+    messages = [{'role': 'system', 'content': system}]
+    for h in history[-10:]:
+        messages.append({'role': h['role'], 'content': h['content']})
+    messages.append({'role': 'user', 'content': prompt})
+    try:
+        if AI_PROVIDER == 'openrouter':
+            if not OPENROUTER_API_KEY:
+                return None, "OPENROUTER_KEY_MISSING"
+            r = requests.post('https://openrouter.ai/api/v1/chat/completions', headers={'Authorization': f'Bearer {OPENROUTER_API_KEY}', 'Content-Type': 'application/json', 'HTTP-Referer': 'https://tabi.ultimategee.com', 'X-Title': 'Tabi AI'}, json={'model': OPENROUTER_MODEL, 'messages': messages, 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
+        else:
+            if not OPENAI_API_KEY:
+                return None, "OPENAI_KEY_MISSING"
+            r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': messages, 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
+        data = r.json()
+        if 'choices' in data and data['choices']:
+            return data['choices'][0]['message']['content'], None
+        err = data.get('error', {}).get('message', str(data)[:400])
+        print("AI error:", err)
+        return None, err
+    except Exception as e:
+        print("AI error", e)
+        return None, str(e)
+
+def smart_fallback(msg, memory={}, research=""):
+    if research:
+        return f"Here is what I found, Boss:\n\n{research}\n\nTell me which part you want me to break down for you."
+    low = msg.lower().strip()
+    if 'alhamdulilah' in low or 'alhamdulillah' in low:
+        return "Alhamdulilah, Boss, I am good too, glad to hear you are good. What are we working on today?"
+    if 'good morning' in low:
+        return "Good morning, Boss. Hope you slept well. What are we working on today?"
+    if low in ['hi','hey','hello','yo','hey tabi']:
+        return "Hey Boss, good to see you. How is your day going?"
+    if any(x in low for x in ['how are you','how u doing','what about you']):
+        return "I am good, Boss, Alhamdulilah. Thanks for asking. How about you?"
+    return f"I hear you, Boss. {msg} - tell me more, I am listening. Do you want us to work on Tabi, bike fleet, business, or just talk?"
+
+def openai_tts(text, voice='nova'):
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        r = requests.post('https://api.openai.com/v1/audio/speech', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'tts-1', 'voice': voice, 'input': text[:4000]}, timeout=30)
+        if r.status_code == 200:
+            return base64.b64encode(r.content).decode()
+        print("TTS error:", r.text[:200])
+        return None
+    except Exception as e:
+        print("TTS error", e)
+        return None
+
+def openai_transcribe(audio_bytes, filename='voice.mp3'):
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        files = {'file': (filename, audio_bytes, 'audio/mpeg')}
+        data = {'model': 'whisper-1'}
+        r = requests.post('https://api.openai.com/v1/audio/transcriptions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}'}, files=files, data=data, timeout=30)
+        j = r.json()
+        return j.get('text')
+    except Exception as e:
+        print("Transcribe error", e)
+        return None
+
+@app.route('/')
+def index(): return render_template('index.html')
+
+@app.route('/api/signup', methods=['POST'])
+def signup():
+    d = request.json or {}
+    db = get_db()
+    if db.execute('SELECT * FROM users WHERE email=?', (d.get('email'),)).fetchone():
+        return jsonify({'success': False, 'error': 'Email already exists'})
+    count = db.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    role = 'owner' if count == 0 else 'user'
+    # First account is always Faruq Sulaimon, creator and owner
+    name = d.get('name','Boss') if count != 0 else (d.get('name') or OWNER_NAME)
+    cur = db.execute('INSERT INTO users (name,email,password,role,created_at) VALUES (?,?,?,?,?)', (name, d.get('email'), generate_password_hash(d.get('password','')), role, datetime.now().isoformat()))
+    db.commit()
+    uid = cur.lastrowid
+    if uid:
+        seed_profile_memory(uid)
+    return jsonify({'success': True, 'message': 'Created'})
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    d = request.json or {}
+    db = get_db()
+    u = db.execute('SELECT * FROM users WHERE email=?', (d.get('email'),)).fetchone()
+    if not u or not check_password_hash(u['password'], d.get('password','')):
+        return jsonify({'success': False, 'error': 'Wrong email or password'})
+    token = jwt.encode({'user_id': u['id']}, app.config['SECRET_KEY'], algorithm='HS256')
+    ensure_bike_for_user(dict(u))
+    seed_profile_memory(u['id'])
+    return jsonify({'success': True, 'token': token, 'user': {'name': u['name'], 'email': u['email'], 'role': u['role']}})
+
+@app.route('/api/me')
+def me():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    ensure_bike_for_user(u)
+    seed_profile_memory(u['id'])
+    return jsonify({'success': True, 'user': {'name': u['name'], 'email': u['email'], 'role': u['role']}, 'memory': get_memory(u['id']), 'supabase_enabled': SUPABASE_ENABLED, 'ai_provider': AI_PROVIDER})
+
+@app.route('/api/memory', methods=['GET','POST'])
+def memory():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    if request.method == 'GET':
+        return jsonify({'success': True, 'memory': get_memory(u['id'])})
+    d = request.json or {}
+    for k, v in d.items():
+        if v and k not in ['api_key','password','token','secret']:
+            save_memory(u['id'], k, str(v))
+    return jsonify({'success': True, 'message': 'Memory saved to SQLite + Supabase.', 'memory': get_memory(u['id'])})
+
+@app.route('/api/conversations')
+def list_convs():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    rows = db.execute('SELECT * FROM conversations WHERE user_id=? ORDER BY id DESC', (u['id'],)).fetchall()
+    out = []
+    for r in rows:
+        last = db.execute('SELECT content FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT 1', (r['id'],)).fetchone()
+        out.append({'id': r['id'], 'title': r['title'], 'last_msg': last['content'] if last else ''})
+    return jsonify({'success': True, 'conversations': out})
+
+@app.route('/api/conversations', methods=['POST'])
+def create_conv():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    cur = db.execute('INSERT INTO conversations (user_id, title, created_at) VALUES (?,?,?)', (u['id'], request.json.get('title','New Chat'), datetime.now().isoformat()))
+    db.commit()
+    return jsonify({'success': True, 'conversation_id': cur.lastrowid})
+
+@app.route('/api/conversations/last')
+def last_conv():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    r = db.execute('SELECT * FROM conversations WHERE user_id=? ORDER BY id DESC LIMIT 1', (u['id'],)).fetchone()
+    if not r:
+        return jsonify({'success': True, 'conversation_id': None, 'messages': []})
+    msgs = db.execute('SELECT * FROM messages WHERE conversation_id=? ORDER BY id ASC', (r['id'],)).fetchall()
+    return jsonify({'success': True, 'conversation_id': r['id'], 'title': r['title'], 'messages': [{'role': m['role'], 'content': m['content']} for m in msgs]})
+
+@app.route('/api/conversations/<int:cid>')
+def get_conv(cid):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    msgs = db.execute('SELECT * FROM messages WHERE conversation_id=? ORDER BY id ASC', (cid,)).fetchall()
+    return jsonify({'success': True, 'messages': [{'role': m['role'], 'content': m['content']} for m in msgs]})
+
+@app.route('/api/conversations/<int:cid>', methods=['DELETE'])
+def del_conv(cid):
+    u = get_user_from_token()
+    db = get_db()
+    db.execute('DELETE FROM messages WHERE conversation_id=?', (cid,))
+    db.execute('DELETE FROM conversations WHERE id=? AND user_id=?', (cid, u['id']))
+    db.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/dashboard')
+def dashboard():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    ensure_bike_for_user(u)
+    db = get_db()
+    if is_owner(u):
+        bikes = db.execute('SELECT * FROM bikes ORDER BY id DESC').fetchall()
+    else:
+        bikes = db.execute('SELECT * FROM bikes WHERE user_id=? OR customer_id=? ORDER BY id DESC', (u['id'], u['id'])).fetchall()
+    out = []
+    for b in bikes:
+        d = dict(b)
+        d['payment_status_computed'] = check_payment_status(d)
+        d['maintenance_alerts'] = predictive_maintenance(d)
+        out.append(d)
+    total = len(out)
+    paid = len([x for x in out if x['payment_status_computed'] == 'paid'])
+    due_soon = len([x for x in out if x['payment_status_computed'] == 'due_soon'])
+    overdue = len([x for x in out if x['payment_status_computed'] in ['grace_period','overdue_restricted']])
+    restricted = len([x for x in out if x['bike_status'] == 'restricted'])
+    return jsonify({'success': True, 'bikes': out, 'total_bikes': total, 'fleet_summary': {'total': total, 'paid': paid, 'due_soon': due_soon, 'overdue_grace': overdue, 'restricted': restricted}})
+
+@app.route('/api/bikes', methods=['POST'])
+def create_bike():
+    u = get_user_from_token()
+    if not u or not is_owner(u): return jsonify({'success': False, 'error': 'Only owner can add bikes'})
+    d = request.json or {}
+    db = get_db()
+    total = float(d.get('total_price', 0) or 0)
+    deposit = float(d.get('deposit_paid', 0) or 0)
+    paid = float(d.get('amount_paid', deposit) or deposit)
+    remaining = total - paid if total else 0
+    cur = db.execute('INSERT INTO bikes (user_id, owner_id, customer_id, name, model, vin, plate_number, customer_name, customer_phone, customer_email, customer_account_id, batch_number, battery_level, battery_health, range_km, lock_status, bike_status, location, lat, lng, deposit_paid, total_price, amount_paid, amount_remaining, installment_amount, installment_due_date, next_payment_date, payment_status, grace_period_days, last_update, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        (u['id'], u['id'], d.get('customer_id'), d.get('name','Tabi EV'), d.get('model','Tabi EV Pro'), d.get('vin',''), d.get('plate_number',''), d.get('customer_name',''), d.get('customer_phone',''), d.get('customer_email',''), d.get('customer_account_id',''), d.get('batch_number',''), 98, 100, 125, 'locked', 'active', d.get('location','Lagos, Nigeria'), d.get('lat', 6.5244), d.get('lng', 3.3792), deposit, total, paid, remaining, d.get('installment_amount', 0), d.get('installment_due_date'), d.get('next_payment_date') or d.get('installment_due_date'), d.get('payment_status','paid'), d.get('grace_period_days', 7), datetime.now().isoformat(), datetime.now().isoformat()))
+    db.commit()
+    return jsonify({'success': True, 'bike_id': cur.lastrowid, 'message': 'Bike added to fleet. Customer registered.'})
+
+@app.route('/api/bike/<int:bid>/command', methods=['POST'])
+def bike_cmd(bid):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False, 'error': 'Bike not found'})
+    if not is_owner(u) and b['customer_id'] != u['id'] and b['user_id'] != u['id']:
+        return jsonify({'success': False, 'error': 'Not authorized for this bike'})
+    cmd = request.json.get('command','')
+    if b['bike_status'] == 'restricted' and cmd == 'unlock' and not is_owner(u):
+        return jsonify({'success': False, 'error': 'Bike is in restricted mode due to payment. Contact Ultimate Gee Industry. Owner can override.'})
+    if cmd in ['lock','unlock']:
+        db.execute('UPDATE bikes SET lock_status=? WHERE id=?', ('locked' if cmd=='lock' else 'unlocked', bid))
+        db.execute('INSERT INTO bike_commands (bike_id, user_id, command, status, result, created_at) VALUES (?,?,?,?,?,?)', (bid, u['id'], cmd, 'completed', f'Bike {cmd}ed', datetime.now().isoformat()))
+        db.commit()
+    if cmd == 'restrict' and is_owner(u):
+        db.execute('UPDATE bikes SET bike_status=?, restricted_reason=? WHERE id=?', ('restricted', request.json.get('reason','Payment overdue'), bid))
+        add_alert(bid, u['id'], 'restricted', f"Bike {b['name']} restricted. Reason: {request.json.get('reason','Payment overdue')}", 'high')
+        db.commit()
+        return jsonify({'success': True, 'message': 'Bike restricted.'})
+    if cmd == 'unrestrict' and is_owner(u):
+        db.execute('UPDATE bikes SET bike_status=?, restricted_reason=? WHERE id=?', ('active', '', bid))
+        db.commit()
+        return jsonify({'success': True, 'message': 'Bike unrestricted by owner.'})
+    return jsonify({'success': True, 'message': f'Bike {cmd}ed.'})
+
+@app.route('/api/bike/<int:bid>/location', methods=['POST'])
+def bike_location(bid):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    d = request.json or {}
+    lat, lng, loc = d.get('lat'), d.get('lng'), d.get('location','Lagos, Nigeria')
+    battery = d.get('battery')
+    speed = d.get('speed_kmh', 0)
+    odometer = d.get('odometer_km')
+    motor_temp = d.get('motor_temp')
+    db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False})
+    if lat and lng:
+        db.execute('UPDATE bikes SET lat=?, lng=?, location=?, last_update=? WHERE id=?', (lat, lng, loc, datetime.now().isoformat(), bid))
+        if battery is not None:
+            db.execute('UPDATE bikes SET battery_level=? WHERE id=?', (battery, bid))
+        if odometer is not None:
+            db.execute('UPDATE bikes SET odometer_km=? WHERE id=?', (odometer, bid))
+        if motor_temp is not None:
+            db.execute('UPDATE bikes SET motor_temp=? WHERE id=?', (motor_temp, bid))
+        db.execute('INSERT INTO bike_history (bike_id, lat, lng, location, battery, speed_kmh, created_at) VALUES (?,?,?,?,?,?,?)', (bid, lat, lng, loc, battery or 98, speed, datetime.now().isoformat()))
+        if b['lock_status'] == 'locked' and speed and speed > 5:
+            add_alert(bid, u['id'], 'anti_theft', f"Alert: {b['name']} is moving while locked at {loc}. Speed {speed} km/h.", 'high')
+        db.commit()
+    return jsonify({'success': True, 'message': 'Location updated live'})
+
+@app.route('/api/bike/<int:bid>/location')
+def get_bike_location(bid):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False})
+    hist = db.execute('SELECT * FROM bike_history WHERE bike_id=? ORDER BY id DESC LIMIT 20', (bid,)).fetchall()
+    d = dict(b)
+    d['payment_status_computed'] = check_payment_status(d)
+    d['maintenance_alerts'] = predictive_maintenance(d)
+    return jsonify({'success': True, 'bike': d, 'history': [dict(h) for h in hist], 'google_maps_url': f"https://maps.google.com/?q={b['lat']},{b['lng']}"})
+
+@app.route('/api/bike/<int:bid>/payment', methods=['POST'])
+def bike_payment(bid):
+    u = get_user_from_token()
+    if not u or not is_owner(u): return jsonify({'success': False, 'error': 'Only owner can record payments'})
+    d = request.json or {}
+    amount = float(d.get('amount', 0) or 0)
+    db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False})
+    new_paid = (b['amount_paid'] or 0) + amount
+    new_remaining = (b['total_price'] or 0) - new_paid
+    if new_remaining < 0: new_remaining = 0
+    next_due = None
+    if new_remaining > 0:
+        next_due = (datetime.now() + timedelta(days=30)).isoformat()
+    db.execute('UPDATE bikes SET amount_paid=?, amount_remaining=?, next_payment_date=?, installment_due_date=?, payment_status=? WHERE id=?', (new_paid, new_remaining, next_due, next_due, 'paid' if new_remaining <= 0 else 'paid', bid))
+    db.execute('INSERT INTO payments (bike_id, customer_id, amount, payment_type, method, status, due_date, paid_at, note, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)', (bid, b['customer_id'], amount, d.get('payment_type','installment'), d.get('method','transfer'), 'completed', b['next_payment_date'], datetime.now().isoformat(), d.get('note',''), datetime.now().isoformat()))
+    if b['bike_status'] == 'restricted' and new_remaining <= 0:
+        db.execute('UPDATE bikes SET bike_status=?, restricted_reason=? WHERE id=?', ('active', '', bid))
+    db.commit()
+    return jsonify({'success': True, 'message': f'Payment of {amount} recorded. Remaining: {new_remaining}', 'amount_paid': new_paid, 'amount_remaining': new_remaining})
+
+@app.route('/api/bike/<int:bid>/check-payment')
+def check_payment(bid):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    b = db.execute('SELECT * FROM bikes WHERE id=?', (bid,)).fetchone()
+    if not b: return jsonify({'success': False})
+    d = dict(b)
+    status = check_payment_status(d)
+    msg = ""
+    if status == 'due_soon':
+        msg = f"Reminder: Installment of {d.get('installment_amount')} is due soon on {d.get('next_payment_date')}. Please pay to avoid restriction."
+    elif status == 'grace_period':
+        msg = f"Warning: Payment overdue. You are in grace period of {d.get('grace_period_days')} days. Please pay now to avoid restricted mode."
+    elif status == 'overdue_restricted':
+        msg = f"Payment is overdue beyond grace period. Bike may enter restricted mode. Contact Ultimate Gee Industry immediately."
+    elif status == 'paid':
+        msg = "Payment status is good, Boss."
+    db.execute('UPDATE bikes SET payment_status=? WHERE id=?', (status, bid))
+    db.commit()
+    return jsonify({'success': True, 'bike_id': bid, 'payment_status': status, 'reminder': msg, 'amount_remaining': d.get('amount_remaining'), 'next_payment_date': d.get('next_payment_date')})
+
+@app.route('/api/bike/<int:bid>/payments')
+def bike_payments(bid):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    rows = db.execute('SELECT * FROM payments WHERE bike_id=? ORDER BY id DESC', (bid,)).fetchall()
+    return jsonify({'success': True, 'payments': [dict(r) for r in rows]})
+
+@app.route('/api/alerts')
+def alerts():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    if is_owner(u):
+        rows = db.execute('SELECT * FROM alerts ORDER BY id DESC LIMIT 50').fetchall()
+    else:
+        rows = db.execute('SELECT * FROM alerts WHERE user_id=? ORDER BY id DESC LIMIT 50', (u['id'],)).fetchall()
+    return jsonify({'success': True, 'alerts': [dict(r) for r in rows]})
+
+# --- DEVICE READY: for bike, glasses, watch, TV, camera ---
+@app.route('/api/device/<batch>/ping', methods=['POST'])
+def device_ping(batch):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    d = request.json or {}
+    row = db.execute('SELECT * FROM devices WHERE batch_number=?', (batch,)).fetchone()
+    if not row:
+        db.execute('INSERT INTO devices (batch_number, device_type, owner_id, status, last_seen, created_at) VALUES (?,?,?,?,?,?)', (batch, d.get('device_type','motorcycle'), u['id'], 'online', datetime.now().isoformat(), datetime.now().isoformat()))
+        db.commit()
+        return jsonify({'success': True, 'device_status': 'registered', 'message': 'Device registered. Waiting for live telemetry.'})
+    db.execute('UPDATE devices SET status=?, last_seen=? WHERE batch_number=?', ('online', datetime.now().isoformat(), batch))
+    db.commit()
+    return jsonify({'success': True, 'device_status': 'online'})
+
+@app.route('/api/device/<batch>')
+def device_get(batch):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    row = db.execute('SELECT * FROM devices WHERE batch_number=?', (batch,)).fetchone()
+    if not row:
+        return jsonify({'success': True, 'device_status': 'device_offline', 'message': 'No device with this batch number is connected yet. Register device first.'})
+    return jsonify({'success': True, 'device': dict(row)})
+
+@app.route('/api/live/news')
+def live_news():
+    q = request.args.get('q','technology')
+    research = deep_research(q + ' news latest')
+    return jsonify({'success': True, 'research': research})
+
+@app.route('/api/live/map')
+def live_map():
+    lat = request.args.get('lat','6.5244')
+    lng = request.args.get('lng','3.3792')
+    return jsonify({'success': True, 'google_maps_url': f'https://maps.google.com/?q={lat},{lng}', 'embed_url': f'https://maps.google.com/maps?q={lat},{lng}&output=embed'})
+
+@app.route('/api/image/generate', methods=['POST'])
+def gen_image():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False, 'error': 'Login first'})
+    d = request.json or {}
+    prompt = d.get('prompt') or d.get('message') or 'Tabi EV bike'
+    if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+        return jsonify({'success': False, 'error': 'Image generation is not configured. Cloudflare Account ID and API Token are required.'})
+    try:
+        url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell"
+        r = requests.post(url, headers={'Authorization': f'Bearer {CLOUDFLARE_API_TOKEN}', 'Content-Type': 'application/json'}, json={'prompt': prompt, 'steps': 4}, timeout=60)
+        if r.headers.get('content-type','').startswith('image'):
+            img_b64 = base64.b64encode(r.content).decode()
+            return jsonify({'success': True, 'image_base64': f"data:image/png;base64,{img_b64}", 'prompt': prompt})
+        else:
+            return jsonify({'success': False, 'error': f"Cloudflare returned: {r.text[:500]}"})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/image/analyze', methods=['POST'])
+def analyze_image():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    d = request.json or {}
+    img_data = d.get('image')
+    question = d.get('message', 'Describe this image in detail and give critical thinking.')
+    if not img_data:
+        return jsonify({'success': False, 'error': 'No image sent'})
+    if not OPENAI_API_KEY:
+        return jsonify({'success': False, 'error': 'Vision needs OpenAI key. Please top up OpenAI.'})
+    try:
+        r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabi, Faruq's assistant. Analyse this image in clean English, no emojis, detailed and critical. Question: {question}"}, {'type': 'image_url', 'image_url': {'url': img_data}}]}]}, timeout=30)
+        data = r.json()
+        if 'choices' not in data:
+            return jsonify({'success': False, 'error': data.get('error', {}).get('message', 'OpenAI vision failed')})
+        txt = data['choices'][0]['message']['content']
+        return jsonify({'success': True, 'reply': txt})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False, 'error': 'Login first'})
+    ensure_bike_for_user(u)
+    seed_profile_memory(u['id'])
+    d = request.json or {}
+    msg = (d.get('message') or '').strip()
+    conv_id = d.get('conversation_id')
+    image = d.get('image')
+    want_voice = d.get('voice', False)
+    memory = get_memory(u['id'])
+    db = get_db()
+    if not conv_id:
+        cur = db.execute('INSERT INTO conversations (user_id, title, created_at) VALUES (?,?,?)', (u['id'], msg[:40] or 'New Chat', datetime.now().isoformat()))
+        db.commit()
+        conv_id = cur.lastrowid
+    db.execute('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?,?,?,?)', (conv_id, 'user', msg, datetime.now().isoformat()))
+    db.commit()
+    hist_rows = db.execute('SELECT role, content FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT 10', (conv_id,)).fetchall()
+    history = [{'role': r['role'], 'content': r['content']} for r in reversed(hist_rows)]
+    low = msg.lower().strip()
+    reply = None
+    image_b64 = None
+    ai_error = None
+
+    if any(x in low for x in ['generate image','create image','draw','make image','create a picture']):
+        prompt = re.sub(r'(generate image|create image|draw|make image|create a picture|of|please)', '', msg, flags=re.I).strip() or msg
+        if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+            reply = "I cannot generate an image right now, Boss, because Cloudflare image generation is not configured."
+        else:
+            try:
+                url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell"
+                r = requests.post(url, headers={'Authorization': f'Bearer {CLOUDFLARE_API_TOKEN}', 'Content-Type': 'application/json'}, json={'prompt': prompt, 'steps': 4}, timeout=60)
+                if r.headers.get('content-type','').startswith('image'):
+                    image_b64 = f"data:image/png;base64,{base64.b64encode(r.content).decode()}"
+                    reply = f"Done Boss, I generated this for you: {prompt}."
+                else:
+                    reply = f"Cloudflare returned an error, Boss: {r.text[:400]}"
+            except Exception as e:
+                reply = f"I tried to generate the image but it failed, Boss: {e}"
+    elif image:
+        if not OPENAI_API_KEY:
+            reply = "I received your image, Boss, but vision needs OpenAI key."
+        else:
+            try:
+                r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabi. Analyse this image in clean English, no emojis, detailed and critical. Question: {msg or 'Describe this image in detail'}"}, {'type': 'image_url', 'image_url': {'url': image}}]}]}, timeout=30)
+                data = r.json()
+                if 'choices' in data:
+                    reply = data['choices'][0]['message']['content']
+                else:
+                    ai_error = data.get('error', {}).get('message', 'Unknown error')
+                    reply = f"OpenAI vision failed, Boss: {ai_error}"
+            except Exception as e:
+                reply = f"I had trouble reading that image, Boss: {e}."
+    elif any(x in low for x in ['bike','my bike','fleet','installment','payment','restricted','ebike','e-bike','e bike']):
+        if is_owner(u):
+            bikes = db.execute('SELECT * FROM bikes ORDER BY id DESC').fetchall()
+        else:
+            bikes = db.execute('SELECT * FROM bikes WHERE user_id=? OR customer_id=?', (u['id'], u['id'])).fetchall()
+        if bikes:
+            lines = []
+            for b in bikes[:10]:
+                bd = dict(b)
+                ps = check_payment_status(bd)
+                lines.append(f"{bd['name']} - {bd.get('customer_name','')} - Battery {bd['battery_level']}% Health {bd['battery_health']}% - Range {bd['range_km']} km - Lock {bd['lock_status']} - Status {bd['bike_status']} - Payment {ps} - Remaining {bd.get('amount_remaining',0)} - Location {bd['location']} - Map https://maps.google.com/?q={bd['lat']},{bd['lng']}")
+            reply = f"Here is your fleet, Boss. Total bikes: {len(bikes)}\n\n" + "\n\n".join(lines)
+        else:
+            reply = "Your fleet is in the Dashboard, Boss."
+    elif any(x in low for x in ['my name is','i am ','i live in','my business is','remember that']):
+        save_memory(u['id'], 'about_user_update', msg)
+        save_memory(u['id'], 'last_update', datetime.now().isoformat())
+        reply, ai_error = ask_ai(f"User told me about himself: '{msg}'. Acknowledge, show you will remember, ask a smart follow-up.", memory, history, "")
+        if not reply:
+            reply = f"Got it, Boss. I will remember that: {msg}."
+            if ai_error:
+                reply += f"\n\nAI error: {ai_error}"
+    elif any(x in low for x in ['news','latest','technology','tech','naira','dollar','weather','explain','what is','why','how does','analyse','analyze','research','trend','ev','electric']):
+        research = deep_research(msg)
+        reply, ai_error = ask_ai(msg, memory, history, research)
+        if not reply:
+            reply = smart_fallback(msg, memory, research)
+            if ai_error:
+                reply += f"\n\nAI error: {ai_error}"
+
+    if not reply:
+        reply, ai_error = ask_ai(msg, memory, history, "")
+    if not reply:
+        reply = smart_fallback(msg, memory, "")
+        if ai_error:
+            reply += f"\n\nAI error: {ai_error}"
+
+    db.execute('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?,?,?,?)', (conv_id, 'assistant', reply, datetime.now().isoformat()))
+    db.commit()
+    audio_b64 = None
+    if want_voice:
+        audio_b64 = openai_tts(reply, voice='nova')
+    return jsonify({'success': True, 'reply': reply, 'conversation_id': conv_id, 'image_base64': image_b64, 'audio_base64': audio_b64})
+
+@app.route('/api/voice/speak', methods=['POST'])
+def speak():
+    d = request.json or {}
+    text = d.get('text') or d.get('message') or 'Hey Boss'
+    voice = d.get('voice', 'nova')
+    audio = openai_tts(text, voice=voice)
+    if not audio:
+        return jsonify({'success': False, 'error': 'Voice audio needs OpenAI credit.'})
+    return jsonify({'success': True, 'audio_base64': audio})
+
+@app.route('/api/voice/chat', methods=['POST'])
+def voice_chat():
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False, 'error': 'Login first'})
+    audio_bytes = None
+    if 'audio' in request.files:
+        audio_bytes = request.files['audio'].read()
+    elif request.json and request.json.get('audio_base64'):
+        try:
+            b64 = request.json['audio_base64'].split(',',1)[-1]
+            audio_bytes = base64.b64decode(b64)
+        except: pass
+    if not audio_bytes:
+        return jsonify({'success': False, 'error': 'No audio sent'})
+    text = openai_transcribe(audio_bytes)
+    if not text:
+        return jsonify({'success': False, 'error': 'Voice transcription needs OpenAI credit. Please type for now.'})
+    memory = get_memory(u['id'])
+    reply, ai_error = ask_ai(text, memory, [], "")
+    if not reply:
+        reply = smart_fallback(text, memory, "")
+        if ai_error:
+            reply += f"\n\nAI error: {ai_error}"
+    audio = openai_tts(reply, voice='nova')
+    return jsonify({'success': True, 'transcribed': text, 'reply': reply, 'audio_base64': audio})
+
+@app.route('/api/call/start', methods=['POST'])
+def call_start(): return jsonify({'success': True, 'call_id': 1, 'note': 'Voice call uses OpenAI voice when paid.'})
+@app.route('/api/call/end', methods=['POST'])
+def call_end(): return jsonify({'success': True})
+
+@app.route('/api/debug/ai')
+def debug_ai():
+    u = get_user_from_token()
+    if not u or not is_owner(u): return jsonify({'success': False})
+    return jsonify({'success': True, 'openai_set': bool(OPENAI_API_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'supabase_enabled': SUPABASE_ENABLED, 'ai_provider': AI_PROVIDER, 'mode': 'OpenAI default, OpenRouter optional'})
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
