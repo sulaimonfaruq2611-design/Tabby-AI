@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#050505;--panel:#0a0a0a;--card:#111111;--card2:#171717;--line:#262626;--yellow:#f5c518;--yellow2:#ffe45a;--text:#f5f5f5;--muted:#a3a3a3;--green:#22c55e;--red:#ef4444;--blue:#2563eb}
+:root{--bg:#050505;--panel:#0a0a0a;--card:#111111;--line:#262626;--yellow:#f5c518;--yellow2:#ffe45a;--text:#f5f5f5;--muted:#a3a3a3;--green:#22c55e;--red:#ef4444;--blue:#2563eb}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;height:100vh;height:100dvh;overflow:hidden;background-image:radial-gradient(600px 300px at 50% -100px, rgba(245,197,24,.18), transparent 60%), linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);background-size:auto, 40px 40px, 40px 40px}
 a{color:var(--yellow)}
 button{cursor:pointer;border:none;font-family:inherit}
@@ -18,7 +18,9 @@ input,textarea,select{font-family:inherit;outline:none}
 .sidebar{width:290px;background:#080808;border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0}
 .brand{padding:16px 14px 10px;border-bottom:1px solid var(--line)}
 .brand-top{display:flex;align-items:center;gap:10px}
-.bat{width:44px;height:44px;border-radius:12px;background:var(--yellow);color:#000;font-size:26px;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0}
+.ugi-logo{width:48px;height:48px;border-radius:12px;background:var(--yellow);color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;line-height:1;border:2px solid #000;box-shadow:0 0 0 1px var(--yellow)}
+.ugi-logo b{font-size:18px;font-weight:900;letter-spacing:1px}
+.ugi-logo span{font-size:6px;font-weight:800;letter-spacing:.5px;margin-top:1px}
 .brand b{font-size:17px;letter-spacing:.5px}
 .brand span{font-size:11px;color:var(--muted);display:block}
 .brand small{font-size:11px;color:var(--yellow);display:block;margin-top:6px}
@@ -40,7 +42,7 @@ input,textarea,select{font-family:inherit;outline:none}
 .logout{margin-top:10px;width:100%;padding:9px;background:#1f1f1f;color:white;border-radius:10px;font-size:13px}
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
 .topbar{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 14px;background:rgba(0,0,0,.7)}
-.logo{width:36px;height:36px;border-radius:10px;background:var(--yellow);color:#000;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900}
+.top-logo{width:38px;height:38px;border-radius:10px;background:var(--yellow);color:#000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.5px;flex-shrink:0}
 .logo-text b{font-size:15px}
 .logo-text span{font-size:11px;color:var(--muted);display:block}
 .spacer{flex:1}
@@ -73,6 +75,9 @@ input,textarea,select{font-family:inherit;outline:none}
 .empty{text-align:center;margin-top:50px;padding:0 20px}
 .empty h2{margin-top:14px;font-size:20px}
 .empty p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.6}
+.ugi-hero{width:84px;height:84px;border-radius:20px;background:var(--yellow);color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;line-height:1;border:3px solid #000;box-shadow:0 0 0 2px var(--yellow)}
+.ugi-hero b{font-size:28px;font-weight:900;letter-spacing:2px}
+.ugi-hero span{font-size:8px;font-weight:800;letter-spacing:1px;margin-top:2px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
 .chips button{padding:8px 12px;border-radius:999px;background:#1f1f1f;color:#e5e7eb;font-size:12px}
 .msg{max-width:85%;padding:11px 13px;border-radius:16px;margin-bottom:10px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
@@ -106,6 +111,9 @@ input,textarea,select{font-family:inherit;outline:none}
 .auth-card input{width:100%;padding:12px 13px;background:#111;border:1px solid var(--line);border-radius:12px;color:white;font-size:14px;margin-top:10px}
 .auth-card button{width:100%;padding:12px;background:var(--yellow);color:#000;border-radius:12px;font-weight:800;margin-top:12px;font-size:14px}
 .auth-card .ghost{background:#262626;color:white}
+.auth-ugi{width:72px;height:72px;border-radius:18px;background:var(--yellow);color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;line-height:1;border:3px solid #000}
+.auth-ugi b{font-size:24px;font-weight:900;letter-spacing:1px}
+.auth-ugi span{font-size:7px;font-weight:800;margin-top:2px}
 .err{font-size:12px;color:#fca5a5;text-align:center;margin-top:8px;min-height:16px}
 .menu-btn{display:none}
 @media(max-width:820px){
@@ -127,7 +135,7 @@ input,textarea,select{font-family:inherit;outline:none}
 <div class="app">
   <div class="sidebar" id="sidebar">
     <div class="brand">
-      <div class="brand-top"><div class="bat">🦇</div><div><b>TABI AI</b><span>Ultimate Gee Industry</span></div></div>
+      <div class="brand-top"><div class="ugi-logo"><b>UGI</b><span>ULTIMATE GEE</span></div><div><b>TABI AI</b><span>Ultimate Gee Industry</span></div></div>
       <small>Owner: Faruq Sulaimon • Creator & Owner</small>
     </div>
     <div class="side-nav">
@@ -151,19 +159,17 @@ input,textarea,select{font-family:inherit;outline:none}
   <div class="main">
     <div class="topbar">
       <button class="icon-btn menu-btn" onclick="toggleSidebar(true)">☰</button>
-      <div class="logo">🦇</div><div class="logo-text"><b>Tabi</b><span>Ultimate Gee Industry • Batman Edition</span></div>
+      <div class="top-logo">UGI</div><div class="logo-text"><b>Tabi</b><span>Ultimate Gee Industry</span></div>
       <div class="spacer"></div>
       <button class="icon-btn" title="Dashboard" onclick="showView('dashView','nav-dash')">📊</button>
       <button class="icon-btn" id="callBtn" title="Live Call" onclick="toggleCall()">📞</button>
       <button class="icon-btn" title="Speak last reply" onclick="speakLast()">🔊</button>
     </div>
     <div class="call-banner" id="callBanner"><span>Live Call — Tabi is listening, Boss...</span><button onclick="toggleCall()">End Call</button></div>
-
-    <!-- CHAT VIEW -->
     <div class="view show" id="chatView" style="display:flex;flex-direction:column;padding:0">
       <div class="chat" id="chat">
         <div class="empty" id="emptyState">
-          <div style="font-size:56px">🦇</div>
+          <div class="ugi-hero"><b>UGI</b><span>ULTIMATE GEE</span></div>
           <h2>Hey Boss, Tabi is here.</h2>
           <p>Your personal AI • Created by Faruq Sulaimon<br>Ask about e-bike fleet, news, rates, business, or just talk.<br>Tabi understands all languages, can generate images, analyse files, and speak back.</p>
           <div class="chips">
@@ -186,8 +192,6 @@ input,textarea,select{font-family:inherit;outline:none}
         <div class="hint">Tabi can make mistakes. Check important info. • Female voice • Live info • Map • Image generation</div>
       </div>
     </div>
-
-    <!-- OWNER DASHBOARD -->
     <div class="view" id="dashView">
       <h3 style="font-size:16px">Owner Dashboard — Faruq Sulaimon</h3>
       <p style="font-size:12px;color:#a3a3a3;margin-top:4px">Ultimate E-Bike Fleet for Business. Tabi: battery, GPS + anti-theft, journey assistant, predictive maintenance, remote security. Installment: deposit, reminders, grace period, restricted mode only after process.</p>
@@ -203,16 +207,12 @@ input,textarea,select{font-family:inherit;outline:none}
       <div id="bikeList"></div>
       <div class="card"><h3>Quick Live Info</h3><div class="bike-btns"><button onclick="quickAsk('Naira to Dollar rate today?')">Naira Rate</button><button onclick="quickAsk('World news today?')">World News</button><button onclick="quickAsk('Nigeria news today?')">Nigeria News</button><button onclick="quickAsk('Lagos weather today?')">Lagos Weather</button></div></div>
     </div>
-
-    <!-- CUSTOMER VIEW -->
     <div class="view" id="customerView">
       <h3 style="font-size:16px">Customer Interface</h3>
       <p style="font-size:12px;color:#a3a3a3;margin-top:4px">Login as customer to see your own bike only. Owner sees all.</p>
       <div id="customerBike"></div>
       <div class="card"><h3>Map — Location Access</h3><div class="map-box" id="mapBox">Map will show here when bike is online.<br><a id="mapLink" href="#" target="_blank">Open in Google Maps</a></div></div>
     </div>
-
-    <!-- REGISTER ACT -->
     <div class="view" id="registerView">
       <h3>Register Act — Create User For Customer</h3>
       <p style="font-size:12px;color:#a3a3a3;margin-top:4px">Owner only. This creates a bike + registers customer to that bike.</p>
@@ -231,8 +231,6 @@ input,textarea,select{font-family:inherit;outline:none}
         <p id="regMsg" style="color:#86efac"></p>
       </div>
     </div>
-
-    <!-- TRACK DEVICE -->
     <div class="view" id="trackView">
       <h3>Track Device</h3>
       <p style="font-size:12px;color:#a3a3a3;margin-top:4px">Input Batch Number to show location + On/Off. Works for bike, glasses, watch later.</p>
@@ -245,12 +243,11 @@ input,textarea,select{font-family:inherit;outline:none}
     </div>
   </div>
 </div>
-
 <div class="auth" id="auth">
   <div class="auth-card">
-    <div style="text-align:center;font-size:48px">🦇</div>
+    <div class="auth-ugi"><b>UGI</b><span>ULTIMATE GEE</span></div>
     <h1>Tabi AI</h1>
-    <p>Your personal AI • Ultimate Gee Industry<br>Created by Faruq Sulaimon • Batman Edition<br>Clean English • E-Bike Fleet + Smart Devices</p>
+    <p>Your personal AI • Ultimate Gee Industry<br>Created by Faruq Sulaimon<br>Clean English • E-Bike Fleet + Smart Devices</p>
     <input id="authName" placeholder="Your name (Sign Up only)">
     <input id="authEmail" placeholder="Email" type="email">
     <input id="authPass" placeholder="Password" type="password">
@@ -260,7 +257,6 @@ input,textarea,select{font-family:inherit;outline:none}
     <div style="text-align:center;font-size:12px;color:#a3a3a3;margin-top:10px">First time? Use <b>Create Owner Account</b> once, then Sign In.</div>
   </div>
 </div>
-
 <script>
 let token = localStorage.getItem('tabby_token') || '';
 let user = null;
