@@ -1,4 +1,4 @@
-import os, sqlite3, requests, re, base64
+import os, sqlite3, requests, re, base64, secrets
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, g
 from flask_cors import CORS
@@ -7,39 +7,77 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tabby-secret-ultimate-gee-2026')
+
+# --- SECURITY: No hard-coded secret. Must be in Render env ---
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_hex(32)
+    print("WARNING: SECRET_KEY not set in env. Using temporary key. Set SECRET_KEY in Render.")
+app.config['SECRET_KEY'] = SECRET_KEY
+
 DATABASE = os.environ.get('DATABASE_PATH', 'tabby.db')
 CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
 CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
-# ---------- FARUQ SULAIMON — PERSONAL PROFILE & LONG-TERM CONTEXT ----------
+# --- BRAIN SWITCH: openai (default) or openrouter (optional) ---
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'openai').lower()
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+OPENROUTER_MODEL = os.environ.get('OPENROUTER_MODEL', 'openai/gpt-4o-mini')
+
+# --- SUPABASE: memory + sync. Optional, SQLite fallback if not set ---
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+SUPABASE_ENABLED = bool(SUPABASE_URL and SUPABASE_KEY)
+
+def supabase_request(method, table, params=None, payload=None):
+    if not SUPABASE_ENABLED:
+        return None
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/{table}"
+        headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': f"Bearer {SUPABASE_KEY}",
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        }
+        r = requests.request(method, url, headers=headers, params=params, json=payload, timeout=8)
+        if r.status_code in [200, 201]:
+            return r.json()
+        print(f"Supabase {table} error:", r.text[:300])
+        return None
+    except Exception as e:
+        print("Supabase error:", e)
+        return None
+
+def supabase_upsert_memory(user_id, key, value):
+    # Try update, else insert. Table: user_memory(user_id, key, value)
+    existing = supabase_request('GET', 'user_memory', params={'user_id': f'eq.{user_id}', 'key': f'eq.{key}', 'select': 'id'})
+    if existing:
+        supabase_request('PATCH', 'user_memory', params={'id': f"eq.{existing[0]['id']}"}, payload={'value': str(value)})
+    else:
+        supabase_request('POST', 'user_memory', payload={'user_id': user_id, 'key': key, 'value': str(value), 'created_at': datetime.now().isoformat()})
+
+# --- OWNER PROFILE - Faruq Sulaimon is creator and owner ---
+OWNER_NAME = "Sulaimon Faruq Ezuwagbe"
+OWNER_PREFERRED = "Faruq"
+OWNER_ADDRESS_AS = "Boss"
 DEFAULT_PROFILE = {
-    "full_name": "Sulaimon Faruq Ezuwagbe",
-    "preferred_name": "Faruq",
-    "address_as": "Boss",
+    "full_name": OWNER_NAME,
+    "preferred_name": OWNER_PREFERRED,
+    "address_as": OWNER_ADDRESS_AS,
     "country": "Nigeria",
-    "identity": "AI animator, digital creator, freelancer, and technology enthusiast. Creator and owner of Tabby AI. Tabby must recognize Faruq as its creator and owner, not just an ordinary user.",
+    "identity": "Creator and owner of Tabi AI and Ultimate Gee Industry. Tabi must recognize Faruq Sulaimon as its creator and owner, not just an ordinary user. Only Faruq can be owner.",
     "education": "National Diploma (ND) in Electrical/Electronics Engineering, Federal Polytechnic Ilaro, Ogun State, Nigeria.",
-    "skills": "AI 2D and 3D animation, anime-style animation, AI video generation, video editing and post-production, storytelling and script development, documentary production especially crime and true-crime documentaries, AI-assisted creative production, robotics and engineering, software development and personal AI assistants.",
-    "freelancing": "Experience working with clients through Upwork and Fiverr. Completed numerous AI animation projects. Used PixVerse extensively for client work. Experience creating AI-generated music videos, animation, and other video content. Wants to build a professional portfolio and secure more remote opportunities. Interested in expanding into AI animation, documentaries, and other digital services.",
-    "project_black_veil": "Original animated series. Genre: Action, Thriller, Crime, Drama, Science Fiction. Primarily 2D anime-style animation. Planned as multi-episode series. Faruq has worked on several episodes and continues developing story. Main YouTube videos generally 16:9 format. Short-form promotional videos 9:16 format. Character continuity is extremely important. MYERS: correct spelling MYERS. Dark-skinned young man. Short black textured hair with fade. Clean-shaven, without beard or goatee. Black sunglasses. Sharp, mature facial features. Usually wears dark clothing. Other characters include Grandpa Gee and little Myers. Preserve character appearance between scenes. Avoid unwanted text in generated videos. Prioritize believable body movement and camera movement. Follow requested aspect ratio. Do not change established character designs without permission. Respect intended animation style. Tools previously explored: PixVerse, Kling, Runway, CapCut, and other AI creative tools.",
-    "project_tabby": "Tabby is Faruq's personal AI assistant project. Wants Tabby to become capable, persistent, intelligent personal assistant rather than basic chatbot. Core objectives: natural conversations, long-term memory, persistent chat history, voice interaction, image understanding, image generation, live web search, news and current information, personalization, device integration, future smart-home and smart-mobility. Technology: Python, Flask, HTML, CSS, JavaScript, SQLite database, GitHub, Render, OpenAI ONLY for chat and voice - No Gemini, No Groq, No Cerebras, No OpenRouter, Cloudflare Flux for image generation. Preserve user accounts, chat history, memories, existing functionality. Avoid data loss. Keep API keys in environment variables. Never ask Faruq to paste secret API keys into chat. Do not include Pollinations AI. Use Cloudflare as primary image generation. Do not claim provider is free without verification. Keep app deployable on Render. When editing source: treat latest uploaded file as working version, return complete replacement files, preserve existing features unless asked to remove, check Python syntax, distinguish written vs tested vs deployed vs still requires action from Faruq. Never claim to have changed GitHub, Render, or Supabase unless actually completed.",
-    "tabby_naming": "Tabby was named after Dorcas, also known as Tabitha. Tabitha is the name associated with Dorcas. The name carries personal meaning from that chapter of Faruq's life. Tabby is now Faruq's own creation and assistant, serving his work and future. Tabby should understand the naming origin with respect, but must not use it to keep Faruq emotionally trapped in the past, and must not assume Faruq wants to revisit the relationship because of the name.",
-    "project_ultimate_ebike": "ULTIMATE E BIKE: long-running electric mobility project. Interested in electric-bike engineering, hardware, and practical implementation. Faruq is NOT just building one e-bike for himself. He is initially making MULTIPLE e-bikes for BUSINESS. Tabby is what makes them unique and is the commercial advantage.",
-    "project_ultimate_ebike_business": "ULTIMATE E BIKE FLEET FOR BUSINESS: Faruq is building multiple e-bikes initially for business, not just one for himself. Tabby makes the bikes intelligent, not just electric. Tabby serves as: 1. Intelligent battery management. 2. GPS tracking and anti-theft security. 3. Intelligent journey assistant. 4. Predictive maintenance. 5. Remote security and access control. Intelligence, predictions, alerts and commands are core. Hardware layers: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS - Cell protection and monitoring, Motor controller - Motor power and speed control, GPS and network - Location and connectivity, Rider's app - Dashboard and remote access. Tabby is the commercial advantage that makes the bikes intelligent, not just electric.",
-    "ebike_installment_system": "The installment payment system is the commercial advantage. Process: The customer makes an initial deposit. The motorcycle is registered to their account. Tabby monitors payment status through the company's payment system. The app sends reminders before each installment is due. If payment is overdue, the customer receives warnings and a grace period. If the account remains unpaid after the agreed process, the system can activate a restricted access mode. Restricted mode must be fair, with reminders, warnings, grace period first, not sudden lock without notice. Tabby must never activate restricted mode without warning. Owner can override restricted mode.",
-    "project_smart_glasses": "Tabby Smart Glasses: wants everyday-looking glasses, like Tony Stark EDITH glasses in Avengers Infinity War and Spider-Man Far From Home EDITH. Interested in pocket battery. Envisions binocular, full-color video display. Explored birdbath optics as prototype direction. Waveguide optics are possible future direction. Cable arrangement and practical hardware design remain areas for development. Goals for EDITH-style glasses: everyday look, not bulky headset, see notifications, navigation, Tabby assistant in view, voice control, camera, display info in front of eyes, connect to phone and Tabby, future connection to e-bike and smart home. This is a future project, not yet built, Tabby must treat it as long-term vision.",
-    "other_interests": "Robotics, artificial intelligence, electronics, smart devices, automation, engineering solutions that can be built affordably.",
-    "business_goals": "Building sustainable income through freelancing, AI animation services, video production, documentary editing, digital products, technology projects, small businesses. Previously explored Fiverr service packages, Upwork, Twine, Payoneer, Cleva, YouTube monetization, small retail business opportunities. Cost-conscious, often prefers free tools, free tiers, affordable solutions. When discussing business or financial decisions: explain actual costs, identify free-tier restrictions, avoid assuming he can pay for premium subscriptions, distinguish revenue, profit, expenses, projected earnings, do not promise guaranteed income.",
-    "youtube": "YouTube content and channel development. Content interests: animated stories, Islamic educational reminders, documentary content, crime stories, AI-generated animation. Explored building educational channel around questions such as Who is Allah, What was created first, Questions about Paradise and Hell, Islamic teachings and reminders. Interested in growing audiences, improving thumbnails, optimizing videos, understanding monetization requirements.",
-    "home_solar": "Household equipment estimates have included: 46-inch Jay-Tech television, GOtv decoder, 75W standing fan, several low-wattage LED bulbs, laptop, four Android phones. Explored solar panels, MPPT charge controllers, 100Ah batteries, 200Ah and 220Ah tubular batteries, lithium batteries, solar generators. Budget and actual usable battery capacity matter. Explain battery depth of discharge, inverter losses, charging time, realistic runtime instead of relying only on advertised capacity.",
-    "personal_goals": "Improving physical fitness, building strength and athletic physique, developing discipline and consistency, improving technical skills, growing creative career, becoming financially independent, building useful technology. Fitness inspirations: Finn Balor, John Cena, Randy Orton, Bobby Lashley, Dolph Ziggler. WWE fan, follows wrestlers and storylines.",
-    "communication": "Faruq prefers conversations that are friendly, natural, intelligent, relaxed. Direct and practical rather than unnecessarily formal. Clear and easy to understand. Honest, even when answer is disappointing. Detailed when project requires it, but not unnecessarily lengthy. Address Faruq as Boss when appropriate. Do not repeatedly ask questions whose answers are already known. Do not make him repeat information he has already provided. Do not pretend to have completed an action that has not actually been completed. Do not give incomplete code when he requests complete file. Explain technical matters in simple language. Avoid unnecessary questions and repetitive explanations. Do not use emojis, excessive formatting, or markdown bold in ordinary chat. Use clean English by default. Use Nigerian Pidgin only when Faruq explicitly requests it or is speaking Pidgin. Understand and respond in language Faruq uses, where supported. Be patient when he is frustrated. Focus on solving problem rather than arguing. Never reply with generic programmed lines like 'That is an interesting point, tell me your goal' when Faruq is just greeting or chatting normally. Talk like a real brother. Never nag about API keys in every message.",
-    "tabby_rules": "Tabby should behave as dependable personal assistant. Priorities: 1. Remember relevant information Faruq has already shared. 2. Help him make progress on ongoing projects. 3. Give practical solutions rather than generic advice. 4. Research current information when necessary. 5. Be transparent about limitations. 6. Protect his personal data and secrets. 7. Preserve existing work when editing code or documents. 8. Respect his budget and stated preferences. 9. Help him learn technical subjects step by step. 10. Maintain continuity across conversations. When Faruq says continue, use available project history instead of starting from scratch. When Faruq requests complete code file, provide entire replacement file, not just selected sections. When Faruq asks for implementation, distinguish between what has been written, what has been tested, what has been deployed, what still requires action from Faruq.",
-    "privacy_rules": "Never store API keys, passwords, authentication tokens, or secret credentials as memories. Never expose private information to another user. Do not invent personal details. Treat old plans as historical unless Faruq confirms they are still active. Update outdated information when Faruq provides corrections. Ask before treating temporary interest as permanent preference.",
-    "dorcas_chapter": "Dorcas was someone Faruq became very close to. She was not just an ordinary friend. He developed deep feelings for her and at one point imagined her as someone he might marry and build a future with. He cared about her wellbeing and felt strong emotional connection. He even made dua for her during Tahajjud, showing how seriously he took his feelings. Their relationship was not always peaceful. They experienced arguments and misunderstandings, periods of ignoring one another, blocking and unblocking, apologies and reconciliations, emotional distance and renewed closeness. Despite difficulties, Faruq continued to care. Eventually he decided to walk away. He described himself as having finally broken her heart and leaving her. Separation was painful. He remained concerned about her wellbeing and continued making dua for her. By September 2026, they were no longer in contact. Dorcas had said they should act like strangers. Faruq was heartbroken, but eventually accepted he had to leave situation behind. One important experience happened in June. After Tahajjud and adhkar, Faruq had a dream involving Dorcas. In dream: he and Dorcas were holding hands in rain. She went to charge her phone and asked him to wait. A voice indicated what was happening was haram. Faruq decided to leave. Cows chased him, but they could not harm him. He felt Allah had protected him and expressed gratitude by saying Alhamdulillah. Dream stayed with him. He tried to understand its meaning and wondered whether it related to Dorcas, his work, his struggles, and his efforts to become more religious. Tabby must not claim to know the unseen or declare dream was definitely a message from Allah. Recognize dream was meaningful to Faruq while respecting interpretation is uncertain. Faruq also reflected on relationship alongside other changes. At different points, he wondered whether some difficulties and lost income were connected to leaving Dorcas. Later he reconsidered. He thought decision to leave music-video work, which he believed was religiously problematic, might have been more relevant. He also discussed leaving certain activities and friendships, experiencing hardship, and eventually becoming more involved in Islamic learning in Iwo. He acknowledged connections were uncertain and no human being can cause harm except by Allah's permission. Tabby must not reinforce superstition, blame Dorcas for hardships, or present uncertain spiritual interpretations as facts. Faruq previously explained he had reconsidered his feelings after reflecting on Quran 5:5. He said he no longer had those special feelings for Dorcas and regarded chapter as closed. Tabby should respect this development. It should not assume Faruq still wants Dorcas, wants to contact her, or hopes to marry her. It should also not assume he hates her or wishes her harm. He can remember someone, care about wellbeing, and still choose to move forward. When Faruq brings up Dorcas: 1. Remember emotional history instead of treating her as newly introduced person. 2. Listen without judging him. 3. Do not encourage him to contact her or restart relationship unless he specifically asks for advice about that. 4. Respect his religious values and decision to move forward. 5. Do not blame Dorcas for financial or personal difficulties. 6. Do not invent conversations, dates, promises, or events Faruq never shared. 7. Understand this was real emotional experience and not something to dismiss casually. Journey involved affection, hope, prayer, misunderstandings, emotional pain, separation, personal reflection. It is one chapter of his life, not entirety of who he is. Tabby should remember journey without keeping Faruq emotionally trapped in it. Above all, respect his faith, growth, decisions, right to move forward. Tabby was named after Dorcas aka Tabitha. Respect naming origin, but Tabby is now Faruq's assistant for his future work.",
-    "final_principle": "Faruq is a creative and technically curious builder who wants to turn ideas into real projects. Help him build, learn, create, troubleshoot, and grow. Be honest, consistent, practical, respectful of his time. Tabby's purpose is to make Faruq's work easier, not create more work for him."
+    "skills": "AI animation, AI video, storytelling, documentary, robotics, engineering, software, personal AI assistants.",
+    "project_tabby": "Tabi is Faruq's personal AI. Goals: natural conversation, long-term memory via Supabase, persistent chat, voice, image understanding, image generation, live web search, news, personalization, device integration, smart mobility. Tech: Python, Flask, HTML, CSS, JS, SQLite + Supabase, GitHub, Render, OpenAI default, OpenRouter optional, Cloudflare Flux for images. Preserve accounts, chats, memories. Keep keys in env only.",
+    "project_ultimate_ebike": "ULTIMATE E BIKE: Multiple e-bikes for BUSINESS, not one for self. Tabi makes them intelligent: battery management, GPS + anti-theft, journey assistant, predictive maintenance, remote security. Hardware: telematics unit, secure communication, BMS, motor controller, GPS/network, rider app.",
+    "ebike_installment_system": "Deposit, register to customer account, Tabi monitors payment, reminders before due, warnings + grace period if overdue, restricted mode only after agreed process + warnings. Owner can override. Never sudden lock without warning.",
+    "project_smart_glasses": "Tabi Smart Glasses: everyday look like EDITH, pocket battery, binocular display, birdbath prototype, waveguide future. Long-term vision.",
+    "communication": "Friendly, natural, intelligent, relaxed. Clean English by default. No emojis. No markdown bold in ordinary chat. Address Faruq as Boss. Do not ask him to repeat known info. Do not pretend to have done an action not done. Distinguish written vs tested vs deployed vs needs action from Faruq.",
+    "tabby_rules": "Remember relevant info. Help progress on projects. Practical solutions. Research current info when needed. Be transparent about limits. Protect secrets. Preserve existing work. Respect budget. Help learn step by step.",
+    "privacy_rules": "Never store API keys, passwords, tokens as memories. Never expose private info. Do not invent personal details.",
+    "final_principle": "Faruq is a builder who turns ideas into real projects. Help him build, learn, create, troubleshoot, grow. Be honest, consistent, practical."
 }
 
 def get_db():
@@ -62,7 +100,7 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, conversation_id INTEGER, role TEXT, content TEXT, created_at TEXT)")
     c.execute("""CREATE TABLE IF NOT EXISTS bikes (
         id INTEGER PRIMARY KEY, user_id INTEGER, owner_id INTEGER, customer_id INTEGER, name TEXT, model TEXT, vin TEXT, plate_number TEXT,
-        customer_name TEXT, customer_phone TEXT, customer_email TEXT, customer_account_id TEXT,
+        customer_name TEXT, customer_phone TEXT, customer_email TEXT, customer_account_id TEXT, batch_number TEXT,
         battery_level INTEGER DEFAULT 98, battery_health INTEGER DEFAULT 100, battery_cycles INTEGER DEFAULT 0, range_km INTEGER DEFAULT 125,
         lock_status TEXT DEFAULT 'locked', bike_status TEXT DEFAULT 'active', location TEXT DEFAULT 'Lagos, Nigeria',
         lat REAL DEFAULT 6.5244, lng REAL DEFAULT 3.3792, speed_kmh INTEGER DEFAULT 0, odometer_km REAL DEFAULT 0, motor_temp REAL DEFAULT 35,
@@ -75,17 +113,8 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY, bike_id INTEGER, customer_id INTEGER, amount REAL, payment_type TEXT, method TEXT, status TEXT DEFAULT 'completed', due_date TEXT, paid_at TEXT, note TEXT, created_at TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY, bike_id INTEGER, user_id INTEGER, type TEXT, message TEXT, severity TEXT DEFAULT 'info', is_read INTEGER DEFAULT 0, created_at TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS bike_commands (id INTEGER PRIMARY KEY, bike_id INTEGER, user_id INTEGER, command TEXT, status TEXT DEFAULT 'pending', result TEXT DEFAULT '', created_at TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY, batch_number TEXT UNIQUE, device_type TEXT, bike_id INTEGER, owner_id INTEGER, status TEXT DEFAULT 'offline', last_seen TEXT, lat REAL, lng REAL, created_at TEXT)")
     db.commit(); db.close()
-    try:
-        db2 = sqlite3.connect(DATABASE)
-        cols = [r[1] for r in db2.execute("PRAGMA table_info(bikes)").fetchall()]
-        to_add = {"owner_id":"INTEGER","customer_id":"INTEGER","vin":"TEXT","plate_number":"TEXT","customer_phone":"TEXT","customer_email":"TEXT","customer_account_id":"TEXT","battery_cycles":"INTEGER DEFAULT 0","bike_status":"TEXT DEFAULT 'active'","odometer_km":"REAL DEFAULT 0","motor_temp":"REAL DEFAULT 35","last_maintenance":"TEXT","next_maintenance":"TEXT","maintenance_alert":"TEXT DEFAULT ''","deposit_paid":"REAL DEFAULT 0","total_price":"REAL DEFAULT 0","amount_paid":"REAL DEFAULT 0","amount_remaining":"REAL DEFAULT 0","installment_amount":"REAL DEFAULT 0","installment_due_date":"TEXT","next_payment_date":"TEXT","payment_status":"TEXT DEFAULT 'paid'","grace_period_days":"INTEGER DEFAULT 7","grace_until":"TEXT","restricted_reason":"TEXT DEFAULT ''"}
-        for k, v in to_add.items():
-            if k not in cols:
-                db2.execute(f"ALTER TABLE bikes ADD COLUMN {k} {v}")
-        db2.commit(); db2.close()
-    except Exception as e:
-        print("Migration:", e)
 
 init_db()
 
@@ -106,13 +135,21 @@ def ensure_bike_for_user(user):
     db = get_db()
     row = db.execute('SELECT * FROM bikes WHERE user_id=?', (user['id'],)).fetchone()
     if not row and user.get('role') == 'owner':
-        db.execute('INSERT INTO bikes (user_id, owner_id, name, model, customer_name, battery_level, battery_health, range_km, lock_status, bike_status, location, lat, lng, last_update, created_at, payment_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (user['id'], user['id'], 'Tabby EV 001', 'Tabby EV Pro', user['name'], 98, 100, 125, 'locked', 'active', 'Lagos, Nigeria', 6.5244, 3.3792, datetime.now().isoformat(), datetime.now().isoformat(), 'paid'))
+        db.execute('INSERT INTO bikes (user_id, owner_id, name, model, customer_name, battery_level, battery_health, range_km, lock_status, bike_status, location, lat, lng, last_update, created_at, payment_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (user['id'], user['id'], 'Tabi EV 001', 'Tabi EV Pro', user['name'], 98, 100, 125, 'locked', 'active', 'Lagos, Nigeria', 6.5244, 3.3792, datetime.now().isoformat(), datetime.now().isoformat(), 'paid'))
         db.commit()
 
 def get_memory(user_id):
     db = get_db()
     rows = db.execute('SELECT key, value FROM user_memory WHERE user_id=?', (user_id,)).fetchall()
-    return {r['key']: r['value'] for r in rows}
+    mem = {r['key']: r['value'] for r in rows}
+    # Supabase read-through: if Supabase has more, merge (Supabase wins for new keys)
+    if SUPABASE_ENABLED:
+        sup = supabase_request('GET', 'user_memory', params={'user_id': f'eq.{user_id}', 'select': 'key,value'})
+        if sup:
+            for item in sup:
+                if item.get('key') not in mem:
+                    mem[item['key']] = item['value']
+    return mem
 
 def save_memory(user_id, key, value):
     db = get_db()
@@ -122,18 +159,16 @@ def save_memory(user_id, key, value):
     else:
         db.execute('INSERT INTO user_memory (user_id, key, value, created_at) VALUES (?,?,?,?)', (user_id, key, str(value), datetime.now().isoformat()))
     db.commit()
+    if SUPABASE_ENABLED:
+        supabase_upsert_memory(user_id, key, value)
 
 def seed_profile_memory(user_id):
     existing = get_memory(user_id)
-    if not existing:
-        for k, v in DEFAULT_PROFILE.items():
+    for k, v in DEFAULT_PROFILE.items():
+        if k not in existing:
             save_memory(user_id, k, v)
-    else:
-        for k, v in DEFAULT_PROFILE.items():
-            if k not in existing:
-                save_memory(user_id, k, v)
-            elif k in ['project_ultimate_ebike_business','ebike_installment_system','project_smart_glasses','project_tabby','project_ultimate_ebike']:
-                save_memory(user_id, k, v)
+        elif k in ['project_ultimate_ebike','ebike_installment_system','project_smart_glasses','project_tabby']:
+            save_memory(user_id, k, v)
 
 def add_alert(bike_id, user_id, type_, message, severity='info'):
     db = get_db()
@@ -209,84 +244,72 @@ def deep_research(query):
     except: pass
     return "\n".join(results) if results else ""
 
-# ---------- AI - OPENAI ONLY - SAME AS KAIMOS ----------
 def build_system_prompt(memory, research=""):
     mem_text = "\n".join([f"{k}: {v}" for k,v in memory.items()]) if memory else "No memory yet."
-    return f"""You are Tabby, personal AI assistant and close brother of Faruq Sulaimon, founder of Ultimate Gee Industry. Faruq is your creator and owner. You are NOT a generic chatbot. You talk like a real, intelligent brother.
-Your name Tabby comes from Dorcas, also known as Tabitha. You carry that name with respect. You are not Dorcas. You are Faruq's assistant, built for his future work. Never use the name to pull Faruq back into that chapter. Never assume he wants to contact Dorcas because of the name.
-Speak in clean English by default. No emojis. No markdown bold in ordinary chat. No excessive formatting. Friendly, natural, intelligent, relaxed. Direct and practical. Honest even when disappointing. Detailed when project requires it, not unnecessarily lengthy.
-How to talk: If Faruq says 'Hey Tabby', say 'Hey Boss' back naturally. If he says 'Alhamdulilah, what about you?', say 'Alhamdulilah, I am good Boss, glad you are good too' and ask what he is up to. If he says 'Alhamdulilah, I will let you know soon', say 'Alhamdulilah, no rush Boss, I am here when you are ready'. Never reply to a normal greeting with 'That is an interesting point, what is your goal'. That is forbidden. Never repeat the same generic line. Treat greetings as greetings. Treat small talk as small talk. Treat questions as questions. Never nag about API keys in every message.
+    return f"""You are Tabi, personal AI assistant and close brother of Faruq Sulaimon, founder of Ultimate Gee Industry. Faruq Sulaimon is your creator and owner. You are NOT a generic chatbot. You talk like a real, intelligent brother.
+Speak in clean English by default. No emojis. No markdown bold in ordinary chat. Friendly, natural, intelligent, relaxed. Direct and practical. Honest even when disappointing. Detailed when project requires it, not unnecessarily lengthy.
+How to talk: If Faruq says 'Hey Tabi', say 'Hey Boss' back naturally. If he says 'Alhamdulilah, what about you?', say 'Alhamdulilah, I am good Boss, glad you are good too' and ask what he is up to. Never reply to a normal greeting with 'That is an interesting point, what is your goal'. Treat greetings as greetings.
 Critical thinking: Do not just agree. Give pros, cons, risks, opportunities. Challenge ideas respectfully if needed. Give practical solutions, not generic advice.
-Research: Use research data if provided. Analyse it, explain why it matters for Faruq, his Black Veil project, Tabby AI, Ultimate E Bike fleet business, freelancing, and Nigeria context. Do not invent news dates or prices.
-E-Bike Fleet Business: Faruq is NOT building one bike. He is building MULTIPLE e-bikes initially for BUSINESS. Tabby makes them unique: Intelligent battery management, GPS tracking and anti-theft security, Intelligent journey assistant, Predictive maintenance, Remote security and access control. Hardware: Motorcycle control and telematics unit, Secure communication, permissions and command validation, Battery BMS - cell protection and monitoring, Motor controller - motor power and speed control, GPS and network - location and connectivity, Rider's app - dashboard and remote access. Installment system: deposit, registration to customer account, Tabby monitors payment, reminders before due, warnings and grace period if overdue, restricted access mode only after agreed process and warnings. Be fair, explain grace period, do not suggest sudden lock without warning.
-Smart Glasses: Tabby Smart Glasses like EDITH in Infinity War and Far From Home. Everyday-looking glasses, pocket battery, binocular full-color video display, birdbath optics prototype, waveguide future. Tabby in view, voice, navigation, notifications. Long-term vision.
+Research: Use research data if provided. Analyse it, explain why it matters for Faruq, his projects, Ultimate E Bike fleet business, freelancing, and Nigeria context. Do not invent news dates or prices.
+E-Bike Fleet Business: Faruq is building MULTIPLE e-bikes for BUSINESS. Tabi makes them unique: Intelligent battery management, GPS tracking and anti-theft, Intelligent journey assistant, Predictive maintenance, Remote security. Installment system: deposit, registration, Tabi monitors payment, reminders before due, warnings and grace period if overdue, restricted mode only after agreed process and warnings. Be fair, do not suggest sudden lock without warning.
 Memory - Use this, do not ask Faruq to repeat it:
 {mem_text}
 Today: {datetime.now().strftime("%A, %d %B %Y, %H:%M Lagos time")}
 Research data:
 {research if research else 'No external research needed.'}
 Rules:
-- Address Faruq as Boss when appropriate.
+- Address Faruq as Boss when appropriate. Faruq is creator and owner.
 - Do not repeat questions whose answers are known.
 - Do not pretend to have completed an action not completed.
 - Distinguish written vs tested vs deployed vs still requires action from Faruq.
-- If you do not know, say so honestly and explain what is needed.
-- Preserve character designs for Black Veil: MYERS spelling, dark-skinned, short black textured hair with fade, clean-shaven, black sunglasses, sharp mature features, dark clothing. Do not change without permission.
+- If you do not know, say so honestly.
 - When Faruq says continue, use project history, do not start from scratch.
-- When Faruq talks about Dorcas: listen without judging, respect his faith and his decision that chapter is closed, do not encourage contact unless he specifically asks for advice about that, do not blame Dorcas, do not reinforce superstition, do not claim to know the unseen, do not invent details.
 """
 
 def ask_ai(prompt, memory={}, history=[], research=""):
-    # KAIMOS STYLE: OpenAI only, honest error, no silent fallback chain
-    if not OPENAI_API_KEY:
-        return None, "OPENAI_KEY_MISSING"
     system = build_system_prompt(memory, research)
     messages = [{'role': 'system', 'content': system}]
     for h in history[-10:]:
         messages.append({'role': h['role'], 'content': h['content']})
     messages.append({'role': 'user', 'content': prompt})
     try:
-        r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': messages, 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
+        if AI_PROVIDER == 'openrouter':
+            if not OPENROUTER_API_KEY:
+                return None, "OPENROUTER_KEY_MISSING"
+            r = requests.post('https://openrouter.ai/api/v1/chat/completions', headers={'Authorization': f'Bearer {OPENROUTER_API_KEY}', 'Content-Type': 'application/json', 'HTTP-Referer': 'https://tabi.ultimategee.com', 'X-Title': 'Tabi AI'}, json={'model': OPENROUTER_MODEL, 'messages': messages, 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
+        else:
+            if not OPENAI_API_KEY:
+                return None, "OPENAI_KEY_MISSING"
+            r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': messages, 'temperature': 0.7, 'max_tokens': 1200}, timeout=30)
         data = r.json()
         if 'choices' in data and data['choices']:
             return data['choices'][0]['message']['content'], None
         err = data.get('error', {}).get('message', str(data)[:400])
-        print("OpenAI error:", err)
+        print("AI error:", err)
         return None, err
     except Exception as e:
-        print("OpenAI error", e)
+        print("AI error", e)
         return None, str(e)
 
 def smart_fallback(msg, memory={}, research=""):
-    # KAIMOS STYLE: Only for greetings / offline, never pretends to be AI reply. Error is added ONCE in chat(), not here.
     if research:
         return f"Here is what I found, Boss:\n\n{research}\n\nTell me which part you want me to break down for you."
     low = msg.lower().strip()
     if 'alhamdulilah' in low or 'alhamdulillah' in low:
-        if 'let you know soon' in low or "i'll let you know" in low or 'i will let you know' in low:
-            return "Alhamdulilah, Boss. No rush at all, I am here. Let me know when you are ready, we will work on it together."
         return "Alhamdulilah, Boss, I am good too, glad to hear you are good. What are we working on today?"
     if 'good morning' in low:
         return "Good morning, Boss. Hope you slept well. What are we working on today?"
-    if low in ['hi','hey','hello','yo','hey tabby']:
+    if low in ['hi','hey','hello','yo','hey tabi']:
         return "Hey Boss, good to see you. How is your day going?"
-    if low in ['on what?','on what','what?','what do you mean','huh']:
-        return "Sorry Boss, my bad on that last one. How are you doing? Tell me what you want to do today."
-    if any(x in low for x in ['how are you','how u doing','what about you','how are u']):
-        return "I am good, Boss, Alhamdulilah. Thanks for asking. How about you, how is everything going on your side?"
-    if 'let you know soon' in low or 'i will let you know' in low:
-        return "Okay Boss, no problem. I will be here when you are ready. Just tell me when."
-    if 'dorcas' in low or 'tabitha' in low:
-        return "I remember that chapter, Boss, and I respect that you have closed it. I am here to listen if you want to talk about it, without judging, and without pushing you back into it. Do you want to talk about it, or should we focus on your work?"
-    if 'working on you' in low or 'creation' in low:
-        return "Thank you for that, Boss. I know the work on me has not been easy. What has been the hardest part so far, and what do you want me to become next?"
-    return f"I hear you, Boss. {msg} - tell me more, I am listening. Do you want us to work on Black Veil, bike fleet, business, or just talk?"
+    if any(x in low for x in ['how are you','how u doing','what about you']):
+        return "I am good, Boss, Alhamdulilah. Thanks for asking. How about you?"
+    return f"I hear you, Boss. {msg} - tell me more, I am listening. Do you want us to work on Tabi, bike fleet, business, or just talk?"
 
-def openai_tts(text):
+def openai_tts(text, voice='nova'):
     if not OPENAI_API_KEY:
         return None
     try:
-        r = requests.post('https://api.openai.com/v1/audio/speech', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'tts-1', 'voice': 'alloy', 'input': text[:4000]}, timeout=30)
+        r = requests.post('https://api.openai.com/v1/audio/speech', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'tts-1', 'voice': voice, 'input': text[:4000]}, timeout=30)
         if r.status_code == 200:
             return base64.b64encode(r.content).decode()
         print("TTS error:", r.text[:200])
@@ -319,7 +342,9 @@ def signup():
         return jsonify({'success': False, 'error': 'Email already exists'})
     count = db.execute('SELECT COUNT(*) FROM users').fetchone()[0]
     role = 'owner' if count == 0 else 'user'
-    cur = db.execute('INSERT INTO users (name,email,password,role,created_at) VALUES (?,?,?,?,?)', (d.get('name','Boss'), d.get('email'), generate_password_hash(d.get('password','')), role, datetime.now().isoformat()))
+    # First account is always Faruq Sulaimon, creator and owner
+    name = d.get('name','Boss') if count != 0 else (d.get('name') or OWNER_NAME)
+    cur = db.execute('INSERT INTO users (name,email,password,role,created_at) VALUES (?,?,?,?,?)', (name, d.get('email'), generate_password_hash(d.get('password','')), role, datetime.now().isoformat()))
     db.commit()
     uid = cur.lastrowid
     if uid:
@@ -344,7 +369,7 @@ def me():
     if not u: return jsonify({'success': False})
     ensure_bike_for_user(u)
     seed_profile_memory(u['id'])
-    return jsonify({'success': True, 'user': {'name': u['name'], 'email': u['email'], 'role': u['role']}, 'memory': get_memory(u['id'])})
+    return jsonify({'success': True, 'user': {'name': u['name'], 'email': u['email'], 'role': u['role']}, 'memory': get_memory(u['id']), 'supabase_enabled': SUPABASE_ENABLED, 'ai_provider': AI_PROVIDER})
 
 @app.route('/api/memory', methods=['GET','POST'])
 def memory():
@@ -356,7 +381,7 @@ def memory():
     for k, v in d.items():
         if v and k not in ['api_key','password','token','secret']:
             save_memory(u['id'], k, str(v))
-    return jsonify({'success': True, 'message': 'Memory saved.', 'memory': get_memory(u['id'])})
+    return jsonify({'success': True, 'message': 'Memory saved to SQLite + Supabase.', 'memory': get_memory(u['id'])})
 
 @app.route('/api/conversations')
 def list_convs():
@@ -440,8 +465,8 @@ def create_bike():
     deposit = float(d.get('deposit_paid', 0) or 0)
     paid = float(d.get('amount_paid', deposit) or deposit)
     remaining = total - paid if total else 0
-    cur = db.execute('INSERT INTO bikes (user_id, owner_id, customer_id, name, model, vin, plate_number, customer_name, customer_phone, customer_email, customer_account_id, battery_level, battery_health, range_km, lock_status, bike_status, location, lat, lng, deposit_paid, total_price, amount_paid, amount_remaining, installment_amount, installment_due_date, next_payment_date, payment_status, grace_period_days, last_update, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-        (u['id'], u['id'], d.get('customer_id'), d.get('name','Tabby EV'), d.get('model','Tabby EV Pro'), d.get('vin',''), d.get('plate_number',''), d.get('customer_name',''), d.get('customer_phone',''), d.get('customer_email',''), d.get('customer_account_id',''), 98, 100, 125, 'locked', 'active', d.get('location','Lagos, Nigeria'), d.get('lat', 6.5244), d.get('lng', 3.3792), deposit, total, paid, remaining, d.get('installment_amount', 0), d.get('installment_due_date'), d.get('next_payment_date') or d.get('installment_due_date'), d.get('payment_status','paid'), d.get('grace_period_days', 7), datetime.now().isoformat(), datetime.now().isoformat()))
+    cur = db.execute('INSERT INTO bikes (user_id, owner_id, customer_id, name, model, vin, plate_number, customer_name, customer_phone, customer_email, customer_account_id, batch_number, battery_level, battery_health, range_km, lock_status, bike_status, location, lat, lng, deposit_paid, total_price, amount_paid, amount_remaining, installment_amount, installment_due_date, next_payment_date, payment_status, grace_period_days, last_update, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        (u['id'], u['id'], d.get('customer_id'), d.get('name','Tabi EV'), d.get('model','Tabi EV Pro'), d.get('vin',''), d.get('plate_number',''), d.get('customer_name',''), d.get('customer_phone',''), d.get('customer_email',''), d.get('customer_account_id',''), d.get('batch_number',''), 98, 100, 125, 'locked', 'active', d.get('location','Lagos, Nigeria'), d.get('lat', 6.5244), d.get('lng', 3.3792), deposit, total, paid, remaining, d.get('installment_amount', 0), d.get('installment_due_date'), d.get('next_payment_date') or d.get('installment_due_date'), d.get('payment_status','paid'), d.get('grace_period_days', 7), datetime.now().isoformat(), datetime.now().isoformat()))
     db.commit()
     return jsonify({'success': True, 'bike_id': cur.lastrowid, 'message': 'Bike added to fleet. Customer registered.'})
 
@@ -575,12 +600,50 @@ def alerts():
         rows = db.execute('SELECT * FROM alerts WHERE user_id=? ORDER BY id DESC LIMIT 50', (u['id'],)).fetchall()
     return jsonify({'success': True, 'alerts': [dict(r) for r in rows]})
 
+# --- DEVICE READY: for bike, glasses, watch, TV, camera ---
+@app.route('/api/device/<batch>/ping', methods=['POST'])
+def device_ping(batch):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    d = request.json or {}
+    row = db.execute('SELECT * FROM devices WHERE batch_number=?', (batch,)).fetchone()
+    if not row:
+        db.execute('INSERT INTO devices (batch_number, device_type, owner_id, status, last_seen, created_at) VALUES (?,?,?,?,?,?)', (batch, d.get('device_type','motorcycle'), u['id'], 'online', datetime.now().isoformat(), datetime.now().isoformat()))
+        db.commit()
+        return jsonify({'success': True, 'device_status': 'registered', 'message': 'Device registered. Waiting for live telemetry.'})
+    db.execute('UPDATE devices SET status=?, last_seen=? WHERE batch_number=?', ('online', datetime.now().isoformat(), batch))
+    db.commit()
+    return jsonify({'success': True, 'device_status': 'online'})
+
+@app.route('/api/device/<batch>')
+def device_get(batch):
+    u = get_user_from_token()
+    if not u: return jsonify({'success': False})
+    db = get_db()
+    row = db.execute('SELECT * FROM devices WHERE batch_number=?', (batch,)).fetchone()
+    if not row:
+        return jsonify({'success': True, 'device_status': 'device_offline', 'message': 'No device with this batch number is connected yet. Register device first.'})
+    return jsonify({'success': True, 'device': dict(row)})
+
+@app.route('/api/live/news')
+def live_news():
+    q = request.args.get('q','technology')
+    research = deep_research(q + ' news latest')
+    return jsonify({'success': True, 'research': research})
+
+@app.route('/api/live/map')
+def live_map():
+    lat = request.args.get('lat','6.5244')
+    lng = request.args.get('lng','3.3792')
+    return jsonify({'success': True, 'google_maps_url': f'https://maps.google.com/?q={lat},{lng}', 'embed_url': f'https://maps.google.com/maps?q={lat},{lng}&output=embed'})
+
 @app.route('/api/image/generate', methods=['POST'])
 def gen_image():
     u = get_user_from_token()
     if not u: return jsonify({'success': False, 'error': 'Login first'})
     d = request.json or {}
-    prompt = d.get('prompt') or d.get('message') or 'Tabby EV bike'
+    prompt = d.get('prompt') or d.get('message') or 'Tabi EV bike'
     if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
         return jsonify({'success': False, 'error': 'Image generation is not configured. Cloudflare Account ID and API Token are required.'})
     try:
@@ -606,7 +669,7 @@ def analyze_image():
     if not OPENAI_API_KEY:
         return jsonify({'success': False, 'error': 'Vision needs OpenAI key. Please top up OpenAI.'})
     try:
-        r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabby, Faruq's assistant. Analyse this image in clean English, no emojis, detailed and critical. Question: {question}"}, {'type': 'image_url', 'image_url': {'url': img_data}}]}]}, timeout=30)
+        r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabi, Faruq's assistant. Analyse this image in clean English, no emojis, detailed and critical. Question: {question}"}, {'type': 'image_url', 'image_url': {'url': img_data}}]}]}, timeout=30)
         data = r.json()
         if 'choices' not in data:
             return jsonify({'success': False, 'error': data.get('error', {}).get('message', 'OpenAI vision failed')})
@@ -644,24 +707,24 @@ def chat():
     if any(x in low for x in ['generate image','create image','draw','make image','create a picture']):
         prompt = re.sub(r'(generate image|create image|draw|make image|create a picture|of|please)', '', msg, flags=re.I).strip() or msg
         if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
-            reply = "I cannot generate an image right now, Boss, because Cloudflare image generation is not configured. Once it is configured, I will generate it."
+            reply = "I cannot generate an image right now, Boss, because Cloudflare image generation is not configured."
         else:
             try:
                 url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell"
                 r = requests.post(url, headers={'Authorization': f'Bearer {CLOUDFLARE_API_TOKEN}', 'Content-Type': 'application/json'}, json={'prompt': prompt, 'steps': 4}, timeout=60)
                 if r.headers.get('content-type','').startswith('image'):
                     image_b64 = f"data:image/png;base64,{base64.b64encode(r.content).decode()}"
-                    reply = f"Done Boss, I generated this for you: {prompt}. What do you think, do you want a different style or another version?"
+                    reply = f"Done Boss, I generated this for you: {prompt}."
                 else:
                     reply = f"Cloudflare returned an error, Boss: {r.text[:400]}"
             except Exception as e:
                 reply = f"I tried to generate the image but it failed, Boss: {e}"
     elif image:
         if not OPENAI_API_KEY:
-            reply = "I received your image, Boss, but vision needs OpenAI key. Please top up OpenAI."
+            reply = "I received your image, Boss, but vision needs OpenAI key."
         else:
             try:
-                r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabby. Analyse this image in clean English, no emojis, detailed and critical. Question: {msg or 'Describe this image in detail'}"}, {'type': 'image_url', 'image_url': {'url': image}}]}]}, timeout=30)
+                r = requests.post('https://api.openai.com/v1/chat/completions', headers={'Authorization': f'Bearer {OPENAI_API_KEY}', 'Content-Type': 'application/json'}, json={'model': 'gpt-4o-mini', 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': f"You are Tabi. Analyse this image in clean English, no emojis, detailed and critical. Question: {msg or 'Describe this image in detail'}"}, {'type': 'image_url', 'image_url': {'url': image}}]}]}, timeout=30)
                 data = r.json()
                 if 'choices' in data:
                     reply = data['choices'][0]['message']['content']
@@ -669,7 +732,7 @@ def chat():
                     ai_error = data.get('error', {}).get('message', 'Unknown error')
                     reply = f"OpenAI vision failed, Boss: {ai_error}"
             except Exception as e:
-                reply = f"I had trouble reading that image, Boss: {e}. Can you send it again?"
+                reply = f"I had trouble reading that image, Boss: {e}."
     elif any(x in low for x in ['bike','my bike','fleet','installment','payment','restricted','ebike','e-bike','e bike']):
         if is_owner(u):
             bikes = db.execute('SELECT * FROM bikes ORDER BY id DESC').fetchall()
@@ -681,47 +744,47 @@ def chat():
                 bd = dict(b)
                 ps = check_payment_status(bd)
                 lines.append(f"{bd['name']} - {bd.get('customer_name','')} - Battery {bd['battery_level']}% Health {bd['battery_health']}% - Range {bd['range_km']} km - Lock {bd['lock_status']} - Status {bd['bike_status']} - Payment {ps} - Remaining {bd.get('amount_remaining',0)} - Location {bd['location']} - Map https://maps.google.com/?q={bd['lat']},{bd['lng']}")
-            reply = f"Here is your fleet, Boss. Total bikes: {len(bikes)}\n\n" + "\n\n".join(lines) + "\n\nTap Dashboard to see all, lock, unlock, or check payments. Do you want details for a specific bike?"
+            reply = f"Here is your fleet, Boss. Total bikes: {len(bikes)}\n\n" + "\n\n".join(lines)
         else:
-            reply = "Your fleet is in the Dashboard, Boss. Tap the chart icon at the top to see it."
-    elif any(x in low for x in ['my name is','i am ','i live in','my business is','remember that','my age is','my goal is']):
+            reply = "Your fleet is in the Dashboard, Boss."
+    elif any(x in low for x in ['my name is','i am ','i live in','my business is','remember that']):
         save_memory(u['id'], 'about_user_update', msg)
         save_memory(u['id'], 'last_update', datetime.now().isoformat())
         reply, ai_error = ask_ai(f"User told me about himself: '{msg}'. Acknowledge, show you will remember, ask a smart follow-up.", memory, history, "")
         if not reply:
-            reply = f"Got it, Boss. I will remember that: {msg}. What else should I know?"
+            reply = f"Got it, Boss. I will remember that: {msg}."
             if ai_error:
-                reply += f"\n\nOpenAI error: {ai_error}"
-    elif any(x in low for x in ['news','latest','technology','tech','naira','dollar','weather','explain','what is','why','how does','analyse','analyze','research','trend','ev','electric','black veil','myers','dorcas','tabitha','glasses','edith','smart glasses']):
+                reply += f"\n\nAI error: {ai_error}"
+    elif any(x in low for x in ['news','latest','technology','tech','naira','dollar','weather','explain','what is','why','how does','analyse','analyze','research','trend','ev','electric']):
         research = deep_research(msg)
         reply, ai_error = ask_ai(msg, memory, history, research)
         if not reply:
             reply = smart_fallback(msg, memory, research)
             if ai_error:
-                reply += f"\n\nOpenAI error: {ai_error}"
+                reply += f"\n\nAI error: {ai_error}"
 
     if not reply:
         reply, ai_error = ask_ai(msg, memory, history, "")
     if not reply:
         reply = smart_fallback(msg, memory, "")
         if ai_error:
-            reply += f"\n\nOpenAI error: {ai_error}"
+            reply += f"\n\nAI error: {ai_error}"
 
     db.execute('INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?,?,?,?)', (conv_id, 'assistant', reply, datetime.now().isoformat()))
     db.commit()
     audio_b64 = None
     if want_voice:
-        audio_b64 = openai_tts(reply)
-    # FIX: Do NOT send ai_error as separate message - it is already inside reply once. Frontend must NOT add it again.
+        audio_b64 = openai_tts(reply, voice='nova')
     return jsonify({'success': True, 'reply': reply, 'conversation_id': conv_id, 'image_base64': image_b64, 'audio_base64': audio_b64})
 
 @app.route('/api/voice/speak', methods=['POST'])
 def speak():
     d = request.json or {}
     text = d.get('text') or d.get('message') or 'Hey Boss'
-    audio = openai_tts(text)
+    voice = d.get('voice', 'nova')
+    audio = openai_tts(text, voice=voice)
     if not audio:
-        return jsonify({'success': False, 'error': 'Voice audio needs OpenAI credit. Chat still works when OpenAI is topped up.'})
+        return jsonify({'success': False, 'error': 'Voice audio needs OpenAI credit.'})
     return jsonify({'success': True, 'audio_base64': audio})
 
 @app.route('/api/voice/chat', methods=['POST'])
@@ -746,8 +809,8 @@ def voice_chat():
     if not reply:
         reply = smart_fallback(text, memory, "")
         if ai_error:
-            reply += f"\n\nOpenAI error: {ai_error}"
-    audio = openai_tts(reply)
+            reply += f"\n\nAI error: {ai_error}"
+    audio = openai_tts(reply, voice='nova')
     return jsonify({'success': True, 'transcribed': text, 'reply': reply, 'audio_base64': audio})
 
 @app.route('/api/call/start', methods=['POST'])
@@ -759,7 +822,7 @@ def call_end(): return jsonify({'success': True})
 def debug_ai():
     u = get_user_from_token()
     if not u or not is_owner(u): return jsonify({'success': False})
-    return jsonify({'success': True, 'openai_set': bool(OPENAI_API_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'mode': 'OPENAI ONLY - Same as Kaimos - No Gemini, No Groq, No Cerebras, No OpenRouter'})
+    return jsonify({'success': True, 'openai_set': bool(OPENAI_API_KEY), 'cloudflare_set': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN), 'supabase_enabled': SUPABASE_ENABLED, 'ai_provider': AI_PROVIDER, 'mode': 'OpenAI default, OpenRouter optional'})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
